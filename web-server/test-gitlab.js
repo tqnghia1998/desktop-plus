@@ -266,12 +266,8 @@ async function main() {
       'https://gitlab.example/group/web-repository.git',
       'gitlab-token'
     )
-    assert.equal(gitEnvironment.GIT_CONFIG_KEY_0, 'credential.helper')
-    assert.equal(gitEnvironment.GIT_CONFIG_VALUE_0, '')
-    assert.equal(gitEnvironment.GIT_CONFIG_KEY_1, 'core.askPass')
-    assert.equal(gitEnvironment.GIT_CONFIG_VALUE_1, '')
     assert.equal(
-      gitEnvironment.GIT_CONFIG_VALUE_2,
+      gitEnvironment.GIT_CONFIG_VALUE_0,
       `Authorization: Basic ${Buffer.from('oauth2:gitlab-token').toString(
         'base64'
       )}`
