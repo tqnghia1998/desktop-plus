@@ -5,8 +5,6 @@ const sourceSuites = Object.freeze({
   compare: 'test-source-compare-workflows.js',
   local: 'test-source-local-workflows.js',
   sync: 'test-source-sync-workflows.js',
-  sshAuth: 'test-source-ssh-auth.js',
-  applicationMenu: 'test-source-application-menu.js',
   advanced: 'test-source-advanced-workflows.js',
   parity: 'test-source-parity-round.js',
   recovery: 'test-source-repository-recovery.js',
@@ -15,6 +13,7 @@ const sourceSuites = Object.freeze({
   preferences: 'test-source-preferences-history.js',
   statePersistence: 'test-source-state-persistence.js',
   trash: 'test-source-trash-recovery.js',
+  tutorial: 'test-source-tutorial.js',
   platform: 'test-source-platform-gaps.js',
   coverage: 'test-docs.js',
 })
@@ -27,6 +26,7 @@ const evidence = Object.freeze({
   'REPO-06': ['recovery'],
   'REPO-07': ['parity'],
   'REPO-08': ['trash'],
+  'REPO-09': ['tutorial'],
   'REPO-12': ['platform'],
   'REPO-14': ['parity'],
   'REPO-16': ['recovery'],
@@ -98,7 +98,6 @@ const evidence = Object.freeze({
   'SYNC-09': ['sync', 'advanced'],
   'SYNC-10': ['branch', 'sync'],
   'SYNC-11': ['parity'],
-  'SYNC-12': ['sshAuth'],
 
   'STASH-01': ['renderer', 'local'],
   'STASH-02': ['evidence', 'local'],

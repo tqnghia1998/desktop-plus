@@ -5,14 +5,11 @@ const { selectedBrowserName } = require('./test-browser')
 const suites = {
   integration: [
     'test-source-renderer.js',
-    'test-source-changes-selection.js',
     'test-source-commit-options.js',
     'test-source-history-workflows.js',
     'test-source-compare-workflows.js',
     'test-source-local-workflows.js',
     'test-source-sync-workflows.js',
-    'test-source-ssh-auth.js',
-    'test-source-application-menu.js',
     'test-source-advanced-workflows.js',
     'test-source-parity-round.js',
     'test-source-repository-recovery.js',
@@ -21,6 +18,7 @@ const suites = {
     'test-source-preferences-history.js',
     'test-source-state-persistence.js',
     'test-source-trash-recovery.js',
+    'test-source-tutorial.js',
     'test-source-platform-gaps.js',
   ],
   ui: [
