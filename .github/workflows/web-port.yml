@@ -1,0 +1,218 @@
+name: Web port
+
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: '17 4 * * 2'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-port-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: yarn
+      - run: yarn --frozen-lockfile
+      - run: yarn build:web
+      - run: yarn check:web
+      - run: yarn test:web:contract
+      - run: yarn test:web:payload
+      - run: yarn test:web:security
+      - run: yarn test:web:hosting-errors
+      - run: yarn test:web:gitlab
+      - run: yarn test:web:updates
+      - run: yarn test:web:copilot-cancellation
+      - name: Verify generated web payload
+        run: git diff --exit-code -- web-server/public
+
+  api:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: yarn
+      - run: yarn --frozen-lockfile
+      - run: yarn build:web
+      - run: yarn test:web:api
+
+  platform:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: yarn
+      - run: yarn --frozen-lockfile
+      - run: yarn test:web:platform
+
+  browser-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: yarn
+      - run: yarn --frozen-lockfile
+      - run: yarn build:web
+      - run: npx playwright install --with-deps chromium
+      - name: Run browser integration tests
+        run: |
+          set -o pipefail
+          yarn test:web:browser-integration 2>&1 | tee web-browser-integration.log
+      - name: Upload browser integration log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-browser-integration-log
+          path: web-browser-integration.log
+
+  browser-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: yarn
+      - run: yarn --frozen-lockfile
+      - run: yarn build:web
+      - run: npx playwright install --with-deps chromium
+      - name: Run browser UI workflows
+        run: |
+          set -o pipefail
+          yarn test:web:ui 2>&1 | tee web-browser-ui.log
+      - name: Upload browser UI log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-browser-ui-log
+          path: web-browser-ui.log
+
+  browser-engines:
+    name: Browser engine (${{ matrix.browser }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - browser: chrome
+            playwright: chrome
+          - browser: edge
+            playwright: msedge
+          - browser: firefox
+            playwright: firefox
+          - browser: webkit
+            playwright: webkit
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: yarn
+      - run: yarn --frozen-lockfile
+      - run: yarn build:web
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps ${{ matrix.playwright }}
+      - name: Run source-renderer browser workflows
+        env:
+          WEB_BROWSER: ${{ matrix.browser }}
+        run: |
+          set -o pipefail
+          yarn test:web:e2e 2>&1 | tee web-browser-${{ matrix.browser }}.log
+      - name: Upload browser log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-browser-${{ matrix.browser }}-log
+          path: web-browser-${{ matrix.browser }}.log
+
+  browser-platforms:
+    name: Source renderer (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: yarn
+      - run: yarn --frozen-lockfile
+      - run: yarn build:web
+      - run: npx playwright install chromium
+      - name: Run source-renderer browser workflows
+        env:
+          WEB_BROWSER: chromium
+        run: yarn test:web:e2e
+
+  release-candidate:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: yarn
+      - run: yarn --frozen-lockfile
+      - run: yarn build:web
+      - name: Run branded Chrome release-candidate evidence
+        env:
+          WEB_BROWSER: chrome
+        run: yarn test:web:release
+
+  provider-sandbox:
+    if:
+      github.event_name == 'schedule' || github.event_name ==
+      'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DESKTOP_PLUS_RUN_PROVIDER_SANDBOX:
+        ${{ (secrets.DESKTOP_PLUS_GITHUB_SANDBOX_TOKEN != '' ||
+        secrets.DESKTOP_PLUS_GITLAB_SANDBOX_TOKEN != '') && '1' || '0' }}
+      DESKTOP_PLUS_GITHUB_SANDBOX_TOKEN:
+        ${{ secrets.DESKTOP_PLUS_GITHUB_SANDBOX_TOKEN }}
+      DESKTOP_PLUS_GITHUB_SANDBOX_ENDPOINT:
+        ${{ vars.DESKTOP_PLUS_GITHUB_SANDBOX_ENDPOINT }}
+      DESKTOP_PLUS_GITLAB_SANDBOX_TOKEN:
+        ${{ secrets.DESKTOP_PLUS_GITLAB_SANDBOX_TOKEN }}
+      DESKTOP_PLUS_GITLAB_SANDBOX_ENDPOINT:
+        ${{ vars.DESKTOP_PLUS_GITLAB_SANDBOX_ENDPOINT }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: yarn
+      - run: yarn --frozen-lockfile
+      - run: yarn build:web
+      - run: yarn test:web:provider-sandbox
