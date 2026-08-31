@@ -59,6 +59,10 @@ interface IAutocompletingTextInputProps<ElementType, AutocompleteItemType> {
   /** Indicates if input field applies spellcheck */
   readonly spellcheck?: boolean
 
+  readonly autoFocus?: boolean
+
+  readonly rows?: number
+
   /** Indicates if it should always try to autocomplete. Optional (defaults to false) */
   readonly alwaysAutocomplete?: boolean
 
@@ -453,6 +457,8 @@ export abstract class AutocompletingTextInput<
       readOnly: this.props.readOnly,
       required: this.props.required ? true : false,
       spellCheck: this.props.spellcheck,
+      autoFocus: this.props.autoFocus,
+      rows: this.props.rows,
       autoComplete: 'off',
       'aria-expanded': autocompleteVisible,
       'aria-autocomplete': 'list' as const,

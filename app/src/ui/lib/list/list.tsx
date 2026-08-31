@@ -266,6 +266,7 @@ interface IListProps {
    */
   readonly canSelectRow?: (row: number) => boolean
   readonly onScroll?: (scrollTop: number, clientHeight: number) => void
+  readonly onRowsRendered?: (start: number, end: number) => void
 
   /**
    * List's underlying implementation acts as a pure component based on the
@@ -1416,6 +1417,7 @@ export class List extends React.Component<IListProps, IListState> {
             this.getFirstSelectableRowIndexPath()
           )}
           onScroll={this.onScroll}
+          onSectionRendered={this.onRowsRendered}
           scrollTop={this.props.setScrollTop}
           overscanRowCount={4}
           style={this.gridStyle}
@@ -1730,6 +1732,16 @@ export class List extends React.Component<IListProps, IListState> {
     }
 
     this.updateKeyboardInsertionElementPosition()
+  }
+
+  private onRowsRendered = ({
+    rowStartIndex,
+    rowStopIndex,
+  }: {
+    rowStartIndex: number
+    rowStopIndex: number
+  }) => {
+    this.props.onRowsRendered?.(rowStartIndex, rowStopIndex)
   }
 
   /**
