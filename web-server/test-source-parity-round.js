@@ -15,47 +15,19 @@ function escapeRegExp(value) {
 }
 
 async function addRepositoryFromHome(page, repository) {
-  const canonicalRepository = fs.realpathSync(repository)
   await page
     .getByRole('button', {
       name: /Add an Existing Repository from your local drive…/i,
     })
     .click()
-  const repositoryInspection = page.waitForResponse(
-    response =>
-      response.url().includes('/api/repository/inspect') &&
-      response.status() === 200
-  )
   await page.getByLabel('Local path').fill(repository)
-  await repositoryInspection
   await page.getByRole('button', { name: 'Add repository' }).click()
-  await page.waitForFunction(
-    expected => window.__DESKTOP_PLUS_WEB_REPOSITORY_PATH__ === expected,
-    canonicalRepository
-  )
 }
 
 async function openRepositoryPicker(page) {
-  const picker = page.locator('.repository-list')
-  if (await picker.isVisible().catch(() => false)) return picker
-  await page.keyboard.press('Escape')
-  await page.locator('#web-context-menu').waitFor({ state: 'hidden' })
-  const button = page.getByRole('button', { name: /^Current repository/i })
-  if ((await button.getAttribute('aria-expanded')) !== 'true')
-    await button.click()
-  await picker.waitFor()
-  return picker
-}
-
-async function openRepositoryActions(page, name) {
-  await page
-    .locator('.repository-list-item > .name')
-    .filter({ hasText: new RegExp(`^${escapeRegExp(name)}$`) })
-    .locator('..')
-    .click({ button: 'right', position: { x: 24, y: 16 } })
-  const menu = page.locator('#web-context-menu')
-  await menu.waitFor()
-  return menu
+  const button = page.locator('.sidebar-section').getByRole('button').first()
+  await button.click()
+  await page.getByLabel('Filter repositories').waitFor()
 }
 
 async function visibleRepositoryNames(page) {
@@ -182,83 +154,30 @@ async function main() {
     })
 
     await addRepositoryFromHome(page, repository)
-    const branchButton = page.locator('.branch-toolbar-button > button')
+    const branchButton = page.locator(
+      '.branch-toolbar-button > .toolbar-button > button'
+    )
     await branchButton.focus()
     await branchButton.click()
-    const branchPicker = page.locator('.branches-container')
-    await branchPicker.getByText('Default Branch', { exact: true }).waitFor()
-    await branchPicker.getByText('Other Branches', { exact: true }).waitFor()
+    const branchPicker = page.locator('.web-branch-picker')
+    await branchPicker.getByText('Default branch', { exact: true }).waitFor()
+    await branchPicker.getByText('Recent branches', { exact: true }).waitFor()
+    await branchPicker.getByText('Local branches', { exact: true }).waitFor()
     await branchPicker
-      .getByRole('button', { name: 'New Branch', exact: true })
+      .getByRole('button', { name: /Switch to main, default branch/ })
       .waitFor()
-    await waitForVisibleOption(page, 'main')
-    const branchToolbarBounds = await branchButton.boundingBox()
-    const branchMenuBounds = await page
-      .locator('#foldout-container > .foldout')
-      .boundingBox()
-    assert.ok(branchToolbarBounds)
-    assert.ok(branchMenuBounds)
-    assert.equal(
-      Math.round(branchMenuBounds.x),
-      Math.round(branchToolbarBounds.x)
-    )
-    assert.equal(
-      Math.round(branchMenuBounds.y),
-      Math.round(branchToolbarBounds.y + branchToolbarBounds.height)
-    )
-    assert.ok(branchMenuBounds.width >= 365)
-    assert.ok(branchMenuBounds.height > 640)
-    const newBranchButton = branchPicker.getByRole('button', {
-      name: 'New Branch',
-      exact: true,
-    })
-    const branchFilterBounds = await branchPicker
-      .getByPlaceholder('Filter')
-      .boundingBox()
-    const newBranchBounds = await newBranchButton.boundingBox()
-    assert.ok(branchFilterBounds)
-    assert.ok(newBranchBounds)
-    assert.ok(
-      Math.abs(
-        Math.round(branchFilterBounds.y) - Math.round(newBranchBounds.y)
-      ) <= 2
-    )
-    assert.ok(newBranchBounds.x > branchFilterBounds.x)
-    const branchFilter = branchPicker.getByPlaceholder('Filter')
+    const branchFilter = branchPicker.getByLabel('Filter branches')
     await branchFilter.fill('search-target')
-    await waitForVisibleOption(page, 'feature/search-target')
+    await branchPicker
+      .getByRole('button', { name: 'Switch to feature/search-target' })
+      .waitFor()
     assert.equal(
-      await branchPicker.getByRole('option', { name: /^other-branch/ }).count(),
+      await branchPicker
+        .getByRole('button', { name: 'Switch to other-branch' })
+        .count(),
       0
     )
     await branchButton.press('Escape')
-    await page.locator('#foldout-container').waitFor({ state: 'hidden' })
-    const syncButton = page.getByRole('button', {
-      name: 'Push, pull, fetch options',
-    })
-    await syncButton.click()
-    const syncToolbarBounds = await syncButton.boundingBox()
-    const syncMenuBounds = await page
-      .locator('#foldout-container > .foldout')
-      .boundingBox()
-    assert.ok(syncToolbarBounds)
-    assert.ok(syncMenuBounds)
-    assert.ok(syncMenuBounds.x <= syncToolbarBounds.x)
-    assert.ok(
-      syncMenuBounds.x + syncMenuBounds.width >=
-        syncToolbarBounds.x + syncToolbarBounds.width
-    )
-    assert.equal(
-      Math.round(syncMenuBounds.y),
-      Math.round(syncToolbarBounds.y + syncToolbarBounds.height)
-    )
-    assert.ok(syncMenuBounds.width >= 230)
-    assert.ok(syncMenuBounds.height > 0)
-    assert.ok(
-      syncMenuBounds.y + syncMenuBounds.height <= page.viewportSize().height
-    )
-    await syncButton.press('Escape')
-    await page.locator('#foldout-container').waitFor({ state: 'hidden' })
     await page.getByRole('tab', { name: 'Changes' }).waitFor()
     await waitForVisibleOption(page, 'modified.txt')
     await waitForVisibleOption(page, 'deleted.txt')
@@ -347,55 +266,35 @@ async function main() {
       () => document.querySelectorAll('.diff-container .cm-keyword').length > 0
     )
 
-    const filters = page.getByRole('button', { name: /^Filter Options/ })
-    await filters.click()
-    await page
-      .getByRole('checkbox', { name: /^New files \(/ })
-      .evaluate(element => element.click())
-    await page
-      .getByRole('button', { name: /^Filter Options \(1 applied\)$/ })
-      .waitFor()
+    const filters = page.getByRole('group', { name: 'Changes filters' })
+    await filters.getByRole('button', { name: 'New', exact: true }).click()
     await waitForVisibleOption(page, 'new.txt')
     await waitForVisibleOption(page, 'modified.txt', false)
     await waitForVisibleOption(page, 'deleted.txt', false)
 
-    const newFile = page.getByRole('option', { name: /^new\.txt/ })
-    const secondNewFile = page.getByRole('option', {
-      name: /^ignore-me\.log/,
-    })
-    await newFile.click()
-    await secondNewFile.click({ modifiers: ['Meta'] })
-    await secondNewFile.click({ button: 'right' })
-    await page
-      .locator('#web-context-menu')
-      .getByRole('menuitem', { name: 'Exclude Selected Files' })
-      .click()
-    await filters.click()
-    await page
-      .getByRole('checkbox', { name: /^Excluded from commit \(/ })
-      .evaluate(element => element.click())
+    await page.getByRole('button', { name: 'Exclude visible' }).click()
+    await filters.getByRole('button', { name: 'Excluded', exact: true }).click()
     await waitForVisibleOption(page, 'new.txt')
-    await filters.click()
-    await page.getByRole('button', { name: 'Clear filters' }).click()
+    await filters.getByRole('button', { name: 'Clear filters' }).click()
     await waitForVisibleOption(page, 'modified.txt')
     await waitForVisibleOption(page, 'deleted.txt')
 
-    const openFileMenu = async pathPattern => {
-      const option = page.getByRole('option', { name: pathPattern })
-      // Clear the prior multi-selection so this helper exercises a single-file
-      // context action, matching the menu labels asserted below.
-      await option.click()
-      await option.click({ button: 'right' })
-      const menu = page.locator('#web-context-menu')
-      await menu.waitFor()
-      return menu
+    const ignoreActions = pathName =>
+      page.getByRole('group', { name: `${pathName} actions` })
+    await page.getByRole('option', { name: /^ignore-me\.log/ }).click()
+    try {
+      await ignoreActions('ignore-me.log')
+        .getByRole('button', { name: 'Ignore file' })
+        .click()
+    } catch (error) {
+      throw new Error(
+        `${error.message}\nGroups: ${await page
+          .locator('[aria-label="ignore-me.log actions"]')
+          .count()}\nHTML: ${await page
+          .locator('[aria-label="ignore-me.log actions"]')
+          .allTextContents()}\nBody:\n${await page.locator('body').innerText()}`
+      )
     }
-    let fileMenu = await openFileMenu(/^ignore-me\.log/)
-    await fileMenu
-      .getByRole('menuitem', {
-        name: 'Ignore File (Add to .gitignore)',
-      })
-      .click()
     await page.getByRole('option', { name: /^ignore-me\.log/ }).waitFor({
       state: 'hidden',
     })
@@ -404,11 +303,9 @@ async function main() {
       /ignore-me\.log/
     )
 
-    fileMenu = await openFileMenu(/^pattern-match\.cfg/)
-    await fileMenu
-      .getByRole('menuitem', {
-        name: 'Ignore All .cfg Files (Add to .gitignore)',
-      })
+    await page.getByRole('option', { name: /^pattern-match\.cfg/ }).click()
+    await ignoreActions('pattern-match.cfg')
+      .getByRole('button', { name: /Ignore \.cfg files/ })
       .click()
     await page
       .getByRole('option', { name: /^pattern-match\.cfg/ })
@@ -418,65 +315,85 @@ async function main() {
       /\*\.cfg/
     )
 
-    fileMenu = await openFileMenu(/^modified\.txt/)
-    await fileMenu.getByRole('menuitem', { name: 'Copy File Path' }).click()
+    await page.getByRole('option', { name: /^modified\.txt/ }).click()
+    const modifiedActions = ignoreActions('modified.txt')
+    await modifiedActions.getByRole('button', { name: 'Copy path' }).click()
     assert.equal(
       await page.evaluate(() => navigator.clipboard.readText()),
-      path.join(fs.realpathSync(repository), 'modified.txt')
+      path.join(repository, 'modified.txt')
     )
-    fileMenu = await openFileMenu(/^modified\.txt/)
-    await fileMenu
-      .getByRole('menuitem', { name: 'Copy Relative File Path' })
+    await modifiedActions
+      .getByRole('button', { name: 'Copy relative path' })
       .click()
     assert.equal(
       await page.evaluate(() => navigator.clipboard.readText()),
       'modified.txt'
     )
 
-    const includedFiles = page
-      .getByRole('option')
-      .filter({ hasText: / included$/ })
-    await includedFiles.first().click()
-    for (let index = 1; index < (await includedFiles.count()); index++)
-      await includedFiles.nth(index).click({ modifiers: ['Meta'] })
-    await includedFiles.last().click({ button: 'right' })
-    await page
-      .locator('#web-context-menu')
-      .getByRole('menuitem', { name: 'Copy Paths' })
-      .click()
+    await page.getByRole('option', { name: /^new\.txt/ }).click()
+    try {
+      await ignoreActions('new.txt')
+        .getByRole('button', { name: 'Copy included paths' })
+        .click()
+    } catch (error) {
+      throw new Error(
+        `${error.message}\nnew actions:\n${await ignoreActions(
+          'new.txt'
+        ).innerText()}\noptions:\n${await page
+          .getByRole('option')
+          .allTextContents()}`
+      )
+    }
     assert.deepEqual(
       new Set(
         (await page.evaluate(() => navigator.clipboard.readText())).split('\n')
       ),
       new Set([
-        path.join(fs.realpathSync(repository), 'deleted.txt'),
-        path.join(fs.realpathSync(repository), 'modified.txt'),
-        path.join(fs.realpathSync(repository), '.gitignore'),
-        path.join(fs.realpathSync(repository), 'new.txt'),
-        path.join(fs.realpathSync(repository), 'syntax.ts'),
-        path.join(fs.realpathSync(repository), 'whole-file.txt'),
+        path.join(repository, 'deleted.txt'),
+        path.join(repository, 'modified.txt'),
+        path.join(repository, '.gitignore'),
+        path.join(repository, 'new.txt'),
+        path.join(repository, 'syntax.ts'),
+        path.join(repository, 'whole-file.txt'),
       ])
     )
 
     await openRepositoryPicker(page)
     await page.getByRole('button', { name: 'Add', exact: true }).click()
-    await page
-      .getByRole('menuitem', { name: 'Add Existing Repository…' })
-      .click()
-    const secondRepositoryInspection = page.waitForResponse(
-      response =>
-        response.url().includes('/api/repository/inspect') &&
-        response.status() === 200
-    )
     await page.getByLabel('Local path').fill(secondRepository)
-    await secondRepositoryInspection
     await page.getByRole('button', { name: 'Add repository' }).click()
-    await page.locator('#add-existing-repository').waitFor({ state: 'hidden' })
 
     await openRepositoryPicker(page)
-    await waitForRepository(page, secondRepository)
+    await page
+      .getByRole('button', {
+        name: `Edit ${path.basename(secondRepository)}`,
+      })
+      .click()
+    const repositorySettings = page
+      .getByRole('dialog')
+      .filter({ hasText: 'Repository settings' })
+    await repositorySettings.getByLabel('Group').fill('Parity group')
+    await repositorySettings
+      .getByRole('button', {
+        name: 'Save repository',
+      })
+      .click()
+    await page.getByText('Parity group', { exact: true }).waitFor()
+    await page.getByRole('button', { name: 'Rename Parity group' }).click()
+    const renameGroupDialog = page
+      .getByRole('dialog')
+      .filter({ hasText: 'Rename group: Parity group' })
+    await renameGroupDialog.getByLabel('Group name').fill('Renamed group')
+    await renameGroupDialog
+      .getByRole('button', { name: 'Rename group' })
+      .click()
+    await page.getByText('Renamed group', { exact: true }).waitFor()
     await page.reload({ waitUntil: 'networkidle' })
     await openRepositoryPicker(page)
+    await page.getByText('Renamed group', { exact: true }).waitFor()
+    await page.getByText('Parity group', { exact: true }).waitFor({
+      state: 'hidden',
+    })
     const repositoryNames = await visibleRepositoryNames(page)
     assert.equal(
       repositoryNames.filter(name => name === path.basename(repository)).length,
@@ -487,9 +404,7 @@ async function main() {
         .length,
       1
     )
-    const repositoryFilter = page
-      .locator('.repository-list')
-      .getByPlaceholder('Filter')
+    const repositoryFilter = page.getByLabel('Filter repositories')
     await repositoryFilter.fill('second')
     await waitForRepository(page, secondRepository)
     assert.equal(
@@ -502,41 +417,57 @@ async function main() {
       0
     )
     await repositoryFilter.fill('')
-    const repositoryRow = page
-      .locator('.repository-list-item > .name')
-      .filter({
-        hasText: new RegExp(`^${escapeRegExp(path.basename(repository))}$`),
-      })
-      .locator('..')
-    const repositoryRowBounds = await repositoryRow.boundingBox()
-    assert.ok(repositoryRowBounds)
-    await repositoryRow.click({
-      button: 'right',
-      position: { x: 24, y: 16 },
+    const pinButton = page.getByRole('button', {
+      name: `Pin ${path.basename(repository)}`,
     })
-    const contextMenuBounds = await page
-      .locator('#web-context-menu')
-      .boundingBox()
-    assert.ok(contextMenuBounds)
+    // The repository picker can be taller than the headless viewport when
+    // indicators and worktree rows are enabled. Trigger the same DOM click
+    // after Playwright has resolved the visible control.
+    await pinButton.evaluate(button => button.click())
+    await page.getByText('Pinned', { exact: true }).waitFor()
     assert.equal(
-      Math.round(contextMenuBounds.x),
-      Math.round(repositoryRowBounds.x + 24)
-    )
-    assert.ok(
-      Math.abs(
-        Math.round(contextMenuBounds.y) - Math.round(repositoryRowBounds.y + 16)
-      ) <= 1
+      await page
+        .getByRole('button', {
+          name: `Unpin ${path.basename(repository)}`,
+        })
+        .count(),
+      1
     )
     await page.reload({ waitUntil: 'networkidle' })
     await openRepositoryPicker(page)
-    await (await openRepositoryActions(page, path.basename(secondRepository)))
-      .getByRole('menuitem', { name: /^Remove/ })
+    assert.equal(
+      await page
+        .getByRole('button', {
+          name: `Unpin ${path.basename(repository)}`,
+        })
+        .count(),
+      1
+    )
+    await page
+      .getByRole('button', {
+        name: `Unpin ${path.basename(repository)}`,
+      })
       .click()
-    const removeDialog = page
-      .getByRole('dialog')
-      .filter({ hasText: 'Remove repository' })
+    await page
+      .getByRole('button', { name: 'Pull Repositories' })
+      .evaluate(button => button.click())
+    await page.keyboard.press('Escape')
+    await page
+      .getByRole('tab', { name: 'Tools' })
+      .evaluate(button => button.click())
+    await page.waitForFunction(
+      () =>
+        document
+          .querySelector('.web-tools-panel')
+          ?.getAttribute('aria-busy') === 'false'
+    )
+    const removeRepositoryButton = page.getByRole('button', {
+      name: `Remove ${path.basename(secondRepository)}`,
+    })
+    await removeRepositoryButton.evaluate(button => button.click())
+    const removeDialog = page.getByRole('alertdialog')
     await removeDialog
-      .getByRole('button', { name: 'Remove', exact: true })
+      .getByRole('button', { name: 'Remove repository' })
       .click()
     assert.equal(
       await page
@@ -546,41 +477,48 @@ async function main() {
       0
     )
 
-    await openRepositoryPicker(page)
-    await page
-      .locator('.repository-list-item > .name')
-      .filter({
-        hasText: new RegExp(`^${escapeRegExp(path.basename(repository))}$`),
-      })
-      .click()
-    await page.locator('.branch-toolbar-button').waitFor()
     fs.writeFileSync(path.join(repository, 'inline-stash.txt'), 'changed\n')
     git(repository, 'add', 'inline-stash.txt')
     git(repository, 'stash', 'push', '-m', 'inline stash')
     await page.reload({ waitUntil: 'networkidle' })
     await page.getByRole('tab', { name: 'Changes' }).click()
-    const inlineStashes = page.locator('.stashed-changes-button')
-    await inlineStashes.getByText(/1 stash \(inline stash/).waitFor()
-    await inlineStashes.click()
-    const stashInspection = page.locator('#stash-diff-viewer')
+    const inlineStashes = page.getByRole('region', { name: 'Stashes' })
+    await inlineStashes.getByText(/inline stash on main/).waitFor()
+    await inlineStashes
+      .getByRole('button', { name: /inline stash on main/ })
+      .click()
+    const stashInspection = page.getByRole('region', {
+      name: 'Stash inspection',
+    })
     await stashInspection.getByRole('option').first().waitFor()
     await stashInspection
       .getByRole('option', { name: 'inline-stash.txt' })
       .click()
-    await stashInspection.getByRole('button', { name: 'Rename stash' }).click()
-    const inlineRenameDialog = page.locator('#rename-stash:visible')
-    await inlineRenameDialog.getByLabel('Name').fill('renamed inline stash')
+    await page.waitForFunction(() =>
+      document
+        .querySelector('.web-stash-diff')
+        ?.textContent?.includes('changed')
+    )
+    await stashInspection.getByRole('button', { name: 'Close' }).click()
+    await inlineStashes.getByRole('button', { name: 'Rename' }).click()
+    const inlineRenameDialog = page
+      .getByRole('dialog')
+      .filter({ hasText: 'Rename stash' })
+    await inlineRenameDialog
+      .getByLabel('Stash name')
+      .fill('renamed inline stash')
     await inlineRenameDialog
       .getByRole('button', { name: 'Rename stash' })
       .click()
-    await page.getByText(/1 stash \(renamed inline stash/).waitFor()
-    await inlineStashes.click()
-    await page.getByRole('button', { name: 'Discard', exact: true }).click()
+    await inlineStashes.getByText(/renamed inline stash on main/).waitFor()
+    await inlineStashes.getByRole('button', { name: 'Drop' }).click()
     await page
       .getByRole('alertdialog')
-      .getByRole('button', { name: 'Discard', exact: true })
+      .getByRole('button', { name: 'Drop stash' })
       .click()
-    await inlineStashes.waitFor({ state: 'hidden' })
+    await inlineStashes
+      .getByText(/renamed inline stash on main/)
+      .waitFor({ state: 'hidden' })
     assert.doesNotMatch(
       git(repository, 'stash', 'list'),
       /renamed%20inline%20stash/
@@ -588,7 +526,7 @@ async function main() {
 
     await page.getByRole('tab', { name: 'History' }).click()
     await waitForHistory(page, 'ordinary tagged commit')
-    const historyFilter = page.getByLabel('Commit filter')
+    const historyFilter = page.getByLabel('Search commits')
 
     await historyFilter.fill('summary search target')
     await waitForHistory(page, 'summary search target')

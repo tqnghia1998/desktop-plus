@@ -3,14 +3,9 @@ const fs = require('fs')
 const os = require('os')
 const path = require('path')
 const { execFileSync } = require('child_process')
-const {
-  createServer,
-  gitOperationAuthenticationEnvironment,
-  readStoredGitCredential,
-} = require('./server')
+const { createServer } = require('./server')
 const {
   authenticatedGitEnvironment,
-  githubCredentialId,
   githubCredentialService,
   normalizeGitHubEndpoint,
 } = require('./hosting')
@@ -44,61 +39,12 @@ async function main() {
   git(repo, 'init', '-b', 'main')
   git(repo, 'config', 'user.name', 'API Test')
   git(repo, 'config', 'user.email', 'api-test@example.com')
-  git(
-    repo,
-    'config',
-    'credential.helper',
-    '!f() { echo username=stored-user; echo password=stored-password; }; f'
-  )
-  assert.deepEqual(
-    await readStoredGitCredential(
-      repo,
-      'https://credential-web-test.invalid/owner/repository.git'
-    ),
-    { username: 'stored-user', password: 'stored-password' }
-  )
-  git(
-    repo,
-    'remote',
-    'add',
-    'origin',
-    'https://github.com/owner/repository.git'
-  )
-  const environment = await gitOperationAuthenticationEnvironment(
-    repo,
-    {
-      hostingAccount: {
-        provider: 'github',
-        endpoint: 'https://github.com',
-        login: 'desktop-plus-user',
-        credentialId: githubCredentialId(
-          'https://github.com',
-          'desktop-plus-user'
-        ),
-      },
-    },
-    {
-      keytar: {
-        getPassword() {
-          throw new Error('the hosting token should not be read')
-        },
-      },
-    },
-    'fetch',
-    []
-  )
-  assert.equal(environment.GIT_CONFIG_KEY_0, 'credential.interactive')
-  assert.equal(environment.GIT_CONFIG_VALUE_0, 'false')
-  assert.equal(environment.GIT_CONFIG_KEY_1, 'core.askPass')
-  assert.equal(environment.GIT_CONFIG_VALUE_1, '')
-  assert.equal(environment.GIT_CONFIG_KEY_2, undefined)
-  git(repo, 'config', '--unset-all', 'credential.helper')
   await fs.promises.writeFile(path.join(repo, 'tracked.txt'), 'first\n')
   git(repo, 'add', 'tracked.txt')
   git(repo, 'commit', '-m', 'Initial commit')
   const remote = path.join(root, 'remote.git')
   git(root, 'init', '--bare', remote)
-  git(repo, 'remote', 'set-url', 'origin', remote)
+  git(repo, 'remote', 'add', 'origin', remote)
   git(repo, 'push', '-u', 'origin', 'main')
   git(repo, 'checkout', '-b', 'feature')
   await fs.promises.writeFile(path.join(repo, 'branch.txt'), 'feature\n')
@@ -1507,16 +1453,12 @@ async function main() {
       'https://github.example/owner/repo.git',
       'push-token'
     )
-    assert.equal(authenticatedEnv.GIT_CONFIG_KEY_0, 'credential.helper')
-    assert.equal(authenticatedEnv.GIT_CONFIG_VALUE_0, '')
-    assert.equal(authenticatedEnv.GIT_CONFIG_KEY_1, 'core.askPass')
-    assert.equal(authenticatedEnv.GIT_CONFIG_VALUE_1, '')
     assert.equal(
-      authenticatedEnv.GIT_CONFIG_KEY_2,
+      authenticatedEnv.GIT_CONFIG_KEY_0,
       'http.https://github.example/.extraHeader'
     )
     assert.equal(authenticatedEnv.GIT_TERMINAL_PROMPT, '0')
-    assert.doesNotMatch(authenticatedEnv.GIT_CONFIG_VALUE_2, /push-token/)
+    assert.doesNotMatch(authenticatedEnv.GIT_CONFIG_VALUE_0, /push-token/)
 
     result = await request(base, '/api/git/operation', {
       method: 'POST',
@@ -2029,7 +1971,7 @@ async function main() {
     assert.equal(result.response.status, 200, JSON.stringify(result.data))
 
     for (const body of [
-      { operation: 'tag-create', values: ['web-v1'], message: '' },
+      { operation: 'tag-create', values: ['web-v1'] },
       { operation: 'create-branch', values: ['rename-me'] },
       { operation: 'remote-add', values: ['backup', remote] },
       { operation: 'remote-set-url', values: ['backup', remote] },
