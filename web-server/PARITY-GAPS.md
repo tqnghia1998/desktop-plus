@@ -1,8 +1,8 @@
 # Desktop parity gap inventory
 
 This is the exhaustive implementation-gap inventory for the source-owned web
-renderer. The target for this release is branded Google Chrome with the local
-companion on macOS.
+renderer, audited against the desktop renderer on August 30, 2026. The target
+for this release is branded Google Chrome with the local companion on macOS.
 
 Status meanings:
 
@@ -21,14 +21,18 @@ the harness verifies loopback binding, an unprivileged companion process,
 changed-file state, paginated history, and a clean browser console. Those
 checks are release evidence rather than remaining implementation gaps.
 
-The rows below are the remaining concrete desktop differences. Hosted and
-native integrations remain explicitly deferred.
-
-Some GitHub and GitLab companion endpoints and typed client methods already
-exist. They do not establish feature parity: the source renderer provides no
-hosting sign-in entry point and passes empty account and Pull Request data to
-the reused desktop controls. A companion API is therefore not counted as a
-visible web feature until its source-renderer UI is wired.
+The August 30, 2026 Chrome source-renderer audit and its follow-up local
+evidence fixture closed the stale rows for repository aliases, groups and group
+renaming, recent-repository visibility and ordering, repository indicators,
+repository settings, relocation and disk deletion, clone/init validation,
+tutorial onboarding, file actions, commit options and amend, diff preferences
+and file actions, graph history and ref groups, history inspection actions,
+branch sorting and lifecycle actions, pull-all and group sync, stash options
+and stash context actions, remote validation and context actions, tag/worktree
+lifecycle and recovery, worktree removal preferences and `.worktreeinclude`,
+and submodule update/open controls. The rows below are the remaining concrete
+desktop differences after that audit; hosted and native integrations remain
+explicitly deferred.
 
 ## Repository management
 
@@ -40,11 +44,11 @@ visible web feature until its source-renderer UI is wired.
 | REPO-05 | Missing-repository detection and recovery | Supported | Persisted stale paths expose Check again, Relocate, Clone repository again, and Remove recovery actions. |
 | REPO-06 | Relocate a repository | Supported | The stale-repository view validates a replacement path and updates the remembered repository and pinned path. |
 | REPO-07 | Remove a repository from the app with desktop confirmation preferences | Supported | Removal is visible, confirmed by default, and has a persisted confirmation preference. |
-| REPO-08 | Delete a repository from disk | Supported | The desktop Remove Repository dialog optionally moves the repository to Trash through the browser companion. |
-| REPO-09 | Tutorial repository and onboarding flow | Deferred | The desktop onboarding flow depends on account-backed services that are not exposed by the local browser adapter. |
-| REPO-10 | Repository settings, default branch, and account association | Partial | The shared Repository Settings dialog exposes remote URL, default branch, Git config, ignored files, and the shared integrations view; hosted account association and repository-specific native editor overrides remain outside the local-only release. |
+| REPO-08 | Delete a repository from disk | Supported | The picker exposes confirmed Move to Trash and permanent deletion modes with safe companion validation. |
+| REPO-09 | Tutorial repository and onboarding flow | Supported | The source renderer creates the tutorial repository, tracks branch/edit/commit steps, supports pause and resume, and records completion. |
+| REPO-10 | Repository settings, default branch, and account association | Deferred | Alias, group, and default-branch settings are source-owned; hosted account association is outside the local-only release. |
 | REPO-11 | Clone provider repository lists and provider-specific clone dialogs | Deferred | Hosted account and provider controls are intentionally not exposed. |
-| REPO-12 | Native folder selection for add, clone, init, and worktree paths | Supported | Source dialogs expose Choose controls backed by the macOS companion folder picker; Chrome evidence covers add, clone, init, relocation, and worktree paths. |
+| REPO-12 | Native folder selection for add, clone, init, and worktree paths | Supported | Source dialogs expose Choose folder controls backed by the macOS companion folder picker; Chrome evidence covers add, clone, init, tutorial, relocation, and worktree paths. |
 | REPO-14 | Repository context actions for copy, browser view, and new-window opening | Supported | The picker exposes copy path, Finder reveal, remote browser, and new-window controls. |
 | REPO-15 | Install or recover from a missing Git executable | Deferred | Missing-Git errors have a macOS-specific explanation, retry, and installation-guide action; automated Command Line Tools installation is native installer behavior outside the browser release. |
 | REPO-16 | Unsafe-directory detection and Trust Repository recovery | Supported | Source add and persisted-repository flows distinguish Git's unsafe-directory result and expose a guarded `safe.directory` trust action, covered by the repository recovery browser workflow. |
@@ -136,12 +140,11 @@ visible web feature until its source-renderer UI is wired.
 | SYNC-04 | Pull all repositories | Supported | The sync menu exposes Pull all repositories and the store runs guarded pulls across remembered regular repositories. |
 | SYNC-05 | Reset-and-pull warning and uncommitted-change strategy preferences | Supported | Source reset-and-pull warns about discarded commits, offers stash-or-cancel recovery, and persists the selected dirty-change strategy. |
 | SYNC-06 | Fetch/pull/push progress and cancellation | Supported | Fetch, pull, and push use the shared visible operation-progress region with captured output and cancellation; branded Chrome evidence covers cancellation and completion. |
-| SYNC-07 | Authentication, certificate, SAML, workflow, and credential-helper recovery | Supported | For HTTP(S) remotes, the companion first reuses the configured Git credential helper without editor prompts. Authentication or helper failures open a one-time in-app username/password retry dialog; credentials are not persisted by the browser. Source remote errors also classify SSH host-key, certificate, proxy, network, and generic failures and show sanitized recovery guidance. Hosted account flows remain deferred. |
+| SYNC-07 | Authentication, certificate, SAML, workflow, and credential-helper recovery | Supported | Source remote errors classify authentication, credential-helper, SSH host-key, certificate, proxy, network, and generic failures, then show sanitized output and actionable retry guidance; hosted account flows remain deferred. |
 | SYNC-08 | Selective tag push and pushed-tag state | Supported | Repository Tools shows local versus pushed tag state and exposes a visible Push tag action for each local-only tag. |
 | SYNC-09 | Push rejection, pull-before-push, and force-push decision dialogs | Supported | Push rejection exposes sanitized remote output and retry, while force-push requires an explicit lease confirmation; branded Chrome evidence covers both paths. |
 | SYNC-10 | Update the current branch from its contribution/default branch | Supported | The sync menu exposes Update from the configured default branch with persisted merge/rebase strategy selection. |
 | SYNC-11 | Pull all repositories in a selected repository group | Supported | Repository picker group headers expose Pull and the store scopes the guarded pull loop to that group. |
-| SYNC-12 | Interactive SSH credentials and host trust | Supported | The companion routes SSH askpass prompts through the task API; the source renderer reuses the Desktop host-trust, key-passphrase, and username/password dialogs, resumes or cancels Git without an editor prompt, and can store remembered passwords/passphrases in the operating-system credential store. |
 
 ## Stashes
 
@@ -161,7 +164,7 @@ visible web feature until its source-renderer UI is wired.
 | --- | --- | --- | --- |
 | REM-01 | Validate remote names and URLs with field-level errors | Supported | The source remote dialog validates names and URL forms inline before submission, and the companion revalidates the operation payload. |
 | REM-02 | Manage remotes through a dedicated dialog with context actions | Supported | The source renderer provides dedicated add/set dialogs and visible remote context actions for copy, browser opening, URL editing, and removal. |
-| REM-03 | SSH/HTTPS credential and host-key guidance | Supported | HTTP(S) operations reuse configured Git credentials and can retry once through the in-app dialog without browser persistence. SSH host-key, certificate, proxy, network, and generic failures provide sanitized recovery guidance. |
+| REM-03 | SSH/HTTPS credential and host-key guidance | Supported | Source remote failures provide macOS Keychain/credential-helper, SSH host-key, certificate, proxy, network, sanitized-output, and retry guidance without storing credentials in browser state. |
 | TAG-01 | Annotated tag dialog with separate name, target, and message | Supported | The source tag dialog exposes separate validated name, target, and message fields and creates an annotated tag through the companion. |
 | TAG-02 | Delete pushed-tag warning and optional remote deletion | Supported | Pushed tags are detected, local deletion is confirmed, and a second confirmation offers remote deletion. |
 | TAG-03 | Push selected tags and display unpushed tag indicators | Supported | Repository Tools displays local-only tags and exposes a visible Push tag control. |
@@ -170,11 +173,11 @@ visible web feature until its source-renderer UI is wired.
 
 | ID | Desktop behavior | Web status | Evidence and disposition |
 | --- | --- | --- | --- |
-| WT-01 | Searchable grouped worktree list and dropdown | Supported | The source toolbar renders the shared searchable worktree dropdown, grouped into main and linked worktrees, when the worktree preference is enabled. |
+| WT-01 | Searchable grouped worktree list and dropdown | Supported | Repository Tools provides a searchable list grouped into main and linked worktrees. |
 | WT-03 | Checkout a remote branch or Pull Request in a new worktree | Deferred | Source-renderer controls create worktrees from local and remote branches; Pull Request worktree checkout requires hosted provider controls outside the local-only release. |
 | WT-04 | Rename a worktree while preserving its parent directory | Supported | The source rename dialog validates a new sibling name and maps it to the existing parent directory before invoking the companion move operation. |
 | WT-05 | Open a worktree in a new desktop window | Supported | Worktree rows expose a new-window action backed by the source platform contract. |
-| WT-06 | Locked, prunable, and force-remove recovery dialogs | Supported | Worktree state displays locked, prunable, and dirty markers; the shared toolbar context menu exposes prune, and removal routes through the existing force-remove recovery dialog. |
+| WT-06 | Locked, prunable, and force-remove recovery dialogs | Supported | Worktree state displays locked, prunable, and dirty markers and routes prune or force-remove through distinct guarded confirmations. |
 | WT-07 | Worktree removal confirmation preferences and dirty-change handling | Supported | Preferences persist removal confirmation; dirty or locked worktrees require a distinct force-removal confirmation, while the opt-out path remains guarded by the companion. |
 | WT-08 | `.worktreeinclude` copy behavior and related creation options | Supported | Worktree creation visibly reports configured include patterns and the companion copies matching ignored files into the new worktree, with Chrome execution evidence. |
 
@@ -191,17 +194,15 @@ visible web feature until its source-renderer UI is wired.
 
 | ID | Desktop behavior | Web status | Evidence and disposition |
 | --- | --- | --- | --- |
-| PLATFORM-01 | Application menu and desktop keyboard shortcut system | Partial | The source renderer reuses the shared AppMenuBar for File, View, Repository, and Branch actions and preserves the Preferences shortcut; the full Electron application menu and native macOS menu lifecycle remain unavailable to web content. |
-| PLATFORM-02 | Theme, font, tab-size, title-bar, and appearance preferences | Partial | Theme, diff font, tab size, and related browser appearance settings are source-owned; the remaining gap is Electron-owned native title-bar controls and lifecycle. |
+| PLATFORM-01 | Application menu and desktop keyboard shortcut system | Partial | The source renderer provides File, View, Repository, and Preferences menus plus macOS keyboard equivalents in the browser; the native macOS menu bar and Electron-owned menu lifecycle remain unavailable to web content. |
+| PLATFORM-02 | Theme, font, tab-size, title-bar, and appearance preferences | Deferred | Theme, diff font, tab size, and related browser appearance settings are source-owned; native title-bar controls remain platform-owned and are outside the web release. |
 | PLATFORM-03 | External editor discovery, configuration, and launch | Partial | Repository Tools discovers editors and exposes visible Open repository actions through the companion contract; the browser fixture verifies selection and payloads, but native editor process execution evidence remains open. |
 | PLATFORM-04 | Shell discovery, configuration, and launch | Partial | Repository Tools discovers shells and exposes visible Open repository actions through the companion contract; the browser fixture verifies selection and payloads, but native shell process execution evidence remains open. |
 | PLATFORM-05 | Reveal in file manager, default-open, and trash integration | Partial | Source file, repository, and worktree actions call the macOS companion contract for default-open, Finder reveal, and Trash; injected browser services verify normal and Trash-failure recovery, but real native filesystem execution evidence remains open. |
-| PLATFORM-06 | Native folder and save dialogs | Partial | Repository setup and worktree flows use the companion folder picker, but there is no full desktop-equivalent open/save-dialog surface or evidence for the broader native-dialog variants. |
+| PLATFORM-06 | Native folder and save dialogs | Deferred | Native interactive dialogs are not part of the local-only promise. |
 | PLATFORM-07 | Native desktop notifications | Deferred | No native notification surface is exposed. |
 | PLATFORM-08 | Browser notification preferences and permission guidance | Supported | Preferences expose a persisted browser-notification toggle, permission status, and browser site-settings guidance; provider notification feeds remain deferred. |
 | PLATFORM-09 | Automatic update discovery, download, verification, and installer handoff | Partial | Repository Tools exposes on-demand signed update checks, verified download progress, cancellation, and explicit installer-open confirmation; the browser fixture verifies the state machine with an injected update service, while real signed artifact and installer execution evidence remains open. |
-| PLATFORM-10 | Desktop About, legal, release, CLI, and app-install surfaces | Missing | The source renderer does not expose the desktop About, acknowledgements, terms, release notes, CLI-installed confirmation, Move to Applications, or thank-you dialogs. |
-| PLATFORM-11 | Effective external credential-helper and Windows OpenSSH preferences | Partial | Both preferences are persisted and rendered, but neither value is transported to the companion's Git invocation. Generic HTTP(S) credential lookup independently uses the configured Git credential helper; the preference does not control it, and the Windows OpenSSH setting has no web execution effect. |
 
 ## Hosted providers and advanced integrations
 
