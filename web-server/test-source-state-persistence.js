@@ -1,0 +1,288 @@
+const assert = require('assert/strict')
+const { execFileSync } = require('child_process')
+const fs = require('fs')
+const os = require('os')
+const path = require('path')
+const { createServer } = require('./server')
+const { launchBrowser } = require('./test-browser')
+
+function git(cwd, ...args) {
+  return execFileSync('git', args, { cwd, encoding: 'utf8' }).trim()
+}
+
+async function addRepository(page, repository) {
+  await page
+    .getByRole('button', {
+      name: /Add an Existing Repository from your local drive…/i,
+    })
+    .click()
+  await page.getByLabel('Local path').fill(repository)
+  await page.getByRole('button', { name: 'Add repository' }).click()
+  await page.locator('#repository-sidebar').waitFor()
+}
+
+async function openPreferences(page) {
+  await page.getByRole('button', { name: 'Open preferences' }).click()
+  const dialog = page.getByRole('dialog').filter({ hasText: 'Preferences' })
+  await dialog.waitFor()
+  return dialog
+}
+
+async function waitForChanges(page) {
+  const changes = page.locator('#repository-sidebar').getByRole('tab', {
+    name: 'Changes',
+  })
+  await changes.click()
+  await page
+    .locator('#repository-sidebar [aria-label="Changed files"]')
+    .waitFor()
+}
+
+async function scrollAndPersist(page, selector, storageFragment) {
+  const grid = page.locator(selector).first()
+  await grid.waitFor()
+  await page.waitForFunction(selector => {
+    const element = document.querySelector(selector)
+    return (
+      element instanceof HTMLElement &&
+      element.scrollHeight > element.clientHeight
+    )
+  }, selector)
+  await grid.evaluate(element => {
+    element.scrollTop = element.scrollHeight
+    element.dispatchEvent(new Event('scroll', { bubbles: true }))
+  })
+  await page.waitForFunction(
+    fragment =>
+      Object.keys(localStorage).some(
+        key => key.includes(fragment) && Number(localStorage.getItem(key)) > 0
+      ),
+    storageFragment
+  )
+  return grid.evaluate(element => element.scrollTop)
+}
+
+async function main() {
+  const root = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'desktop-plus-source-state-')
+  )
+  const repository = path.join(root, 'repository')
+  fs.mkdirSync(repository)
+  git(repository, 'init', '-b', 'main')
+  git(repository, 'config', 'user.name', 'Source State')
+  git(repository, 'config', 'user.email', 'source-state@example.com')
+  fs.writeFileSync(path.join(repository, 'history.txt'), '0\n')
+  fs.writeFileSync(path.join(repository, 'stash.txt'), 'base\n')
+  git(repository, 'add', '.')
+  git(repository, 'commit', '-m', 'base')
+
+  for (let index = 1; index <= 36; index++) {
+    fs.writeFileSync(path.join(repository, 'history.txt'), `${index}\n`)
+    git(repository, 'commit', '-am', `history commit ${index}`)
+  }
+  git(repository, 'checkout', '-b', 'feature')
+  for (let index = 1; index <= 28; index++) {
+    fs.writeFileSync(
+      path.join(repository, `feature-${index}.txt`),
+      `feature ${index}\n`
+    )
+    git(repository, 'add', '.')
+    git(repository, 'commit', '-m', `feature commit ${index}`)
+  }
+  git(repository, 'checkout', 'main')
+
+  for (let index = 1; index <= 42; index++)
+    fs.writeFileSync(
+      path.join(repository, `changed-${index}.txt`),
+      `changed ${index}\n`
+    )
+
+  const server = createServer({ getDesktopRepositories: async () => [] })
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve))
+  const browser = await launchBrowser()
+
+  try {
+    const page = await browser.newPage()
+    const errors = []
+    page.on('pageerror', error => errors.push(error.message))
+    await page.goto(`http://127.0.0.1:${server.address().port}`, {
+      waitUntil: 'networkidle',
+    })
+
+    await addRepository(page, repository)
+    await waitForChanges(page)
+
+    const sidebar = page.locator('#repository-sidebar')
+    const filters = sidebar.getByRole('group', { name: 'Changes filters' })
+    await filters.getByRole('button', { name: 'New', exact: true }).click()
+    assert.equal(
+      await filters
+        .getByRole('button', { name: 'New', exact: true })
+        .getAttribute('aria-pressed'),
+      'true'
+    )
+    await page.reload({ waitUntil: 'networkidle' })
+    await waitForChanges(page)
+    const reloadedFilters = page
+      .locator('#repository-sidebar')
+      .getByRole('group', { name: 'Changes filters' })
+    assert.equal(
+      await reloadedFilters
+        .getByRole('button', { name: 'New', exact: true })
+        .getAttribute('aria-pressed'),
+      'true'
+    )
+    await reloadedFilters
+      .getByRole('button', { name: 'New', exact: true })
+      .click()
+
+    fs.writeFileSync(path.join(repository, 'stash.txt'), 'stashed\n')
+    git(repository, 'stash', 'push', '-m', 'state stash')
+    await page.reload({ waitUntil: 'networkidle' })
+    await waitForChanges(page)
+    const stashes = sidebar.getByRole('region', { name: 'Stashes' })
+    await stashes.getByText(/state stash on main/).waitFor()
+
+    let preferences = await openPreferences(page)
+    await preferences.getByLabel('Show stashed changes in Changes').uncheck()
+    await preferences
+      .locator('.dialog-footer')
+      .getByRole('button', { name: 'Close', exact: true })
+      .click()
+    await stashes.waitFor({ state: 'detached' })
+    await page.reload({ waitUntil: 'networkidle' })
+    await waitForChanges(page)
+    assert.equal(
+      await page
+        .locator('#repository-sidebar')
+        .getByRole('region', { name: 'Stashes' })
+        .count(),
+      0
+    )
+    preferences = await openPreferences(page)
+    await preferences.getByLabel('Show stashed changes in Changes').check()
+    await preferences
+      .locator('.dialog-footer')
+      .getByRole('button', { name: 'Close', exact: true })
+      .click()
+    await page
+      .locator('#repository-sidebar')
+      .getByRole('region', { name: 'Stashes' })
+      .waitFor()
+
+    const changesScrollTop = await scrollAndPersist(
+      page,
+      '#repository-sidebar .changes-list .ReactVirtualized__Grid',
+      'desktop-plus-web-changes-scroll'
+    )
+    assert.ok(changesScrollTop > 0)
+    await page.reload({ waitUntil: 'networkidle' })
+    await waitForChanges(page)
+    const restoredChangesScrollTop = await page
+      .locator('#repository-sidebar .changes-list .ReactVirtualized__Grid')
+      .first()
+      .evaluate(element => element.scrollTop)
+    assert.ok(restoredChangesScrollTop > 0)
+
+    const resizeHandle = sidebar.getByRole('button', { name: 'Resize handle' })
+    const resizeBox = await resizeHandle.boundingBox()
+    assert.ok(resizeBox)
+    await page.mouse.move(resizeBox.x + 2, resizeBox.y + 2)
+    await page.mouse.down()
+    await page.mouse.move(resizeBox.x + 72, resizeBox.y + 2)
+    await page.mouse.up()
+    const resizedWidth = await sidebar.evaluate(element =>
+      Math.round(element.getBoundingClientRect().width)
+    )
+    assert.ok(resizedWidth >= 290)
+    await page.reload({ waitUntil: 'networkidle' })
+    const restoredWidth = await page
+      .locator('#repository-sidebar')
+      .evaluate(element => Math.round(element.getBoundingClientRect().width))
+    assert.equal(restoredWidth, resizedWidth)
+
+    await page
+      .locator('#repository-sidebar')
+      .getByRole('tab', {
+        name: 'History',
+      })
+      .click()
+    await page.locator('#repository-sidebar #commit-list').waitFor()
+    const historyScrollTop = await scrollAndPersist(
+      page,
+      '#repository-sidebar #commit-list .ReactVirtualized__Grid',
+      'desktop-plus-history-scroll'
+    )
+    assert.ok(historyScrollTop > 0)
+    await page.reload({ waitUntil: 'networkidle' })
+    await page
+      .locator('#repository-sidebar')
+      .getByRole('tab', {
+        name: 'History',
+      })
+      .click()
+    await page.locator('#repository-sidebar #commit-list').waitFor()
+    await page.waitForFunction(() => {
+      const element = document.querySelector(
+        '#repository-sidebar #commit-list .ReactVirtualized__Grid'
+      )
+      return element instanceof HTMLElement && element.scrollTop > 0
+    })
+
+    await page
+      .locator('#repository-sidebar')
+      .getByRole('tab', {
+        name: 'Compare',
+      })
+      .click()
+    const comparison = page
+      .locator('#repository-sidebar')
+      .getByRole('region', { name: 'Compare' })
+    await comparison.getByLabel('Branch').selectOption('feature')
+    await comparison
+      .getByRole('listbox', {
+        name: 'Comparison commits',
+      })
+      .getByRole('option')
+      .first()
+      .waitFor()
+    const compareScrollTop = await scrollAndPersist(
+      page,
+      '#repository-sidebar .web-compare-commits',
+      'desktop-plus-web-compare-scroll'
+    )
+    assert.ok(compareScrollTop > 0)
+    await page.reload({ waitUntil: 'networkidle' })
+    await page
+      .locator('#repository-sidebar')
+      .getByRole('tab', {
+        name: 'Compare',
+      })
+      .click()
+    await page
+      .locator('#repository-sidebar')
+      .getByRole('listbox', { name: 'Comparison commits' })
+      .getByRole('option')
+      .first()
+      .waitFor()
+    assert.ok(
+      await page
+        .locator('#repository-sidebar .web-compare-commits')
+        .evaluate(element => element.scrollTop > 0)
+    )
+
+    assert.deepEqual(errors, [])
+    console.log(
+      'Source state persistence passed: Changes filters and stashes, Changes/history/Compare scroll positions, and sidebar width'
+    )
+  } finally {
+    await browser.close()
+    await new Promise(resolve => server.close(resolve))
+    fs.rmSync(root, { recursive: true, force: true })
+  }
+}
+
+main().catch(error => {
+  console.error(error)
+  process.exitCode = 1
+})
