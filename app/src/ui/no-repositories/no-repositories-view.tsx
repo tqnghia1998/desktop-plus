@@ -6,7 +6,7 @@ import * as octicons from '../octicons/octicons.generated'
 import {
   WelcomeLeftTopImageUri,
   WelcomeLeftBottomImageUri,
-} from '../welcome/welcome'
+} from '../welcome/welcome-artwork'
 import { IAccountRepositories } from '../../lib/stores/api-repositories-store'
 import { Account, accountEquals } from '../../models/account'
 import { CloneableRepositoryFilterList } from '../clone-repository/cloneable-repository-filter-list'
@@ -32,6 +32,8 @@ interface INoRepositoriesProps {
 
   /** true if tutorial is in paused state. */
   readonly tutorialPaused: boolean
+
+  readonly allowTutorialWithoutAccount?: boolean
 
   readonly accounts: ReadonlyArray<Account>
 
@@ -295,8 +297,7 @@ export class NoRepositoriesView extends React.Component<
   }
 
   private renderTutorialRepositoryButton() {
-    // No tutorial if you're not signed in.
-    if (!this.isUserSignedIn()) {
+    if (!this.isUserSignedIn() && !this.props.allowTutorialWithoutAccount) {
       return null
     }
 

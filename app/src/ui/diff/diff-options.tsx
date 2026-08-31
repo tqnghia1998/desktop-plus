@@ -28,7 +28,7 @@ interface IDiffOptionsProps {
   readonly onWrapDiffLinesChanged: (wrapDiffLines: boolean) => void
 
   /** Called when the user opens the diff options popover */
-  readonly onDiffOptionsOpened: () => void
+  readonly onDiffOptionsOpened?: () => void
 }
 
 interface IDiffOptionsState {
@@ -62,7 +62,7 @@ export class DiffOptions extends React.Component<
   private openPopover = () => {
     this.setState(prevState => {
       if (!prevState.isPopoverOpen) {
-        this.props.onDiffOptionsOpened()
+        this.props.onDiffOptionsOpened?.()
         return { isPopoverOpen: true }
       }
       return null
