@@ -1,0 +1,175 @@
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+
+#root {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  min-width: 320px;
+  height: 100%;
+  min-height: 0;
+}
+
+/* Right-click and keyboard context menus match the desktop popover styling. */
+#web-context-menu {
+  position: fixed;
+  z-index: 2147483647;
+  left: 8px;
+  top: 8px;
+  display: flex;
+  flex-direction: column;
+  min-width: 180px;
+  max-width: 320px;
+  padding: var(--spacing-half) 0;
+  font-size: var(--font-size);
+  font-family: var(--font-family-sans-serif);
+  background: var(--background-color);
+  color: var(--text-color);
+  border: var(--base-border);
+  border-radius: var(--border-radius);
+  box-shadow: var(--base-box-shadow);
+}
+
+#web-context-menu button {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 30px;
+  padding: 0 var(--spacing-double);
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: default;
+}
+
+#web-context-menu button:disabled {
+  opacity: 0.3;
+}
+
+#web-context-menu button:not(:disabled):hover,
+#web-context-menu button:not(:disabled):focus {
+  outline: none;
+  color: var(--box-selected-active-text-color);
+  background-color: var(--box-selected-active-background-color);
+}
+
+#web-context-menu button[data-submenu='true']::after {
+  content: '\276F';
+  margin-left: auto;
+  padding-left: var(--spacing);
+  opacity: 0.7;
+}
+
+#web-context-menu button[aria-checked='true']::before {
+  content: '\2713';
+  margin-right: var(--spacing);
+}
+
+#web-context-menu button[aria-checked='false']::before {
+  content: '';
+  margin-right: var(--spacing);
+  width: 1em;
+  display: inline-block;
+}
+
+#web-context-menu hr {
+  width: 100%;
+  border: none;
+  height: 1px;
+  margin: var(--spacing-half) 0;
+  background-color: var(--app-menu-divider-color, var(--box-border-color));
+}
+
+.web-tutorial-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing);
+  width: min(100%, 760px);
+  margin: var(--spacing);
+  padding: var(--spacing);
+  border: var(--base-border);
+  background: var(--box-alt-background-color);
+}
+
+.web-tutorial-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing);
+}
+
+.web-tutorial-heading h2,
+.web-tutorial-heading p {
+  margin-bottom: var(--spacing-third);
+}
+
+.web-tutorial-panel ol {
+  display: grid;
+  gap: var(--spacing-half);
+  margin: 0;
+  padding-left: calc(var(--spacing) + 1.25rem);
+}
+
+.web-tutorial-panel li {
+  padding: var(--spacing-half);
+  border-left: 3px solid var(--box-border-color);
+}
+
+.web-tutorial-panel li.current {
+  border-left-color: var(--focus-color);
+  background: var(--box-background-color);
+}
+
+.web-tutorial-panel li.complete {
+  border-left-color: var(--color-new);
+}
+
+.web-tutorial-panel li p {
+  margin: var(--spacing-third) 0;
+  color: var(--text-secondary-color);
+}
+
+.web-tutorial-actions,
+.web-tutorial-complete {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-half);
+}
+
+.web-tutorial-complete {
+  flex-direction: column;
+  padding-top: var(--spacing-half);
+  border-top: var(--base-border);
+}
+
+.web-operation-task {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-half);
+  width: min(100%, 760px);
+  margin: var(--spacing);
+  padding: var(--spacing);
+  border: var(--base-border);
+  background: var(--box-alt-background-color);
+}
+
+.web-operation-task-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--spacing);
+}
+
+.web-operation-task p {
+  margin: 0;
+  color: var(--text-secondary-color);
+}
+
+.web-operation-task progress {
+  width: 100%;
+}

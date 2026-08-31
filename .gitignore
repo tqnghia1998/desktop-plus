@@ -19,3 +19,5 @@ junit*.xml
 *.swp
 tslint-rules/
 playwright-videos/
+.pi/
+web-server/public/
