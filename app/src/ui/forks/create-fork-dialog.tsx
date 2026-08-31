@@ -13,7 +13,6 @@ import {
 import { OkCancelButtonGroup } from '../dialog/ok-cancel-button-group'
 import { sendNonFatalException } from '../../lib/helpers/non-fatal-exception'
 import { Account } from '../../models/account'
-import { API } from '../../lib/api'
 import { LinkButton } from '../lib/link-button'
 import { PopupType } from '../../models/popup'
 
@@ -46,9 +45,9 @@ export class CreateForkDialog extends React.Component<
   private onSubmit = async () => {
     this.setState({ loading: true })
     const { gitHubRepository } = this.props.repository
-    const api = API.fromAccount(this.props.account)
     try {
-      const fork = await api.forkRepository(
+      const fork = await this.props.dispatcher.forkRepository(
+        this.props.account,
         gitHubRepository.owner.login,
         gitHubRepository.name
       )
