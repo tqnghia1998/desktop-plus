@@ -10,16 +10,9 @@ Git and local filesystem operations. The renderer is built from
 ```sh
 yarn build:web
 yarn start:web
-yarn start:web --port 4000
 ```
 
-Open `http://127.0.0.1:3000`. Use `--port` or set `PORT` to use another port.
-
-This fork carries upstream-divergent changes for the Space App Vibing embed
-(opt-in iframe embedding, worktree-family repository picker, narrow-viewport
-foldout/toolbar fit, and the host-matched dark theme). See
-[FORK-OVERLAY.md](FORK-OVERLAY.md) and retain those changes when syncing from
-upstream.
+Open `http://127.0.0.1:3000`. Set `PORT` to use another port.
 
 The current source renderer supports opening local repositories, cloning or
 initializing repositories, inspecting the current branch and ahead/behind
@@ -71,13 +64,13 @@ This is not a claim of full feature-for-feature desktop parity. The complete
 implementation-gap inventory, including partial local workflows and deferred
 provider/platform behavior, is in
 [PARITY-GAPS.md](PARITY-GAPS.md).
-[CAPABILITIES.md](CAPABILITIES.md) is the single source of truth for the
-current status totals.
+The current audit has 131 rows: 99 Supported, 6 Partial, 0 Missing, and
+26 Deferred.
 
-The browser renderer reuses the shared application menu component for File,
-View, Repository, and Branch actions, in addition to the toolbar menus, and
-keeps the Preferences keyboard shortcut. The full Electron application menu
-and native macOS menu-bar lifecycle remain outside web-renderer ownership.
+The browser application menu exposes local File, View, Repository, and
+Preferences actions plus macOS keyboard equivalents. It remains Partial
+because a web page cannot own the native macOS menu bar or Electron menu
+lifecycle.
 
 Editor and shell launch, filesystem actions, verified updates, and Git LFS
 controls are also Partial: the source renderer and typed companion contracts
@@ -95,56 +88,6 @@ The build uses a browser-targeted webpack configuration, emits content-hashed
 JavaScript and CSS, and rejects Electron and Node-only imports from the source
 renderer. It has no renderer snapshot or snapshot provenance dependency.
 
-## Space App Vibing bundle
-
-The [Space App Vibing](https://github.com/tqnghia1998/space-app-vibing) app
-embeds this web port in its GitHub Desktop workspace tab. It launches the
-companion from a self-contained runtime committed in that repository at
-`scripts/desktop-plus-web/`, so the packaged app never needs a desktop-plus
-checkout on disk.
-
-Build and refresh the bundle from this checkout:
-
-```sh
-yarn build:web
-yarn bundle:vibing
-```
-
-`scripts/bundle-desktop-plus-web.mjs` writes `../space-app-vibing/scripts/desktop-plus-web/`
-(relative to this checkout; pass a directory to override) containing:
-
-- the require closure of `web-server/server.js` (server entry, routes, stubs,
-  and the `src/` modules it loads),
-- `web-server/public/` (the built renderer) and `web-server/ssh-askpass.js`,
-  which is spawned by path rather than required,
-- the runtime packages the closure reaches: `dugite` (with its embedded git)
-  and `keytar` from `app/node_modules`, `ignore` and `semver` from the root
-  `node_modules`, plus their transitive dependencies,
-- a `package.json` pinning `"type": "commonjs"`, because the vibing
-  repository's root package is ESM and would otherwise load these files as
-  ES modules.
-
-On macOS the bundler prunes dugite's `git/libexec/git-core` of `git-lfs` and
-the .NET runtime behind Git Credential Manager (~120MB): the macOS Git that
-dugite ships has no osxkeychain helper anyway, so credential operations
-re-point `GIT_EXEC_PATH` at the system Git, and the Vibing hosts that run
-this bundle have no git-lfs. Windows builds rely on GCM and keep it. If a
-repository that uses git-lfs is opened in the embed on macOS, its LFS files
-will not smudge — install git-lfs on the host and it resolves through
-`PATH`.
-
-The output is committed build output in the vibing repository and is copied
-into its packaged app by that repository's electron build. Because it carries
-platform-specific binaries (dugite's embedded git, keytar's native module),
-each release OS must re-run the two commands above from a checkout on that
-OS. Runtime changes in this repository only reach the vibing app after a
-rebuild and bundle refresh.
-
-The vibing-specific runtime behaviors themselves — opt-in iframe embedding,
-the worktree-family repository picker, viewport fit, the host-matched theme —
-are listed in [FORK-OVERLAY.md](FORK-OVERLAY.md), which is the sync checklist
-for all divergences from upstream.
-
 ## Security model
 
 The companion binds only to `127.0.0.1`. Every browser API request requires a
@@ -161,22 +104,12 @@ through the companion.
 
 ## Credentials and platform limits
 
-Hosted account sign-in and provider tokens are not part of the current
-source-renderer release. For an HTTP(S) Git remote, the companion first looks
-up credentials through the configured Git credential helper (for example,
-macOS Keychain or Git Credential Manager) without allowing an editor askpass
-prompt. If no valid credential is available, the browser shows its own
-username/password dialog and retries the operation once. Those credentials are
-kept only in memory for that retry and are never written to browser storage or
-approved into a credential helper.
-
-Interactive SSH host trust, SSH key passphrases, and SSH username/password
-prompts are routed through the shared Desktop dialogs while the operation is
-paused; optionally remembered SSH passwords and key passphrases use the
-companion's operating-system credential store. On Linux, the folder picker
-additionally requires
-`zenity`; reveal, trash, and default-open require `xdg-open` and `gio`. The
-companion reports missing Linux dependencies with installation guidance.
+Hosted credentials are not part of the current source-renderer release. The
+companion still contains the isolated credential paths reserved for a future
+hosted UI, but the browser does not collect or persist provider tokens. On
+Linux, the folder picker additionally requires `zenity`; reveal, trash, and
+default-open require `xdg-open` and `gio`. The companion reports missing Linux
+dependencies with installation guidance.
 
 The companion's GitLab endpoint normalization remains covered by API tests, but
 the source renderer does not currently expose GitLab sign-in or merge-request

@@ -10,8 +10,8 @@ The complete desktop-versus-web implementation inventory is maintained in
 [PARITY-GAPS.md](PARITY-GAPS.md). It lists every known partial, missing, and
 intentionally deferred desktop behavior, including cases where a typed
 companion operation exists without a visible source-renderer control.
-The current inventory contains 134 rows: 99 Supported, 10 Partial, 1 Missing,
-and 24 Deferred.
+The current inventory contains 131 rows: 99 Supported, 6 Partial, 0 Missing,
+and 26 Deferred.
 
 - **Supported**: implemented and covered by an automated browser workflow.
 - **Partial**: a visible source control and companion path exist, but the
@@ -35,7 +35,7 @@ and 24 Deferred.
 | advancedHistoryRewrites | Supported | The History view exposes guarded reorder with an exact insertion point, squash with an editable commit message, and exact-tip undo. Source browser evidence exercises both configured rewrites, confirmation, and undo against a disposable repository. |
 | inProgressGitOperations | Supported | Source browser evidence covers shared live progress and cancellation plus merge abort and resolution/continuation, rebase resolution/continuation/skip, cherry-pick resolution/continuation, and revert conflict recovery after a refresh. |
 | pullRequests | Deferred | Hosted Pull Request and merge-request controls are not exposed by the source renderer in the local-only release. |
-| hostingAuthentication | Deferred | Hosted account controls are not exposed by the source renderer in the local-only release. This does not prevent generic HTTP(S) Git credential reuse or its one-time in-app retry dialog. |
+| hostingAuthentication | Deferred | Hosted account controls are not exposed by the source renderer in the local-only release. |
 | editorIntegration | Partial | Repository Tools discovers editors and exposes launch actions through the typed macOS companion contract. The browser fixture validates selection and payloads, but native editor process execution still needs macOS execution evidence. |
 | shellIntegration | Partial | Repository Tools discovers shells and exposes launch actions through the typed macOS companion contract. The browser fixture validates selection and payloads, but native shell process execution still needs macOS execution evidence. |
 | filesystemIntegration | Partial | Repository and worktree reveal, default-open, and Trash controls are source-owned and use the typed companion contract. Injected browser services validate the visible flows, but real native filesystem execution still needs macOS execution evidence. |
@@ -59,32 +59,14 @@ not full feature-for-feature desktop parity. The remaining local gaps include:
 - Worktrees and appearance: Pull Request worktree checkout and native title-bar
   controls are Deferred with hosted or native ownership; browser appearance
   preferences are Supported.
-- Native and hosted surfaces: File, View, Repository, and Branch actions are
-  available through the shared application menu and toolbar menus, while the
-  full native application menu remains Partial because the macOS menu bar
-  cannot be owned by the web renderer.
-  Editor and shell launch, filesystem actions, signed updates, and
+- Native and hosted surfaces: the browser application menu and shortcuts are
+  Partial because the native macOS menu bar cannot be owned by the web
+  renderer. Editor and shell launch, filesystem actions, signed updates, and
   Git LFS controls are Partial because the current browser fixtures validate
   injected companion contracts rather than native process, installer, or LFS
-  execution. Repository and worktree folder pickers are available, while the
-  broader native open/save-dialog surface is Partial. Native notifications,
-  hosted providers, Pull Requests, Copilot, repository rules, and push
-  protection remain Deferred; desktop About/legal/release surfaces remain
-  Missing, as documented in
-  [PARITY-GAPS.md](PARITY-GAPS.md).
-
-## HTTP(S) Git credentials
-
-For unaffiliated HTTP(S) remotes, the companion uses `git credential fill` with
-the user's configured credential helper before running a network operation. It
-disables editor askpass and terminal prompts, so VS Code or another editor does
-not own the authentication UI. If lookup or authentication fails, the renderer
-shows a generic username/password dialog and retries the operation once. The
-credentials are held only for that request and are not persisted by the
-browser or stored back into the credential helper. This is generic Git
-authentication, not hosted-account sign-in. SSH prompts are handled by the
-shared Desktop dialogs while the task is paused; remembered passwords and key
-passphrases use the companion's operating-system credential store.
+  execution. Native dialogs and notifications, hosted providers, Pull
+  Requests, Copilot, repository rules, and push protection remain Deferred as
+  documented in [PARITY-GAPS.md](PARITY-GAPS.md).
 
 ## Hosting providers
 
