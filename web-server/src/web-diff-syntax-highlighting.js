@@ -1,5 +1,4 @@
 const { highlight } = require('../../app/src/lib/highlighter/worker')
-const { request } = require('./desktop-preferences-runtime')
 
 const DiffLineType = {
   Add: 1,
@@ -71,31 +70,6 @@ async function highlightContents(contents, tabSize, lineFilters) {
   return { oldTokens, newTokens }
 }
 
-async function getFileContents(repository, file) {
-  const params = new URLSearchParams({
-    path: repository.path,
-    file: file.path,
-  })
-  const oldPath =
-    file.status.kind === 'Renamed' || file.status.kind === 'Copied'
-      ? file.status.oldPath
-      : null
-
-  if (oldPath) params.set('oldPath', oldPath)
-  if (typeof file.commitish === 'string')
-    params.set('commitish', file.commitish)
-  if (typeof file.parentCommitish === 'string')
-    params.set('parentCommitish', file.parentCommitish)
-
-  const diff = await request(`/api/diff?${params}`)
-  return {
-    file,
-    oldContents: diff.fileContents?.oldContents || [],
-    newContents: diff.fileContents?.newContents || [],
-    canBeExpanded: diff.fileContents?.canBeExpanded === true,
-  }
-}
-
 function extension(filePath) {
   const basename = filePath.split(/[\\/]/).pop() || ''
   const index = basename.lastIndexOf('.')
@@ -103,7 +77,6 @@ function extension(filePath) {
 }
 
 module.exports = {
-  getFileContents,
   getLineFilters,
   highlightContents,
 }
