@@ -24,13 +24,7 @@ async function addRepository(page, repository) {
       name: /Add an Existing Repository from your local drive…/i,
     })
     .click()
-  const repositoryInspection = page.waitForResponse(
-    response =>
-      response.url().includes('/api/repository/inspect') &&
-      response.status() === 200
-  )
   await page.getByLabel('Local path').fill(repository)
-  await repositoryInspection
   await page.getByRole('button', { name: 'Add repository' }).click()
 }
 
@@ -38,34 +32,6 @@ async function waitForOption(page, name, state = 'visible') {
   await page.getByRole('option', { name: new RegExp(`^${name}`) }).waitFor({
     state,
   })
-}
-
-function getCommitForm(page) {
-  return page.getByRole('group', { name: 'Create commit' })
-}
-
-async function setCommitOption(page, commitForm, name, checked) {
-  await commitForm
-    .getByRole('button', { name: 'Configure commit options' })
-    .click()
-  const option = page.getByRole('menuitemradio', { name })
-  await option.waitFor()
-  const currentValue = (await option.getAttribute('aria-checked')) === 'true'
-  if (currentValue === checked) {
-    await page.keyboard.press('Escape')
-  } else {
-    await option.click()
-  }
-}
-
-async function assertCommitOption(page, commitForm, name, checked) {
-  await commitForm
-    .getByRole('button', { name: 'Configure commit options' })
-    .click()
-  const option = page.getByRole('menuitemradio', { name })
-  await option.waitFor()
-  assert.equal((await option.getAttribute('aria-checked')) === 'true', checked)
-  await page.keyboard.press('Escape')
 }
 
 async function main() {
@@ -85,6 +51,8 @@ async function main() {
   fs.writeFileSync(path.join(repository, 'b.txt'), 'base b\n')
   git(repository, 'add', '.')
   git(repository, 'commit', '-m', 'initial')
+  git(repository, 'config', '--unset-all', 'user.name')
+  git(repository, 'config', '--unset-all', 'user.email')
 
   fs.writeFileSync(path.join(repository, 'a.txt'), 'changed a\n')
   fs.writeFileSync(path.join(repository, 'b.txt'), 'changed b\n')
@@ -104,68 +72,181 @@ async function main() {
     await waitForOption(page, 'a.txt')
     await waitForOption(page, 'b.txt')
 
-    let commitForm = getCommitForm(page)
-    const commitSummary = commitForm.getByLabel('Commit summary')
-    await commitSummary.fill('draft survives section changes')
-    await commitSummary.click({ button: 'right' })
     await page
-      .getByRole('menuitem', { name: 'Disable Commit Spellcheck' })
+      .locator('.web-changes-actions')
+      .getByRole('button', { name: 'Commit', exact: true })
       .click()
-    await setCommitOption(page, commitForm, /Add Signed-off-by Trailer/i, true)
-    await setCommitOption(page, commitForm, /Bypass Commit Hooks/i, true)
+    const missingIdentityDialog = page.getByRole('dialog').filter({
+      hasText: 'Commit changes',
+    })
+    await missingIdentityDialog.getByRole('alert').waitFor()
+    assert.equal(
+      await missingIdentityDialog
+        .getByRole('button', { name: 'Commit changes', exact: true })
+        .isEnabled(),
+      false
+    )
+    await missingIdentityDialog
+      .getByRole('button', { name: 'Configure Git user' })
+      .click()
+    const identityDialog = page.getByRole('dialog').filter({
+      hasText: 'Configure Git user',
+    })
+    await identityDialog.getByLabel('Name').fill('Configured Source User')
+    await identityDialog
+      .getByLabel('Email')
+      .fill('configured-source@example.com')
+    const configLockPath = path.join(repository, '.git', 'config.lock')
+    fs.writeFileSync(configLockPath, 'stale config lock\n')
+    await identityDialog.getByRole('button', { name: 'Save Git user' }).click()
+    const configLockError = page.locator('dialog.error')
+    await configLockError
+      .getByRole('button', { name: 'Recover stale config lock' })
+      .waitFor()
+    const staleTime = new Date(Date.now() - 10 * 60 * 1000)
+    fs.utimesSync(configLockPath, staleTime, staleTime)
+    await configLockError
+      .getByRole('button', { name: 'Recover stale config lock' })
+      .click()
+    await configLockError.waitFor({ state: 'hidden' })
+    await identityDialog.waitFor()
+    await identityDialog.getByRole('button', { name: 'Cancel' }).click()
+    await identityDialog.waitFor({ state: 'hidden' })
+    const reopenedCommitDialog = page.getByRole('dialog').filter({
+      hasText: 'Commit changes',
+    })
+    await page
+      .locator('.web-changes-actions')
+      .getByRole('button', { name: 'Commit', exact: true })
+      .click()
+    await reopenedCommitDialog.waitFor()
+    await reopenedCommitDialog.getByRole('button', { name: 'Cancel' }).click()
+    await reopenedCommitDialog.waitFor({ state: 'hidden' })
+
+    await page
+      .locator('.web-changes-actions')
+      .getByRole('button', { name: 'Commit', exact: true })
+      .click()
+    const persistedCommitDialog = page.getByRole('dialog').filter({
+      hasText: 'Commit changes',
+    })
+    await persistedCommitDialog
+      .getByLabel('Commit message')
+      .fill('draft survives section changes')
+    await persistedCommitDialog
+      .locator('#web-commit-coauthors')
+      .fill('Reviewer <reviewer@example.com>')
+    await persistedCommitDialog.getByLabel('Enable commit spellcheck').uncheck()
+    await persistedCommitDialog.getByLabel('Add Signed-off-by trailer').check()
+    await persistedCommitDialog.getByLabel('Skip commit hooks').check()
+    await persistedCommitDialog.getByRole('button', { name: 'Cancel' }).click()
+    await persistedCommitDialog.waitFor({ state: 'hidden' })
 
     await page.getByRole('tab', { name: 'History' }).click()
     await page.getByRole('tab', { name: 'Changes' }).click()
-    commitForm = getCommitForm(page)
+    await page
+      .locator('.web-changes-actions')
+      .getByRole('button', { name: 'Commit', exact: true })
+      .click()
+    const restoredCommitDialog = page.getByRole('dialog').filter({
+      hasText: 'Commit changes',
+    })
     assert.equal(
-      await commitForm.getByLabel('Commit summary').inputValue(),
+      await restoredCommitDialog.getByLabel('Commit message').inputValue(),
       'draft survives section changes'
     )
-    await assertCommitOption(
-      page,
-      commitForm,
-      /Add Signed-off-by Trailer/i,
+    assert.equal(
+      await restoredCommitDialog.locator('#web-commit-coauthors').inputValue(),
+      'Reviewer <reviewer@example.com>'
+    )
+    assert.equal(
+      await restoredCommitDialog
+        .getByLabel('Enable commit spellcheck')
+        .isChecked(),
+      false
+    )
+    assert.equal(
+      await restoredCommitDialog
+        .getByLabel('Add Signed-off-by trailer')
+        .isChecked(),
       true
     )
-    await assertCommitOption(page, commitForm, /Bypass Commit Hooks/i, true)
     assert.equal(
-      await commitForm.getByLabel('Commit summary').getAttribute('spellcheck'),
+      await restoredCommitDialog.getByLabel('Skip commit hooks').isChecked(),
+      true
+    )
+    assert.equal(
+      await restoredCommitDialog
+        .getByLabel('Commit message')
+        .getAttribute('spellcheck'),
       'false'
     )
-    const restoredCommitSummary = commitForm.getByLabel('Commit summary')
-    await restoredCommitSummary.fill(':hea')
+    const commitMessage = restoredCommitDialog.getByLabel('Commit message')
+    await commitMessage.fill(':hea')
     const heartSuggestion = page.getByRole('option', {
       name: '❤️, heart',
       exact: true,
     })
     await heartSuggestion.waitFor()
     await heartSuggestion.click()
-    assert.match(await restoredCommitSummary.inputValue(), /❤️/)
+    assert.match(await commitMessage.inputValue(), /❤️/)
+    await restoredCommitDialog
+      .locator('#web-commit-coauthors')
+      .fill('not a trailer')
+    await restoredCommitDialog
+      .getByRole('button', { name: 'Commit changes', exact: true })
+      .click()
+    await restoredCommitDialog
+      .getByRole('alert')
+      .filter({ hasText: 'Name <email>' })
+      .waitFor()
+    await restoredCommitDialog
+      .locator('#web-commit-coauthors')
+      .fill('Reviewer <reviewer@example.com>')
+    await restoredCommitDialog.getByRole('button', { name: 'Cancel' }).click()
+    await restoredCommitDialog.waitFor({ state: 'hidden' })
 
     const filter = page.getByPlaceholder('Filter')
     await filter.fill('a.txt')
     await waitForOption(page, 'b.txt', 'hidden')
     await waitForOption(page, 'a.txt')
 
-    await commitForm.getByLabel('Commit summary').fill('filtered commit')
-    await commitForm
-      .getByRole('button', { name: /^Commit .* to main$/ })
+    await page
+      .locator('.web-changes-actions')
+      .getByRole('button', { name: 'Commit', exact: true })
+      .click()
+    const filteredCommitDialog = page.getByRole('dialog').filter({
+      hasText: 'Commit changes',
+    })
+    await filteredCommitDialog
+      .getByLabel('Commit message')
+      .fill('filtered commit')
+    await filteredCommitDialog
+      .getByRole('button', { name: 'Commit changes', exact: true })
       .click()
 
     const filteredCommitConfirmation = page
       .getByRole('alertdialog')
       .filter({ hasText: 'Commit filtered changes?' })
     await filteredCommitConfirmation.waitFor()
-    assert.match(await filteredCommitConfirmation.innerText(), /hidden changes/)
+    assert.match(
+      await filteredCommitConfirmation.innerText(),
+      /hides 1 included file/
+    )
     await filteredCommitConfirmation
-      .getByRole('button', { name: 'Commit anyway' })
+      .getByRole('button', { name: 'Commit hidden changes' })
       .click()
     await filteredCommitConfirmation.waitFor({ state: 'hidden' })
+    const noVerifyConfirmation = page.getByRole('alertdialog')
+    await noVerifyConfirmation
+      .getByRole('button', { name: 'Skip commit hooks' })
+      .click()
     await waitForGit(
       repository,
       ['log', '-1', '--format=%s'],
       'filtered commit'
     )
+    await noVerifyConfirmation.waitFor({ state: 'hidden' })
     assert.match(
       git(repository, 'show', '--format=', '--name-only', 'HEAD'),
       /a\.txt/
@@ -176,22 +257,36 @@ async function main() {
     )
     assert.match(
       git(repository, 'log', '-1', '--format=%B'),
-      /Signed-off-by: Source Commit Options <source-commit-options@example.com>/
+      /Co-Authored-By: Reviewer <reviewer@example.com>/
+    )
+    assert.match(
+      git(repository, 'log', '-1', '--format=%B'),
+      /Signed-off-by: Configured Source User <configured-source@example.com>/
     )
 
-    await page.getByPlaceholder('Filter').fill('')
-    commitForm = getCommitForm(page)
-    await commitForm.getByLabel('Commit summary').fill('empty commit')
-    await setCommitOption(page, commitForm, /Bypass Commit Hooks/i, false)
-    const emptyCommitButton = commitForm.getByRole('button', {
-      name: 'Commit to main',
+    await page
+      .locator('.web-changes-actions')
+      .getByRole('button', { name: 'Commit', exact: true })
+      .click()
+    const emptyCommitDialog = page.getByRole('dialog').filter({
+      hasText: 'Commit changes',
+    })
+    await emptyCommitDialog.getByLabel('Commit message').fill('empty commit')
+    await emptyCommitDialog.getByLabel('Skip commit hooks').uncheck()
+    const emptyCommitButton = emptyCommitDialog.getByRole('button', {
+      name: 'Commit changes',
+      exact: true,
     })
     assert.equal(await emptyCommitButton.isEnabled(), false)
-    await setCommitOption(page, commitForm, /Allow Empty Commit/i, true)
-    await commitForm.getByLabel('Commit summary').fill('empty commit')
+    await emptyCommitDialog.getByLabel('Allow an empty commit').check()
     assert.equal(await emptyCommitButton.isEnabled(), true)
     await emptyCommitButton.click()
-    await waitForGit(repository, ['log', '-1', '--format=%s'], 'empty commit')
+    await emptyCommitDialog.waitFor({ state: 'hidden' })
+    await page
+      .getByRole('region', { name: 'Git operation progress' })
+      .getByText('Completed', { exact: true })
+      .waitFor()
+    assert.equal(git(repository, 'log', '-1', '--format=%s'), 'empty commit')
     assert.equal(
       git(repository, 'show', '--format=', '--name-only', 'HEAD'),
       ''
@@ -201,7 +296,7 @@ async function main() {
       []
     )
     console.log(
-      'Source commit options passed: draft and option persistence, spellcheck, sign-off, bypass-hooks, filtered changes confirmation, and allow-empty commit'
+      'Source commit options passed: missing identity recovery, draft and option persistence, spellcheck, co-author validation and trailers, filtered included-file warning, no-verify confirmation, and allow-empty commit'
     )
   } finally {
     await browser.close()

@@ -10,22 +10,6 @@ function git(cwd, ...args) {
   return execFileSync('git', args, { cwd, encoding: 'utf8' }).trim()
 }
 
-async function waitForGit(cwd, args, expected) {
-  for (let attempt = 0; attempt < 50; attempt++) {
-    if (git(cwd, ...args) === expected) return
-    await new Promise(resolve => setTimeout(resolve, 100))
-  }
-  assert.equal(git(cwd, ...args), expected)
-}
-
-async function waitForChecked(locator, expected) {
-  for (let attempt = 0; attempt < 50; attempt++) {
-    if ((await locator.isChecked()) === expected) return
-    await new Promise(resolve => setTimeout(resolve, 100))
-  }
-  assert.equal(await locator.isChecked(), expected)
-}
-
 async function main() {
   const root = fs.mkdtempSync(
     path.join(os.tmpdir(), 'desktop-plus-web-source-')
@@ -66,13 +50,7 @@ async function main() {
         name: /Add an Existing Repository from your local drive…/i,
       })
       .click()
-    const repositoryInspection = page.waitForResponse(
-      response =>
-        response.url().includes('/api/repository/inspect') &&
-        response.status() === 200
-    )
     await page.getByLabel('Local path').fill(repository)
-    await repositoryInspection
     await page.getByRole('button', { name: 'Add repository' }).click()
     await page.getByRole('tab', { name: 'Changes' }).waitFor()
     const aFile = page.getByRole('option', { name: /^a\.txt/ })
@@ -85,7 +63,6 @@ async function main() {
         .querySelector('.diff-container')
         ?.textContent?.includes('second a')
     )
-    const commitForm = page.getByRole('group', { name: 'Create commit' })
     const diffInputIds = await page
       .locator('.diff-container input')
       .evaluateAll(inputs => inputs.map(input => input.id))
@@ -96,65 +73,33 @@ async function main() {
       )}`
     )
     const selectedLine = page.locator('.diff-container input[id="3-after"]')
-    const bFileCheckbox = bFile.locator('input[type="checkbox"]')
-    await selectedLine.evaluate(element => element.click())
-    await bFileCheckbox.evaluate(element => element.click())
-    await page.waitForFunction(
-      () =>
-        document.querySelector('.diff-container input[id="3-after"]')
-          ?.checked === false
-    )
-    await waitForChecked(bFileCheckbox, false)
-    assert.equal(
-      await page.locator('.diff-container input[id="3-after"]').isChecked(),
-      false,
-      'Expected the third line in a.txt to be excluded'
-    )
-    assert.equal(
-      await page
-        .getByRole('option', { name: /^b\.txt/ })
-        .locator('input[type="checkbox"]')
-        .isChecked(),
-      false,
-      'Expected b.txt to be excluded'
-    )
-    await commitForm.getByLabel('Commit summary').fill('Partial commit')
-    await commitForm
-      .getByRole('button', { name: 'Configure commit options' })
-      .click()
+    await selectedLine.click({ force: true })
+    await bFile.locator('input[type="checkbox"]').click()
     await page
-      .getByRole('menuitemradio', { name: 'Add Signed-off-by Trailer' })
+      .locator('.web-changes-actions')
+      .getByRole('button', {
+        name: 'Commit',
+      })
       .click()
-    await commitForm
-      .getByRole('button', { name: 'Configure commit options' })
-      .click()
-    await page
-      .getByRole('menuitemradio', { name: 'Bypass Commit Hooks' })
-      .click()
-    const commitButton = commitForm.getByRole('button', {
-      name: /^Commit .* to main$/,
+    const commitDialog = page.getByRole('dialog').filter({
+      hasText: 'Commit changes',
     })
-    assert.equal(
-      await commitForm.getByLabel('Commit summary').inputValue(),
-      'Partial commit'
-    )
-    assert.equal(
-      await page
-        .getByRole('option', { name: /^b\.txt/ })
-        .locator('input[type="checkbox"]')
-        .isChecked(),
-      false,
-      'Expected b.txt to remain excluded after changing commit options'
-    )
-    assert.equal(
-      await commitButton.isEnabled(),
-      true,
-      `Commit unexpectedly disabled: ${await commitButton.getAttribute(
-        'data-tooltip'
-      )}`
-    )
-    await commitButton.click()
-    await waitForGit(repository, ['log', '-1', '--format=%s'], 'Partial commit')
+    await commitDialog.getByLabel('Commit message').fill('Partial commit')
+    await commitDialog.getByLabel('Add Signed-off-by trailer').check()
+    await commitDialog.getByLabel('Skip commit hooks').check()
+    await commitDialog.getByRole('button', { name: 'Commit changes' }).click()
+    const noVerifyConfirmation = page.getByRole('alertdialog')
+    await noVerifyConfirmation.waitFor()
+    await noVerifyConfirmation
+      .getByRole('button', {
+        name: 'Skip commit hooks',
+      })
+      .click()
+    await noVerifyConfirmation.waitFor({ state: 'hidden' })
+    await page
+      .getByRole('region', { name: 'Git operation progress' })
+      .getByText('Completed', { exact: true })
+      .waitFor()
     assert.equal(git(repository, 'log', '-1', '--format=%s'), 'Partial commit')
     assert.equal(
       git(repository, 'show', '--format=', '--name-only', 'HEAD'),
@@ -174,10 +119,22 @@ async function main() {
       path.join(repository, 'a.txt'),
       'base a\nsecond a\nthird a\nfourth a\n'
     )
-    await page.reload({ waitUntil: 'networkidle' })
+    await page.getByRole('tab', { name: 'Tools' }).click()
+    await page
+      .getByRole('region', { name: 'Repository tools' })
+      .getByRole('button', { name: 'Refresh repository' })
+      .click()
+    await page.waitForFunction(
+      () =>
+        document
+          .querySelector('[aria-label="Repository tools"]')
+          ?.getAttribute('aria-busy') === 'false'
+    )
+    await page.getByRole('tab', { name: 'Changes' }).click()
     const refreshedAFile = page.getByRole('option', { name: /^a\.txt/ })
     await refreshedAFile.waitFor()
     await refreshedAFile.click()
+    await page.getByRole('group', { name: 'a.txt actions' }).waitFor()
     await page.waitForFunction(() =>
       document
         .querySelector('.diff-container')
@@ -193,17 +150,14 @@ async function main() {
     await partialDiscardMenu
       .getByRole('menuitem', { name: /Discard .*line/i })
       .click()
-    const partialDiscardConfirmation = page
-      .getByRole('dialog')
-      .filter({ hasText: /Confirm discard changes/i })
+    const partialDiscardConfirmation = page.getByRole('alertdialog')
     await partialDiscardConfirmation.waitFor()
     await partialDiscardConfirmation
       .getByRole('button', { name: 'Cancel' })
       .waitFor()
-    await page.waitForTimeout(350)
     await partialDiscardConfirmation
       .getByRole('button', { name: 'Cancel' })
-      .click()
+      .click({ force: true })
     await partialDiscardConfirmation.waitFor({ state: 'hidden' })
     const refreshedPartialDiscardLine = page
       .getByRole('checkbox', { name: 'Line 4 added', exact: true })
@@ -219,16 +173,19 @@ async function main() {
       .getByRole('menuitem', { name: /Discard .*line/i })
       .click()
     await page
-      .getByRole('dialog')
-      .filter({ hasText: /Confirm discard changes/i })
-      .getByRole('button', { name: /Discard changes/i })
-      .click()
+      .getByRole('alertdialog')
+      .getByRole('button', { name: 'Discard selected lines' })
+      .click({ force: true })
     await page.waitForFunction(
       () =>
         !document
           .querySelector('.diff-container')
           ?.textContent?.includes('fourth a')
     )
+    await page
+      .getByRole('region', { name: 'Git operation progress' })
+      .getByText('Completed', { exact: true })
+      .waitFor()
     for (
       let attempt = 0;
       attempt < 50 &&
@@ -246,15 +203,21 @@ async function main() {
       .locator('.branch-toolbar-button')
       .getByRole('button')
       .last()
-    const refreshedBFile = page.getByRole('option', { name: /^b\.txt/ })
-    await refreshedBFile.dispatchEvent('contextmenu')
-    await page
-      .locator('#web-context-menu')
-      .getByRole('menuitem', { name: /Discard Changes/i })
-      .click()
+    try {
+      await page
+        .locator('.web-changes-actions')
+        .getByRole('button', {
+          name: 'Discard',
+        })
+        .click()
+    } catch (error) {
+      const dialogs = await page.getByRole('dialog').allTextContents()
+      throw new Error(
+        `${error.message}\nVisible dialogs:\n${dialogs.join('\n---\n')}`
+      )
+    }
     const discardConfirmation = page.getByRole('alertdialog')
     await discardConfirmation.waitFor()
-    await page.waitForTimeout(350)
     await discardConfirmation.getByRole('button', { name: 'Cancel' }).click()
     await discardConfirmation.waitFor({ state: 'hidden' })
     assert.equal(
@@ -262,13 +225,11 @@ async function main() {
       'changed b\n'
     )
     await page
-      .getByRole('option', { name: /^b\.txt/ })
-      .dispatchEvent('contextmenu')
-    await page
-      .locator('#web-context-menu')
-      .getByRole('menuitem', { name: /Discard Changes/i })
+      .locator('.web-changes-actions')
+      .getByRole('button', {
+        name: 'Discard',
+      })
       .click()
-    await page.waitForTimeout(350)
     await page
       .getByRole('alertdialog')
       .getByRole('button', {
@@ -285,55 +246,32 @@ async function main() {
 
     await branchToolbarButton.focus()
     await branchToolbarButton.press('Enter')
-    const branchPicker = page.locator('.branches-container')
-    await branchPicker
-      .getByRole('button', { name: /Choose a branch to merge into/i })
+    await page
+      .getByRole('button', { name: 'Merge branch', exact: true })
       .click()
     const mergeDialog = page
       .getByRole('dialog')
-      .filter({ hasText: /Merge into\s*main/i })
-    await mergeDialog
-      .getByRole('option', { name: /^feature(?:\s|,|$)/ })
-      .click()
-    await mergeDialog
-      .getByRole('button', { name: 'Create a merge commit' })
-      .click()
+      .filter({ hasText: 'Merge branch' })
+    await mergeDialog.getByRole('button', { name: 'Continue' }).click()
     const mergeErrorDialog = page
-      .getByRole('alertdialog')
-      .filter({ has: page.getByRole('button', { name: 'Close', exact: true }) })
-    await page.waitForFunction(
-      () =>
-        [...document.querySelectorAll('button')].some(
-          button =>
-            button.textContent?.trim() === 'Close' ||
-            button.textContent?.trim() === 'Use ours'
-        ),
-      undefined,
-      { timeout: 60000 }
-    )
-    if (await mergeErrorDialog.isVisible()) {
-      await page.waitForTimeout(350)
-      await mergeErrorDialog.getByText('Close', { exact: true }).click()
-      await mergeErrorDialog.waitFor({ state: 'hidden' })
-    }
-    const conflictsDialog = page
       .getByRole('dialog')
-      .filter({ hasText: /Resolve conflicts before Merge/i })
-    await conflictsDialog.waitFor()
-    await conflictsDialog
-      .getByRole('button', { name: 'File resolution options' })
-      .click()
-    await page
-      .locator('#web-context-menu')
-      .getByRole('menuitem', { name: /Use the modified file from main/i })
-      .click()
-    await conflictsDialog
-      .getByText(/All conflicted files have been resolved/i)
-      .waitFor()
-    await conflictsDialog
-      .getByRole('button', { name: 'Continue Merge' })
-      .click()
-    await conflictsDialog.waitFor({
+      .filter({ hasText: 'git merge exited with 1' })
+    await mergeErrorDialog.waitFor()
+    await page.waitForTimeout(350)
+    await mergeErrorDialog.getByText('Close', { exact: true }).click()
+    await mergeErrorDialog.waitFor({ state: 'hidden' })
+    try {
+      await page.getByRole('button', { name: 'Use ours' }).waitFor()
+    } catch {
+      throw new Error(
+        `Merge did not expose conflict controls:\n${await page
+          .locator('body')
+          .innerText()}`
+      )
+    }
+    await page.getByRole('button', { name: 'Use ours' }).click()
+    await page.getByRole('button', { name: 'Continue operation' }).click()
+    await page.getByRole('button', { name: 'Continue operation' }).waitFor({
       state: 'hidden',
     })
     assert.equal(
@@ -350,7 +288,12 @@ async function main() {
     )
 
     fs.writeFileSync(path.join(repository, 'a.txt'), 'changed a again\n')
-    await page.reload({ waitUntil: 'networkidle' })
+    await page.getByRole('tab', { name: 'Tools' }).click()
+    await page
+      .getByRole('region', { name: 'Repository tools' })
+      .getByRole('button', { name: 'Refresh repository' })
+      .click()
+    await page.getByRole('tab', { name: 'Changes' }).click()
     await page.getByRole('option', { name: /^a\.txt/ }).click()
     await page.waitForFunction(() =>
       document
