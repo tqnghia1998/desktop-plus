@@ -39,7 +39,6 @@ const indexTemplate = fs.readFileSync(
   path.join(publicDir, 'index.html'),
   'utf8'
 )
-const PORT = Number(process.env.PORT || 3000)
 const MAX_REQUEST_BYTES = 10 * 1024 * 1024
 const MAX_RESPONSE_BYTES = 50 * 1024 * 1024
 const MAX_FILE_CONTENT_BYTES = 1024 * 1024
@@ -81,6 +80,45 @@ let keytar
 try {
   keytar = require('../app/node_modules/keytar')
 } catch {}
+
+function resolveServerPort(argv = process.argv.slice(2), env = process.env) {
+  let configuredPort
+  let portProvided = false
+
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i]
+    if (arg === '--port') {
+      portProvided = true
+      configuredPort = argv[i + 1]
+      break
+    }
+    if (arg.startsWith('--port=')) {
+      portProvided = true
+      configuredPort = arg.slice('--port='.length)
+      break
+    }
+  }
+
+  const rawPort = portProvided
+    ? configuredPort
+    : env.PORT !== undefined
+    ? env.PORT
+    : '3000'
+  const port = Number(rawPort)
+
+  if (
+    !Number.isInteger(port) ||
+    String(rawPort).trim() === '' ||
+    port < 0 ||
+    port > 65535
+  ) {
+    throw new Error(
+      `Invalid port: ${rawPort}. Use an integer between 0 and 65535.`
+    )
+  }
+
+  return port
+}
 
 function parseJsonBody(req) {
   return new Promise((resolve, reject) => {
@@ -8291,11 +8329,12 @@ function createServer(options = {}) {
 }
 
 if (require.main === module) {
-  createServer().listen(PORT, '127.0.0.1', () => {
+  const port = resolveServerPort()
+  createServer().listen(port, '127.0.0.1', () => {
     console.log(
-      `[Desktop Plus Web Server] listening at http://127.0.0.1:${PORT}`
+      `[Desktop Plus Web Server] listening at http://127.0.0.1:${port}`
     )
   })
 }
 
-module.exports = { createServer, webOperationNames }
+module.exports = { createServer, resolveServerPort, webOperationNames }
