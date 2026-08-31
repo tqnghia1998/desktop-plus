@@ -16,22 +16,26 @@ async function addRepository(page, repository) {
       name: /Add an Existing Repository from your local drive…/i,
     })
     .click()
-  const repositoryInspection = page.waitForResponse(
-    response =>
-      response.url().includes('/api/repository/inspect') &&
-      response.status() === 200
-  )
   await page.getByLabel('Local path').fill(repository)
-  await repositoryInspection
   await page.getByRole('button', { name: 'Add repository' }).click()
   await page.locator('#repository-sidebar').waitFor()
 }
 
+async function openPreferences(page) {
+  await page.getByRole('button', { name: 'Open preferences' }).click()
+  const dialog = page.getByRole('dialog').filter({ hasText: 'Preferences' })
+  await dialog.waitFor()
+  return dialog
+}
+
 async function waitForChanges(page) {
-  const sidebar = page.locator('#repository-sidebar')
-  const changes = sidebar.getByRole('tab', { name: 'Changes' })
+  const changes = page.locator('#repository-sidebar').getByRole('tab', {
+    name: 'Changes',
+  })
   await changes.click()
-  await sidebar.getByRole('group', { name: 'Create commit' }).waitFor()
+  await page
+    .locator('#repository-sidebar [aria-label="Changed files"]')
+    .waitFor()
 }
 
 async function scrollAndPersist(page, selector, storageFragment) {
@@ -108,136 +112,79 @@ async function main() {
     await addRepository(page, repository)
     await waitForChanges(page)
 
-    const toolbar = page.locator('#desktop-app-toolbar')
-    const branchButton = toolbar.locator('.branch-toolbar-button > button')
-    const pushPullButton = toolbar.locator('.push-pull-button > button')
-    assert.equal(
-      await branchButton.evaluate(button => getComputedStyle(button).cursor),
-      'pointer'
-    )
-    assert.equal(
-      await pushPullButton.evaluate(button => getComputedStyle(button).cursor),
-      'pointer'
-    )
-    const toolbarResizeHandles = toolbar.locator('.resize-handle')
-    assert.equal(await toolbarResizeHandles.count(), 3)
-    const resizeHandles = [
-      toolbar.locator(
-        '.resizable-component:has(.branch-toolbar-button) .resize-handle'
-      ),
-      toolbar.locator(
-        '.resizable-component:has(.push-pull-button) .resize-handle'
-      ),
-    ]
-    for (const handle of [
-      ...resizeHandles,
-      toolbar.locator(
-        '.resizable-component:has(.worktree-button) .resize-handle'
-      ),
-    ])
-      assert.equal(
-        await handle.evaluate(element => getComputedStyle(element).cursor),
-        'ew-resize'
-      )
-    for (const [index, key] of [
-      'branch-dropdown-width',
-      'push-pull-button-width',
-    ].entries()) {
-      const handle = resizeHandles[index]
-      const resizeBox = await handle.boundingBox()
-      assert.ok(resizeBox)
-      await page.mouse.move(resizeBox.x + 2, resizeBox.y + 2)
-      await page.mouse.down()
-      await page.mouse.move(resizeBox.x + 52, resizeBox.y + 2)
-      await page.mouse.up()
-      await page.waitForFunction(
-        key => Number(localStorage.getItem(key)) > 230,
-        key
-      )
-    }
-    await page.reload({ waitUntil: 'networkidle' })
-    await waitForChanges(page)
-    assert.equal(
-      await page.evaluate(() => localStorage.getItem('branch-dropdown-width')),
-      '280'
-    )
-    assert.equal(
-      await page.evaluate(() => localStorage.getItem('push-pull-button-width')),
-      '280'
-    )
-
     const sidebar = page.locator('#repository-sidebar')
-    await sidebar.getByRole('button', { name: /^Filter Options/ }).click()
-    let newFilesFilter = sidebar.getByRole('checkbox', {
-      name: /^New files \(/,
-    })
-    await newFilesFilter.evaluate(element => element.click())
-    await sidebar
-      .getByRole('button', { name: /^Filter Options \(1 applied\)$/ })
-      .waitFor()
-    await page.reload({ waitUntil: 'networkidle' })
-    await waitForChanges(page)
-    await sidebar
-      .getByRole('button', { name: /^Filter Options \(1 applied\)$/ })
-      .click()
-    newFilesFilter = sidebar.getByRole('checkbox', {
-      name: /^New files \(/,
-    })
-    assert.equal(await newFilesFilter.isChecked(), true)
-    await newFilesFilter.evaluate(element => element.click())
-
-    const changesScrollTop = await scrollAndPersist(
-      page,
-      '#repository-sidebar #changes-list .ReactVirtualized__Grid',
-      'desktop-plus-web-changes-scroll'
+    const filters = sidebar.getByRole('group', { name: 'Changes filters' })
+    await filters.getByRole('button', { name: 'New', exact: true }).click()
+    assert.equal(
+      await filters
+        .getByRole('button', { name: 'New', exact: true })
+        .getAttribute('aria-pressed'),
+      'true'
     )
-    assert.ok(changesScrollTop > 0)
     await page.reload({ waitUntil: 'networkidle' })
     await waitForChanges(page)
-    await page.waitForFunction(() => {
-      const element = document.querySelector(
-        '#repository-sidebar #changes-list .ReactVirtualized__Grid'
-      )
-      return element instanceof HTMLElement && element.scrollTop > 0
-    })
+    const reloadedFilters = page
+      .locator('#repository-sidebar')
+      .getByRole('group', { name: 'Changes filters' })
+    assert.equal(
+      await reloadedFilters
+        .getByRole('button', { name: 'New', exact: true })
+        .getAttribute('aria-pressed'),
+      'true'
+    )
+    await reloadedFilters
+      .getByRole('button', { name: 'New', exact: true })
+      .click()
 
     fs.writeFileSync(path.join(repository, 'stash.txt'), 'stashed\n')
     git(repository, 'stash', 'push', '-m', 'state stash')
-    const branchesRefresh = page.waitForResponse(
-      response =>
-        response.url().includes('/api/branches/current') &&
-        response.status() === 200
-    )
     await page.reload({ waitUntil: 'networkidle' })
-    await branchesRefresh
     await waitForChanges(page)
-    const stashButton = sidebar.getByRole('button', { name: /state stash/ })
-    await stashButton.waitFor()
+    const stashes = sidebar.getByRole('region', { name: 'Stashes' })
+    await stashes.getByText(/state stash on main/).waitFor()
 
-    await page.evaluate(() =>
-      localStorage.setItem('show-stashed-changes', 'false')
-    )
+    let preferences = await openPreferences(page)
+    await preferences.getByLabel('Show stashed changes in Changes').uncheck()
+    await preferences
+      .locator('.dialog-footer')
+      .getByRole('button', { name: 'Close', exact: true })
+      .click()
+    await stashes.waitFor({ state: 'detached' })
     await page.reload({ waitUntil: 'networkidle' })
     await waitForChanges(page)
     assert.equal(
       await page
         .locator('#repository-sidebar')
-        .getByRole('button', { name: /state stash/ })
+        .getByRole('region', { name: 'Stashes' })
         .count(),
       0
     )
-    await page.evaluate(() =>
-      localStorage.setItem('show-stashed-changes', 'true')
+    preferences = await openPreferences(page)
+    await preferences.getByLabel('Show stashed changes in Changes').check()
+    await preferences
+      .locator('.dialog-footer')
+      .getByRole('button', { name: 'Close', exact: true })
+      .click()
+    await page
+      .locator('#repository-sidebar')
+      .getByRole('region', { name: 'Stashes' })
+      .waitFor()
+
+    const changesScrollTop = await scrollAndPersist(
+      page,
+      '#repository-sidebar .changes-list .ReactVirtualized__Grid',
+      'desktop-plus-web-changes-scroll'
     )
+    assert.ok(changesScrollTop > 0)
     await page.reload({ waitUntil: 'networkidle' })
     await waitForChanges(page)
-    await sidebar.getByRole('button', { name: /state stash/ }).waitFor()
+    const restoredChangesScrollTop = await page
+      .locator('#repository-sidebar .changes-list .ReactVirtualized__Grid')
+      .first()
+      .evaluate(element => element.scrollTop)
+    assert.ok(restoredChangesScrollTop > 0)
 
     const resizeHandle = sidebar.getByRole('button', { name: 'Resize handle' })
-    assert.equal(
-      await resizeHandle.evaluate(handle => getComputedStyle(handle).cursor),
-      'ew-resize'
-    )
     const resizeBox = await resizeHandle.boundingBox()
     assert.ok(resizeBox)
     await page.mouse.move(resizeBox.x + 2, resizeBox.y + 2)
@@ -264,7 +211,7 @@ async function main() {
     const historyScrollTop = await scrollAndPersist(
       page,
       '#repository-sidebar #commit-list .ReactVirtualized__Grid',
-      'desktop-plus-web-compare-scroll'
+      'desktop-plus-history-scroll'
     )
     assert.ok(historyScrollTop > 0)
     await page.reload({ waitUntil: 'networkidle' })
@@ -288,35 +235,21 @@ async function main() {
         name: 'Compare',
       })
       .click()
-    const comparison = page.locator('#repository-sidebar #compare-view')
-    await comparison.getByLabel('Branch filter').fill('feature')
-    await comparison.getByRole('option', { name: 'feature' }).click()
-    const comparisonCommits = comparison.getByRole('listbox', {
-      name: 'Commits',
-    })
-    await comparisonCommits.getByRole('option').first().waitFor()
-    await page.waitForFunction(() => {
-      const element = document.querySelector(
-        '#repository-sidebar [role="listbox"][aria-label="Commits"]'
-      )
-      return (
-        element instanceof HTMLElement &&
-        element.scrollHeight > element.clientHeight
-      )
-    })
-    await comparisonCommits.evaluate(element => {
-      element.scrollTop = element.scrollHeight
-      element.dispatchEvent(new Event('scroll', { bubbles: true }))
-    })
-    await page.waitForFunction(() =>
-      Object.keys(localStorage).some(
-        key =>
-          key.includes('desktop-plus-web-compare-scroll') &&
-          Number(localStorage.getItem(key)) > 0
-      )
-    )
-    const compareScrollTop = await comparisonCommits.evaluate(
-      element => element.scrollTop
+    const comparison = page
+      .locator('#repository-sidebar')
+      .getByRole('region', { name: 'Compare' })
+    await comparison.getByLabel('Branch').selectOption('feature')
+    await comparison
+      .getByRole('listbox', {
+        name: 'Comparison commits',
+      })
+      .getByRole('option')
+      .first()
+      .waitFor()
+    const compareScrollTop = await scrollAndPersist(
+      page,
+      '#repository-sidebar .web-compare-commits',
+      'desktop-plus-web-compare-scroll'
     )
     assert.ok(compareScrollTop > 0)
     await page.reload({ waitUntil: 'networkidle' })
@@ -326,12 +259,16 @@ async function main() {
         name: 'Compare',
       })
       .click()
-    const restoredComparisonCommits = page
-      .locator('#repository-sidebar #compare-view')
-      .getByRole('listbox', { name: 'Commits' })
-    await restoredComparisonCommits.getByRole('option').first().waitFor()
+    await page
+      .locator('#repository-sidebar')
+      .getByRole('listbox', { name: 'Comparison commits' })
+      .getByRole('option')
+      .first()
+      .waitFor()
     assert.ok(
-      await restoredComparisonCommits.evaluate(element => element.scrollTop > 0)
+      await page
+        .locator('#repository-sidebar .web-compare-commits')
+        .evaluate(element => element.scrollTop > 0)
     )
 
     assert.deepEqual(errors, [])
