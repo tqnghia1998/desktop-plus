@@ -46,7 +46,7 @@ interface IDiffHeaderProps {
   readonly onHideWhitespaceInDiffChanged: (checked: boolean) => Promise<void>
 
   /** Called when the user opens the diff options popover */
-  readonly onDiffOptionsOpened: () => void
+  readonly onDiffOptionsOpened?: () => void
 }
 
 /** Displays information about a file */
