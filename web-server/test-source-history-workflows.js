@@ -18,74 +18,23 @@ async function waitForHistory(page, summary) {
     .waitFor()
 }
 
-async function changeHistoryMode(page, button) {
-  if ((await button.getAttribute('aria-pressed')) !== 'true') {
-    await button.click()
-  }
-  await page.waitForFunction(
-    element => element?.getAttribute('aria-pressed') === 'true',
-    await button.elementHandle()
-  )
-}
-
-async function selectCommit(page, summary, waitForFiles = true) {
+async function selectCommit(page, summary) {
   const commit = page.locator('#commit-list .list-item').filter({
     has: page.getByText(summary, { exact: true }),
   })
   await commit.first().waitFor()
   await commit.first().click()
+  await page.getByRole('button', { name: 'Revert selected commit' }).waitFor()
+  const details = page.getByRole('region', { name: 'Commit details' })
+  await details.waitFor()
   await page.waitForFunction(
-    element => element?.getAttribute('aria-selected') === 'true',
-    await commit.first().elementHandle()
+    () =>
+      document
+        .querySelector('[aria-label="Commit details"]')
+        ?.getAttribute('aria-busy') === 'false'
   )
-  if (waitForFiles)
-    await page.locator('#commit-list .list-item').first().waitFor()
-  return commit.first()
-}
-
-async function openCommitMenu(page, commit) {
-  await commit.click({ button: 'right' })
-  const menu = page.locator('#web-context-menu')
-  await menu.waitFor()
-  return menu
-}
-
-function waitForTerminalOperation(page) {
-  return page.waitForResponse(async response => {
-    if (
-      !/\/api\/git\/operations\/[^/]+$/.test(response.url()) ||
-      response.request().method() !== 'GET' ||
-      response.status() !== 200
-    )
-      return false
-    const body = await response.json()
-    return body.status === 'completed' || body.status === 'failed'
-  })
-}
-
-async function runCommitAction(page, commit, name) {
-  const operation = waitForTerminalOperation(page)
-  const menu = await openCommitMenu(page, commit)
-  await menu.getByRole('menuitem', { name }).click()
-  await operation
-  await page.waitForLoadState('networkidle')
-}
-
-async function resetToCommit(page, commit) {
-  const operation = waitForTerminalOperation(page)
-  const menu = await openCommitMenu(page, commit)
-  await menu.getByRole('menuitem', { name: /Reset to commit/i }).click()
-  const resetDialog = page.getByRole('alertdialog')
-  const outcome = await Promise.race([
-    resetDialog.waitFor().then(() => 'dialog'),
-    operation.then(() => 'operation'),
-  ])
-  if (outcome === 'dialog') {
-    await resetDialog.getByRole('button', { name: /Reset/i }).click()
-    await operation
-    await resetDialog.waitFor({ state: 'hidden' })
-  }
-  await page.waitForLoadState('networkidle')
+  await details.getByRole('option').first().waitFor()
+  return commit
 }
 
 async function confirm(page, buttonName) {
@@ -95,29 +44,16 @@ async function confirm(page, buttonName) {
   await confirmation.waitFor({ state: 'hidden' })
 }
 
-async function waitForConflictRecovery(page) {
-  await page.waitForFunction(() =>
-    [...document.querySelectorAll('button')].some(
-      button =>
-        button.textContent?.trim() === 'Close' ||
-        button.getAttribute('aria-label') === 'File resolution options'
-    )
-  )
+async function closeError(page) {
   const error = page
-    .getByRole('alertdialog')
+    .getByRole('dialog')
     .filter({ has: page.getByRole('button', { name: 'Close', exact: true }) })
-  if (await error.isVisible().catch(() => false)) {
-    await page.waitForTimeout(300)
-    await error.getByText('Close', { exact: true }).click()
-    await error.waitFor({ state: 'hidden' })
-  }
-  const conflicts = page.locator('#conflicts-dialog')
-  await conflicts.waitFor()
-  return conflicts
+  await error.waitFor()
+  await error.getByText('Close', { exact: true }).click()
+  await error.waitFor({ state: 'hidden' })
 }
 
 async function addRepository(page, repository) {
-  const canonicalRepository = fs.realpathSync(repository)
   const addButton = page.getByRole('button', {
     name: /Add an Existing Repository from your local drive…/i,
   })
@@ -130,22 +66,9 @@ async function addRepository(page, repository) {
       .first()
       .evaluate(button => button.click())
     await page.getByRole('button', { name: 'Add', exact: true }).click()
-    await page
-      .getByRole('menuitem', { name: 'Add Existing Repository…' })
-      .click()
   }
-  const repositoryInspection = page.waitForResponse(
-    response =>
-      response.url().includes('/api/repository/inspect') &&
-      response.status() === 200
-  )
   await page.getByLabel('Local path').fill(repository)
-  await repositoryInspection
   await page.getByRole('button', { name: 'Add repository' }).click()
-  await page.waitForFunction(
-    expected => window.__DESKTOP_PLUS_WEB_REPOSITORY_PATH__ === expected,
-    canonicalRepository
-  )
 }
 
 async function main() {
@@ -154,7 +77,6 @@ async function main() {
   )
   const repository = path.join(root, 'repository')
   fs.mkdirSync(repository)
-  const canonicalRepository = fs.realpathSync(repository)
   git(repository, 'init', '-b', 'main')
   git(repository, 'config', 'user.name', 'Source History')
   git(repository, 'config', 'user.email', 'source-history@example.com')
@@ -190,79 +112,102 @@ async function main() {
 
     const graphViewButton = page.getByRole('button', { name: 'Graph view' })
     const listViewButton = page.getByRole('button', { name: 'List view' })
-    await changeHistoryMode(page, graphViewButton)
-    const historyRefs = page.locator('#commitGraph-branches-pane')
-    await historyRefs.waitFor()
-    await historyRefs.getByRole('group', { name: 'Local branches' }).waitFor()
+    await graphViewButton.click()
+    await page.getByRole('complementary', { name: 'History refs' }).waitFor()
+    await page.getByText('Local branches (1)', { exact: true }).waitFor()
     await page.getByRole('button', { name: 'Collapse Local branches' }).click()
     await page.getByRole('button', { name: 'Expand Local branches' }).waitFor()
-    await changeHistoryMode(page, listViewButton)
+    await listViewButton.click()
     await page.getByRole('button', { name: 'List view' }).waitFor()
     await waitForHistory(page, 'change')
-    await changeHistoryMode(page, graphViewButton)
-    await historyRefs.waitFor()
+    await graphViewButton.click()
     await page.getByRole('button', { name: 'Expand Local branches' }).waitFor()
     await waitForHistory(page, 'change')
-    await changeHistoryMode(page, listViewButton)
-    await waitForHistory(page, 'change')
 
-    const changeCommit = await selectCommit(page, 'change')
+    await selectCommit(page, 'change')
     const changeSHA = git(repository, 'rev-parse', 'HEAD')
-    let commitMenu = await openCommitMenu(page, changeCommit)
-    await commitMenu.getByRole('menuitem', { name: 'Copy SHA' }).click()
+    await page.getByRole('button', { name: 'Copy SHA' }).click()
     assert.equal(
       await page.evaluate(() => navigator.clipboard.readText()),
       changeSHA
     )
-    const commitDetails = page.locator('#history')
-    const file = commitDetails.getByRole('option', {
-      name: 'file.txt Modified',
+    const commitDetails = page.getByRole('region', {
+      name: 'Commit details',
     })
-    const otherFile = commitDetails.getByRole('option', {
-      name: 'other.txt Modified',
-    })
-    await file.waitFor()
-    await file.click()
-    await otherFile.click({ modifiers: ['Meta'] })
-    await otherFile.click({ button: 'right' })
-    const contextMenu = page.getByRole('menu')
-    await contextMenu.getByRole('menuitem', { name: 'Copy Paths' }).click()
+    await commitDetails.getByRole('option', { name: 'file.txt' }).waitFor()
+    await commitDetails.getByRole('option', { name: 'file.txt' }).click()
+    await commitDetails
+      .getByRole('option', { name: 'other.txt' })
+      .click({ modifiers: ['Meta'] })
+    await commitDetails
+      .getByRole('button', { name: 'Copy selected paths' })
+      .click()
     assert.equal(
       await page.evaluate(() => navigator.clipboard.readText()),
-      `${path.join(canonicalRepository, 'file.txt')}\n${path.join(
-        canonicalRepository,
+      `${path.join(repository, 'file.txt')}\n${path.join(
+        repository,
         'other.txt'
       )}`
     )
-    await otherFile.click({ button: 'right' })
-    await contextMenu
-      .getByRole('menuitem', { name: 'Copy Relative Paths' })
+    await commitDetails
+      .getByRole('button', { name: 'Copy selected relative paths' })
       .click()
     assert.equal(
       await page.evaluate(() => navigator.clipboard.readText()),
       'file.txt\nother.txt'
     )
-    const historyDiff = page.locator('#history .side-by-side-diff')
-    await historyDiff.filter({ hasText: 'changed' }).waitFor()
-    await page.locator('#history .loading-indicator').waitFor({
-      state: 'detached',
-    })
-    const commitDetailsText = await commitDetails.innerText()
-    assert.match(commitDetailsText, /(?:^|\n)\+2(?:\n|$)/)
-    assert.match(commitDetailsText, /(?:^|\n)-2(?:\n|$)/)
-    assert.match(await historyDiff.innerText(), /changed/)
-    await runCommitAction(page, changeCommit, /Revert changes in commit/i)
+    await page.waitForFunction(() =>
+      document
+        .querySelector('.web-history-diff')
+        ?.textContent?.includes('changed')
+    )
+    assert.match(await commitDetails.innerText(), /2 additions, 2 deletions/)
+    assert.match(await page.locator('.web-history-diff').innerText(), /changed/)
+    assert.equal(
+      await page
+        .getByRole('button', { name: 'Revert selected commit' })
+        .isEnabled(),
+      true
+    )
+    await page.getByRole('button', { name: 'Revert selected commit' }).click()
+    await confirm(page, 'Revert commit')
     assert.match(git(repository, 'log', '-1', '--format=%s'), /^Revert /)
     assert.equal(
       fs.readFileSync(path.join(repository, 'file.txt'), 'utf8'),
       'base\n'
     )
 
-    await page.reload({ waitUntil: 'networkidle' })
+    await page.getByRole('tab', { name: 'Tools' }).click()
+    await page
+      .getByRole('region', { name: 'Repository tools' })
+      .getByRole('button', { name: 'Refresh repository' })
+      .click()
+    await page.waitForFunction(
+      () =>
+        document
+          .querySelector('[aria-label="Repository tools"]')
+          ?.getAttribute('aria-busy') === 'false'
+    )
     await page.getByRole('tab', { name: 'History' }).click()
     await waitForHistory(page, 'base')
-    const baseCommit = await selectCommit(page, 'base', false)
-    await resetToCommit(page, baseCommit)
+    await selectCommit(page, 'base')
+    assert.equal(
+      await page
+        .getByRole('button', { name: 'Reset selected commit' })
+        .isEnabled(),
+      true
+    )
+    await page.getByRole('button', { name: 'Reset selected commit' }).click()
+    const resetDialog = page.getByRole('alertdialog')
+    await resetDialog.waitFor()
+    assert.equal(
+      await resetDialog
+        .getByLabel('Mixed reset: keep file changes in the working directory')
+        .isChecked(),
+      true
+    )
+    await resetDialog.getByRole('button', { name: 'Mixed reset' }).click()
+    await resetDialog.waitFor({ state: 'hidden' })
     assert.equal(git(repository, 'log', '-1', '--format=%s'), 'base')
     assert.equal(
       fs.readFileSync(path.join(repository, 'file.txt'), 'utf8'),
@@ -273,79 +218,94 @@ async function main() {
     git(repository, 'commit', '-am', 'post-base')
     const postBaseSHA = git(repository, 'rev-parse', 'HEAD')
     fs.writeFileSync(path.join(repository, 'file.txt'), 'hard reset me\n')
-    await page.reload({ waitUntil: 'networkidle' })
+    await page.getByRole('tab', { name: 'Tools' }).click()
+    await page
+      .getByRole('region', { name: 'Repository tools' })
+      .getByRole('button', { name: 'Refresh repository' })
+      .click()
     await page.getByRole('tab', { name: 'History' }).click()
     await waitForHistory(page, 'post-base')
-    const hardResetCommit = await selectCommit(page, 'base', false)
-    await resetToCommit(page, hardResetCommit)
+    await selectCommit(page, 'base')
+    await page.getByRole('button', { name: 'Reset selected commit' }).click()
+    const hardResetDialog = page.getByRole('alertdialog')
+    await hardResetDialog
+      .getByLabel('Hard reset: discard tracked file changes')
+      .check()
+    await hardResetDialog.getByRole('button', { name: 'Hard reset' }).click()
+    await hardResetDialog.waitFor({ state: 'hidden' })
     assert.notEqual(git(repository, 'rev-parse', 'HEAD'), postBaseSHA)
     assert.equal(
       fs.readFileSync(path.join(repository, 'file.txt'), 'utf8'),
-      'hard reset me\n'
+      'base\n'
     )
 
     fs.writeFileSync(path.join(repository, 'file.txt'), 'undo me\n')
     git(repository, 'add', 'file.txt')
     git(repository, 'commit', '-m', 'undo me')
-    await page.reload({ waitUntil: 'networkidle' })
+    await page.getByRole('tab', { name: 'Tools' }).click()
+    await page
+      .getByRole('region', { name: 'Repository tools' })
+      .getByRole('button', { name: 'Refresh repository' })
+      .click()
     await page.getByRole('tab', { name: 'History' }).click()
     await waitForHistory(page, 'undo me')
-    const undoCommit = await selectCommit(page, 'undo me')
-    await runCommitAction(page, undoCommit, /Undo commit/i)
+    await selectCommit(page, 'undo me')
+    assert.equal(
+      await page
+        .getByRole('button', { name: 'Undo latest commit' })
+        .isEnabled(),
+      true
+    )
+    await page.getByRole('button', { name: 'Undo latest commit' }).click()
+    await confirm(page, 'Undo commit')
     assert.equal(git(repository, 'log', '-1', '--format=%s'), 'base')
     assert.equal(
       fs.readFileSync(path.join(repository, 'file.txt'), 'utf8'),
       'undo me\n'
     )
 
-    const branchCommit = await selectCommit(page, 'base', false)
+    await selectCommit(page, 'base')
     const baseSHA = git(repository, 'rev-parse', 'HEAD')
-    commitMenu = await openCommitMenu(page, branchCommit)
-    await commitMenu
-      .getByRole('menuitem', { name: /Create branch from commit/i })
+    await page
+      .getByRole('button', { name: 'Create branch at selected commit' })
       .click()
-    const branchDialog = page.locator('#create-branch')
-    await branchDialog.waitFor()
-    await branchDialog.getByLabel('Name').fill('history-branch')
-    await branchDialog.getByRole('button', { name: /Create branch/i }).click()
+    const branchDialog = page
+      .getByRole('dialog')
+      .filter({ hasText: 'Create branch at selected commit' })
+    await branchDialog.getByLabel('Branch name').fill('history-branch')
+    await branchDialog.getByRole('button', { name: 'Create branch' }).click()
     await branchDialog.waitFor({ state: 'hidden' })
     assert.equal(git(repository, 'branch', '--show-current'), 'history-branch')
     assert.equal(git(repository, 'rev-parse', 'HEAD'), baseSHA)
 
     await waitForHistory(page, 'base')
-    const tagCommit = await selectCommit(page, 'base', false)
-    commitMenu = await openCommitMenu(page, tagCommit)
-    await commitMenu.getByRole('menuitem', { name: /Create tag/i }).click()
-    const tagDialog = page.locator('#create-tag')
-    await tagDialog.waitFor()
-    await tagDialog.getByLabel('Name').fill('history-v1')
-    await tagDialog.getByRole('button', { name: /Create tag/i }).click()
+    await selectCommit(page, 'base')
+    await page
+      .getByRole('button', { name: 'Create tag at selected commit' })
+      .click()
+    const tagDialog = page
+      .getByRole('dialog')
+      .filter({ hasText: 'Create tag at selected commit' })
+    await tagDialog.getByLabel('Tag name').fill('history-v1')
+    await tagDialog.getByRole('button', { name: 'Create tag' }).click()
     await tagDialog.waitFor({ state: 'hidden' })
     assert.equal(git(repository, 'rev-parse', 'history-v1^{}'), baseSHA)
 
-    fs.writeFileSync(path.join(repository, 'file.txt'), 'checkout source\n')
-    git(repository, 'commit', '-am', 'checkout source')
-    git(repository, 'branch', '-f', 'main', 'HEAD')
-    await page.reload({ waitUntil: 'networkidle' })
-    await page.getByRole('tab', { name: 'History' }).click()
-    await waitForHistory(page, 'checkout source')
-    const taggedCommit = await selectCommit(page, 'base', false)
-    commitMenu = await openCommitMenu(page, taggedCommit)
-    await commitMenu.getByRole('menuitem', { name: /Copy tag/i }).click()
+    await waitForHistory(page, 'base')
+    await selectCommit(page, 'base')
+    await page.getByRole('button', { name: 'Copy tag' }).click()
     assert.equal(
       await page.evaluate(() => navigator.clipboard.readText()),
       'history-v1'
     )
-    commitMenu = await openCommitMenu(page, taggedCommit)
-    await commitMenu.getByRole('menuitem', { name: /Checkout commit/i }).click()
-    const checkoutDialog = page.locator('#checkout-commit')
-    await page.waitForTimeout(300)
-    await checkoutDialog.getByRole('button', { name: 'Cancel' }).click()
-    await checkoutDialog.waitFor({ state: 'hidden' })
+    await page.getByRole('button', { name: 'Checkout selected commit' }).click()
+    await page
+      .getByRole('alertdialog')
+      .getByRole('button', { name: 'Cancel' })
+      .click()
     assert.equal(git(repository, 'branch', '--show-current'), 'history-branch')
-    commitMenu = await openCommitMenu(page, taggedCommit)
-    await commitMenu.getByRole('menuitem', { name: /Checkout commit/i }).click()
-    await confirm(page, 'Checkout')
+    await page.getByRole('button', { name: 'Checkout selected commit' }).click()
+    await confirm(page, 'Checkout commit')
     assert.equal(git(repository, 'rev-parse', 'HEAD'), baseSHA)
     assert.equal(git(repository, 'branch', '--show-current'), '')
 
@@ -365,27 +325,24 @@ async function main() {
     await addRepository(page, revertRepository)
     await page.getByRole('tab', { name: 'History' }).click()
     await waitForHistory(page, 'change')
-    const conflictingCommit = await selectCommit(page, 'change')
-    await runCommitAction(page, conflictingCommit, /Revert changes in commit/i)
-    assert.equal(
-      fs.existsSync(path.join(revertRepository, '.git', 'REVERT_HEAD')),
-      true
-    )
-    const conflicts = await waitForConflictRecovery(page)
-    await conflicts
-      .getByRole('button', { name: 'File resolution options' })
-      .click()
+    await selectCommit(page, 'change')
+    await page.getByRole('button', { name: 'Revert selected commit' }).click()
+    await confirm(page, 'Revert commit')
+    await closeError(page)
+    await page.getByRole('tab', { name: 'Tools' }).click()
     await page
-      .locator('#web-context-menu')
-      .getByRole('menuitem')
-      .filter({ hasText: /^Use/ })
-      .last()
+      .getByRole('region', { name: 'Repository tools' })
+      .getByRole('button', { name: 'Refresh repository' })
       .click()
-    await conflicts
-      .getByText(/All conflicted files have been resolved/i)
-      .waitFor()
-    await conflicts.getByRole('button', { name: /Continue/ }).click()
-    await conflicts.waitFor({ state: 'hidden' })
+    await page.getByRole('tab', { name: 'Changes' }).click()
+    await page.getByRole('button', { name: 'Use theirs' }).click()
+    await page
+      .getByRole('button', { name: 'Use theirs' })
+      .waitFor({ state: 'hidden' })
+    await page.getByRole('button', { name: 'Continue operation' }).click()
+    await page
+      .getByRole('button', { name: 'Continue operation' })
+      .waitFor({ state: 'hidden' })
     assert.match(git(revertRepository, 'log', '-1', '--format=%s'), /^Revert /)
     assert.equal(
       fs.readFileSync(path.join(revertRepository, 'file.txt'), 'utf8'),
