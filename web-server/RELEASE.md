@@ -67,19 +67,9 @@ shell, folder-picker, update, and LFS controls require the
 companion configuration and evidence described in the source-platform browser
 fixture; the platform-sensitive browser fixture uses injected services and
 does not replace native editor, shell, filesystem, installer, or Git LFS
-execution evidence. File, View, Repository, and Branch actions are available
-in the shared application menu and toolbar menus; the full native application
-menu remains Partial because the macOS menu bar remains outside web-renderer
-ownership.
-
-`yarn test:web` also verifies generic HTTP(S) credential lookup through Git's
-configured credential helper. The companion must suppress editor askpass and
-terminal prompts; HTTP(S) lookup failures use the browser-owned one-time
-credential dialog, and SSH prompts use the shared Desktop SSH dialogs while
-the task is paused; the existing SSH dialog's Remember option stores only
-passwords/passphrases in the companion's operating-system credential store.
-Do not describe this as hosted account sign-in or persist dialog credentials in
-browser storage.
+execution evidence. The browser application menu and keyboard shortcuts are
+covered as a Partial parity surface because the native macOS menu bar remains
+outside web renderer ownership.
 
 Do not promote a deferred or partial workflow to Supported until it has a
 visible source-renderer control, companion support, automated evidence, and the

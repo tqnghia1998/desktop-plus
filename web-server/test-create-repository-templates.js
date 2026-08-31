@@ -10,40 +10,27 @@ function git(cwd, ...args) {
   return execFileSync('git', args, { cwd, encoding: 'utf8' }).trim()
 }
 
-async function waitForFile(file) {
-  for (let attempt = 0; attempt < 50; attempt++) {
-    if (fs.existsSync(file)) return
-    await new Promise(resolve => setTimeout(resolve, 100))
-  }
-  assert.ok(fs.existsSync(file), `Expected ${file} to exist`)
-}
-
-async function waitForGit(cwd, args, expected) {
-  for (let attempt = 0; attempt < 50; attempt++) {
-    try {
-      if (git(cwd, ...args) === expected) return
-    } catch {}
-    await new Promise(resolve => setTimeout(resolve, 100))
-  }
-  assert.equal(git(cwd, ...args), expected)
-}
-
 async function main() {
   const root = fs.mkdtempSync(
     path.join(os.tmpdir(), 'desktop-plus-source-repository-tools-')
   )
   const createParent = path.join(root, 'created-parent')
   const existingParent = path.join(root, 'existing-parent')
+  const nestedParent = path.join(root, 'nested-parent')
   const readmeParent = path.join(root, 'readme-parent')
   const source = path.join(root, 'source')
   const clone = path.join(root, 'clone')
+  const worktree = path.join(root, 'worktree')
   fs.mkdirSync(createParent)
   fs.mkdirSync(existingParent)
+  fs.mkdirSync(nestedParent)
   fs.mkdirSync(readmeParent)
   fs.mkdirSync(source)
   const existingRepository = path.join(existingParent, 'existing-repository')
   fs.mkdirSync(existingRepository)
   git(existingRepository, 'init', '-b', 'main')
+  fs.mkdirSync(path.join(nestedParent, 'child'))
+  git(nestedParent, 'init', '-b', 'main')
   const readmeRepository = path.join(readmeParent, 'readme-repository')
   fs.mkdirSync(readmeRepository)
   fs.writeFileSync(path.join(readmeRepository, 'README.md'), 'keep me\n')
@@ -72,8 +59,8 @@ async function main() {
       .locator('dialog')
       .filter({ hasText: 'Create repository' })
     await createDialog.waitFor()
-    await createDialog.getByLabel('Name').fill('created-repository')
-    await createDialog.getByLabel('Local path').fill(createParent)
+    await createDialog.getByLabel('Repository name').fill('created-repository')
+    await createDialog.getByLabel('Parent directory').fill(createParent)
     await createDialog
       .getByText(
         `The repository will be created at ${path.join(
@@ -83,11 +70,10 @@ async function main() {
       )
       .waitFor()
     await createDialog.getByLabel('Description').fill('A generated repository')
-    await createDialog
-      .getByLabel('Initialize this repository with a README')
-      .check()
+    await createDialog.getByLabel('Initialize with a README').check()
     await createDialog.getByLabel('Git ignore').selectOption('Python')
     await createDialog.getByLabel('License').selectOption('MIT License')
+    await createDialog.getByLabel('Initial branch (optional)').fill('main')
     await createDialog
       .getByRole('button', { name: 'Create repository' })
       .click()
@@ -95,18 +81,6 @@ async function main() {
       .locator('#desktop-app-toolbar .sidebar-section .title')
       .getByText('created-repository', { exact: true })
       .waitFor()
-    await waitForFile(
-      path.join(createParent, 'created-repository', 'README.md')
-    )
-    await waitForFile(
-      path.join(createParent, 'created-repository', '.gitignore')
-    )
-    await waitForFile(path.join(createParent, 'created-repository', 'LICENSE'))
-    await waitForGit(
-      path.join(createParent, 'created-repository'),
-      ['log', '-1', '--format=%s'],
-      'Initial commit'
-    )
     assert.equal(
       fs.readFileSync(
         path.join(createParent, 'created-repository', 'README.md'),
@@ -148,7 +122,7 @@ async function main() {
         'branch',
         '--show-current'
       ),
-      'master'
+      'main'
     )
     assert.equal(
       git(
@@ -166,7 +140,7 @@ async function main() {
         '-1',
         '--format=%D'
       ),
-      'HEAD -> master'
+      'HEAD -> main'
     )
     await createContext.close()
 
@@ -185,11 +159,12 @@ async function main() {
     const warningDialog = warningPage
       .locator('dialog')
       .filter({ hasText: 'Create repository' })
-    await warningDialog.getByLabel('Name').fill('existing-repository')
-    await warningDialog.getByLabel('Local path').fill(existingParent)
     await warningDialog
-      .locator('#existing-repository-path-error')
-      .getByText(/appears to be a Git repository/)
+      .getByLabel('Repository name')
+      .fill('existing-repository')
+    await warningDialog.getByLabel('Parent directory').fill(existingParent)
+    await warningDialog
+      .getByText('This directory is already a Git repository.')
       .waitFor()
     assert.equal(
       await warningDialog
@@ -197,14 +172,18 @@ async function main() {
         .isDisabled(),
       true
     )
-    await warningDialog.getByLabel('Name').fill('readme-repository')
-    await warningDialog.getByLabel('Local path').fill(readmeParent)
+    await warningDialog.getByLabel('Repository name').fill('nested-repository')
+    await warningDialog.getByLabel('Parent directory').fill(nestedParent)
     await warningDialog
-      .getByLabel('Initialize this repository with a README')
-      .check()
+      .getByText(
+        'This directory is inside another Git repository. It will create a nested repository.'
+      )
+      .waitFor()
+    await warningDialog.getByLabel('Repository name').fill('readme-repository')
+    await warningDialog.getByLabel('Parent directory').fill(readmeParent)
+    await warningDialog.getByLabel('Initialize with a README').check()
     await warningDialog
-      .locator('#readme-overwrite-warning')
-      .getByText(/This directory contains a README\.md file already/)
+      .getByText('README.md already exists and will be overwritten.')
       .waitFor()
     assert.deepEqual(warningErrors, [])
     await warningContext.close()
@@ -223,21 +202,46 @@ async function main() {
       .click()
     const cloneDialog = page
       .locator('dialog')
-      .filter({ hasText: 'Clone a Repository' })
+      .filter({ hasText: 'Clone repository' })
     await cloneDialog.waitFor()
+    await cloneDialog.getByLabel('Repository URL').fill(source)
+    await cloneDialog.getByLabel('Destination path').fill(clone)
     await cloneDialog
-      .getByPlaceholder('URL or username/repository')
-      .fill(source)
-    await cloneDialog.getByLabel('Local Path').fill(clone)
-    await cloneDialog.getByRole('button', { name: 'Clone' }).click()
+      .locator('#repository-clone-preview')
+      .getByText(clone, { exact: false })
+      .waitFor()
+    await cloneDialog.getByRole('button', { name: 'Clone repository' }).click()
     await page
       .locator('#desktop-app-toolbar .sidebar-section .title')
       .getByText('clone', { exact: true })
       .waitFor()
+    await page.getByRole('tab', { name: 'Tools' }).click()
+
+    await page
+      .locator('.web-tools-panel')
+      .getByRole('button', { name: 'Create worktree' })
+      .click()
+    const worktreeDialog = page
+      .locator('dialog')
+      .filter({ hasText: 'Create a linked worktree' })
+    await worktreeDialog.waitFor()
+    await worktreeDialog.getByLabel('Worktree path').fill(worktree)
+    await worktreeDialog.getByLabel('New branch').fill('tools-worktree')
+    await worktreeDialog
+      .getByRole('button', { name: 'Create worktree' })
+      .click()
+    await page.waitForFunction(
+      repositoryPath =>
+        document
+          .querySelector('.web-tools-panel')
+          ?.textContent?.includes(repositoryPath),
+      worktree
+    )
 
     assert.equal(git(clone, 'log', '-1', '--format=%s'), 'initial source')
+    assert.equal(git(worktree, 'branch', '--show-current'), 'tools-worktree')
     assert.deepEqual(errors, [])
-    console.log('Source repository tools passed: clone repository creation')
+    console.log('Source repository tools passed: clone and worktree creation')
   } finally {
     await browser.close()
     await new Promise(resolve => server.close(resolve))
