@@ -39,7 +39,6 @@ async function waitForNoBlockingDialog(page) {
 }
 
 async function addRepository(page, repository) {
-  const canonicalRepository = fs.realpathSync(repository)
   await page.waitForFunction(() =>
     Boolean(
       document.querySelector('[aria-label="Let\'s get started!"]') ||
@@ -58,32 +57,33 @@ async function addRepository(page, repository) {
       .first()
       .evaluate(button => button.click())
     await page.getByRole('button', { name: 'Add', exact: true }).click()
-    await page
-      .getByRole('menuitem', { name: 'Add Existing Repository…' })
-      .click()
   }
-  const repositoryInspection = page.waitForResponse(
-    response =>
-      response.url().includes('/api/repository/inspect') &&
-      response.status() === 200
-  )
   await page.getByLabel('Local path').fill(repository)
-  await repositoryInspection
   await page.getByRole('button', { name: 'Add repository' }).click()
   await page.locator('.branch-toolbar-button').waitFor()
-  await page.waitForFunction(
-    expected => window.__DESKTOP_PLUS_WEB_REPOSITORY_PATH__ === expected,
-    canonicalRepository
-  )
   await waitForBranch(page, 'main')
   await waitForNoBlockingDialog(page)
 }
 
 async function refresh(page) {
   await waitForNoBlockingDialog(page)
-  await page.reload({ waitUntil: 'networkidle' })
-  await page.locator('.branch-toolbar-button').waitFor()
-  await waitForNoBlockingDialog(page)
+  await page.getByRole('tab', { name: 'Tools' }).click()
+  const tools = page.getByRole('region', { name: 'Repository tools' })
+  await tools.getByRole('button', { name: 'Refresh repository' }).click()
+  await page.waitForFunction(
+    () =>
+      document.querySelector('.web-tools-panel')?.getAttribute('aria-busy') ===
+        'false' &&
+      Array.from(document.querySelectorAll('dialog[open]')).every(dialog => {
+        const style = window.getComputedStyle(dialog)
+        return (
+          style.display === 'none' ||
+          style.visibility === 'hidden' ||
+          dialog.getBoundingClientRect().width === 0
+        )
+      })
+  )
+  return tools
 }
 
 async function openBranchMenu(page) {
@@ -91,125 +91,20 @@ async function openBranchMenu(page) {
     .locator('.branch-toolbar-button')
     .getByRole('button')
     .last()
-  const picker = page.locator('.branches-container')
-  if (await picker.isVisible().catch(() => false)) return picker
   await branchButton.focus()
   await branchButton.press('Enter')
-  await picker.getByPlaceholder('Filter').waitFor()
-  return picker
+  await page.getByRole('button', { name: 'Create branch' }).waitFor()
 }
 
 async function requestSwitch(page, branch) {
-  const picker = await openBranchMenu(page)
-  await picker
-    .getByRole('option', { name: new RegExp(`^${branch}(?:\\s|,|$)`) })
-    .click()
-}
-
-async function openBranchContextMenu(page, branch) {
-  const picker = await openBranchMenu(page)
-  await picker
-    .getByRole('option', { name: new RegExp(`^${branch}(?:\\s|,|$)`) })
-    .click({ button: 'right', position: { x: 24, y: 16 } })
-  const menu = page.locator('#web-context-menu')
-  await menu.waitFor()
-  return menu
-}
-
-async function openRepositoryPicker(page) {
-  const picker = page.locator('.repository-list')
-  if (await picker.isVisible().catch(() => false)) return picker
-  await page.keyboard.press('Escape')
-  await page.locator('#web-context-menu').waitFor({ state: 'hidden' })
-  const button = page.getByRole('button', { name: /^Current repository/i })
-  if ((await button.getAttribute('aria-expanded')) !== 'true')
-    await button.click()
-  await picker.waitFor()
-  return picker
-}
-
-async function selectRepository(page, repository) {
-  await openRepositoryPicker(page)
-  await page
-    .locator('.repository-list-item > .name')
-    .filter({ hasText: new RegExp(`^${path.basename(repository)}$`) })
+  await openBranchMenu(page)
+  const actionMenu = page
+    .locator('.branch-toolbar-button')
+    .locator('.web-toolbar-menu')
     .first()
+  await actionMenu
+    .getByRole('button', { name: `Switch to ${branch}`, exact: true })
     .click()
-  await page.locator('.branch-toolbar-button').waitFor()
-  await page.waitForFunction(
-    expected => window.__DESKTOP_PLUS_WEB_REPOSITORY_PATH__ === expected,
-    fs.realpathSync(repository)
-  )
-}
-
-async function openPreferencesTab(page, tab) {
-  await page.evaluate(() =>
-    window.dispatchEvent(
-      new KeyboardEvent('keydown', { bubbles: true, ctrlKey: true, key: ',' })
-    )
-  )
-  const preferences = page.getByRole('dialog').filter({
-    hasText: /Preferences|Options|Settings/,
-  })
-  await preferences.waitFor()
-  await preferences.getByRole('tab', { name: tab, exact: true }).click()
-  return preferences
-}
-
-async function savePreferences(preferences) {
-  await preferences
-    .locator('.dialog-footer')
-    .getByRole('button', { name: 'Save', exact: true })
-    .click()
-  await preferences.waitFor({ state: 'hidden' })
-}
-
-async function waitForStorageValue(page, key, expected) {
-  for (let attempt = 0; attempt < 100; attempt++) {
-    if (
-      (await page.evaluate(
-        storageKey => localStorage.getItem(storageKey),
-        key
-      )) === expected
-    )
-      return
-    await new Promise(resolve => setTimeout(resolve, 100))
-  }
-  assert.equal(
-    await page.evaluate(storageKey => localStorage.getItem(storageKey), key),
-    expected
-  )
-}
-
-async function createWorktree(page, branch, worktreePath, worktreeBranch) {
-  const menu = await openBranchContextMenu(page, branch)
-  await menu
-    .getByRole('menuitem', {
-      name: 'Checkout in New Worktree…',
-      exact: true,
-    })
-    .click()
-  const dialog = page.getByRole('dialog').filter({ hasText: 'Add worktree' })
-  await dialog.getByLabel('Worktree name').fill(path.basename(worktreePath))
-  await dialog.getByLabel('Local path').fill(path.dirname(worktreePath))
-  await dialog.getByLabel('Branch name').fill(worktreeBranch)
-  await dialog.getByRole('button', { name: 'Create worktree' }).click()
-  await dialog.waitFor({ state: 'hidden' })
-}
-
-async function openWorktreeContextMenu(page, worktreePath) {
-  await openRepositoryPicker(page)
-  const worktreeRow = page
-    .locator('.repository-worktree-item')
-    .filter({
-      hasText: path.basename(worktreePath),
-    })
-    .first()
-  await worktreeRow.waitFor()
-  await worktreeRow.click({ button: 'right', position: { x: 24, y: 16 } })
-  const menu = page.locator('#web-context-menu')
-  await menu.waitFor()
-  return { menu, worktreeRow }
 }
 
 async function waitForText(page, text, state = 'visible') {
@@ -230,14 +125,6 @@ async function waitForFile(filePath) {
     await new Promise(resolve => setTimeout(resolve, 100))
   }
   assert.fail(`Timed out waiting for ${filePath}`)
-}
-
-async function waitForPathAbsent(filePath) {
-  for (let attempt = 0; attempt < 100; attempt++) {
-    if (!fs.existsSync(filePath)) return
-    await new Promise(resolve => setTimeout(resolve, 100))
-  }
-  assert.fail(`Timed out waiting for ${filePath} to be removed`)
 }
 
 async function waitForProcessExit(pid) {
@@ -286,12 +173,12 @@ async function testCheckoutRecovery(page, repository, root) {
   fs.writeFileSync(path.join(repository, 'tracked.txt'), 'cancelled change\n')
   await refresh(page)
   await page.getByRole('tab', { name: 'Changes' }).click()
-  await page.getByRole('option', { name: /^tracked\.txt\b/ }).waitFor()
   await requestSwitch(page, 'feature')
-  const recovery = page.locator('#stash-changes')
+  const recovery = page.getByRole('alertdialog').filter({
+    hasText: 'Changes prevent checkout',
+  })
   await recovery.waitFor()
-  await page.waitForTimeout(300)
-  await page.keyboard.press('Escape')
+  await recovery.getByRole('button', { name: 'Cancel', exact: true }).click()
   await recovery.waitFor({ state: 'hidden' })
   assert.equal(git(repository, 'branch', '--show-current'), 'main')
   assert.equal(
@@ -299,12 +186,10 @@ async function testCheckoutRecovery(page, repository, root) {
     'cancelled change\n'
   )
 
-  await page.waitForTimeout(300)
   await requestSwitch(page, 'feature')
-  const leaveDialog = page.locator('#stash-changes')
-  await leaveDialog.waitFor()
-  await leaveDialog
-    .getByRole('button', { name: 'Switch Branch', exact: true })
+  await page
+    .getByRole('alertdialog')
+    .getByRole('button', { name: 'Leave changes here', exact: true })
     .click()
   await waitForBranch(page, 'feature')
   await waitForGitText(
@@ -323,15 +208,10 @@ async function testCheckoutRecovery(page, repository, root) {
   fs.writeFileSync(path.join(repository, 'untracked.txt'), 'untracked\n')
   await refresh(page)
   await page.getByRole('tab', { name: 'Changes' }).click()
-  await page.getByRole('option', { name: /^tracked\.txt\b/ }).waitFor()
-  await page.getByRole('option', { name: /^untracked\.txt\b/ }).waitFor()
   await requestSwitch(page, 'feature')
-  const bringDialog = page.locator('#stash-changes')
-  await bringDialog
-    .getByRole('radio', { name: /Bring my changes to feature/ })
-    .click()
-  await bringDialog
-    .getByRole('button', { name: 'Switch Branch', exact: true })
+  await page
+    .getByRole('alertdialog')
+    .getByRole('button', { name: 'Bring changes to branch', exact: true })
     .click()
   await waitForBranch(page, 'feature')
   assert.equal(
@@ -344,32 +224,51 @@ async function testCheckoutRecovery(page, repository, root) {
   )
 
   await requestSwitch(page, 'main')
-  const discardRecovery = page.locator('#stash-changes')
+  const discardRecovery = page.getByRole('alertdialog').filter({
+    hasText: 'Changes prevent checkout',
+  })
   await discardRecovery.waitFor()
-  await page.waitForTimeout(300)
-  await page.keyboard.press('Escape')
-  await discardRecovery.waitFor({ state: 'hidden' })
+  const finalDiscardRecovery = page.getByRole('alertdialog').filter({
+    hasText: 'Changes prevent checkout',
+  })
+  await finalDiscardRecovery
+    .getByRole('button', { name: 'Discard and switch', exact: true })
+    .click()
+  const discardConfirmation = page.getByRole('alertdialog').filter({
+    hasText: 'Discard all uncommitted changes',
+  })
+  try {
+    await discardConfirmation.waitFor()
+  } catch (error) {
+    throw new Error(
+      `${error.message}\nBody:\n${await page
+        .locator('body')
+        .innerText()}\nDialogs:\n${await page
+        .getByRole('dialog')
+        .allTextContents()}`
+    )
+  }
+  await discardConfirmation
+    .getByRole('button', {
+      name: 'Cancel',
+      exact: true,
+    })
+    .click()
+  await discardConfirmation.waitFor({ state: 'hidden' })
   assert.equal(git(repository, 'branch', '--show-current'), 'feature')
   assert.equal(
     fs.readFileSync(path.join(repository, 'tracked.txt'), 'utf8'),
     'bring me\n'
   )
 
-  await page
-    .locator('.filter-field-row')
-    .click({ button: 'right', position: { x: 24, y: 16 } })
-  await page
-    .locator('#web-context-menu')
-    .getByRole('menuitem', { name: 'Discard All Changes…', exact: true })
+  await discardRecovery
+    .getByRole('button', { name: 'Discard and switch', exact: true })
     .click()
-  const discardConfirmation = page
+  await page
     .getByRole('alertdialog')
-    .filter({ hasText: 'Confirm Discard All Changes' })
-  await discardConfirmation
-    .getByRole('button', { name: 'Discard All', exact: true })
+    .filter({ hasText: 'Discard all uncommitted changes' })
+    .getByRole('button', { name: 'Discard and switch', exact: true })
     .click()
-  await discardConfirmation.waitFor({ state: 'hidden' })
-  await requestSwitch(page, 'main')
   await waitForBranch(page, 'main')
   assert.equal(
     fs.readFileSync(path.join(repository, 'tracked.txt'), 'utf8'),
@@ -379,25 +278,42 @@ async function testCheckoutRecovery(page, repository, root) {
   assert.ok(root)
 }
 
-async function testStashContextMenu(page) {
-  const stashRow = page
-    .locator('.stashed-changes-button')
-    .filter({ hasText: 'option stash' })
+async function testStashContextMenu(page, repository) {
+  const tools = page.getByRole('region', { name: 'Repository tools' })
+  const stashRow = tools
+    .locator('.web-tool-row')
+    .filter({ hasText: 'option stash on main' })
   await stashRow.waitFor()
-  await stashRow.click({ button: 'right', position: { x: 24, y: 16 } })
+  await stashRow.dispatchEvent('contextmenu')
   const menu = page.locator('#web-context-menu')
   await menu.waitFor()
-  for (const label of ['Rename…', 'Restore Changes', 'Discard'])
+  for (const label of [
+    'Inspect stash',
+    'Copy stash SHA',
+    'Copy stash name',
+    'Copy branch name',
+    'Apply stash',
+    'Pop stash',
+    'Rename stash',
+    'Drop stash',
+  ])
     await menu.getByRole('menuitem', { name: label, exact: true }).waitFor()
-  await page.keyboard.press('Escape')
-  await menu.waitFor({ state: 'hidden' })
+  await menu.getByRole('menuitem', { name: 'Copy stash SHA' }).click()
+  assert.equal(
+    await page.evaluate(() => navigator.clipboard.readText()),
+    git(repository, 'rev-parse', 'refs/stash')
+  )
 
-  await stashRow.click()
-  const stashViewer = page.locator('#stash-diff-viewer')
-  await stashViewer.waitFor()
-  await stashViewer.getByRole('option').first().waitFor()
-  await stashViewer.getByRole('button', { name: 'Close' }).click()
-  await stashViewer.waitFor({ state: 'hidden' })
+  await stashRow.dispatchEvent('contextmenu')
+  await page
+    .locator('#web-context-menu')
+    .getByRole('menuitem', { name: 'Inspect stash' })
+    .click()
+  await page.getByRole('region', { name: 'Stash inspection' }).waitFor()
+  await page
+    .getByRole('region', { name: 'Stash inspection' })
+    .getByRole('button', { name: 'Close' })
+    .click()
 }
 
 async function testHookFailureAndAmend(page, repository) {
@@ -408,16 +324,32 @@ async function testHookFailureAndAmend(page, repository) {
   fs.writeFileSync(hook, '#!/bin/sh\nprintf "hook says no\\n" >&2\nexit 1\n')
   fs.chmodSync(hook, 0o755)
 
-  let commitForm = page.getByRole('group', { name: 'Create commit' })
-  await commitForm.getByLabel('Commit summary').fill('hook commit')
-  await commitForm.getByRole('button', { name: /Commit .*to main/ }).click()
-  const errorDialog = page.locator('#hook-failed-dialog')
+  await page
+    .locator('.web-changes-actions')
+    .getByRole('button', { name: 'Commit', exact: true })
+    .click()
+  const commitDialog = page.getByRole('dialog').filter({
+    hasText: 'Commit changes',
+  })
+  await commitDialog.getByLabel('Commit message').fill('hook commit')
+  await commitDialog
+    .getByRole('button', {
+      name: 'Commit changes',
+      exact: true,
+    })
+    .click()
+  const errorDialog = page.getByRole('dialog').filter({
+    hasText: 'hook says no',
+  })
   await errorDialog.waitFor()
+  await errorDialog
+    .getByText('pre-commit hook output', {
+      exact: true,
+    })
+    .waitFor()
   assert.match(await errorDialog.innerText(), /hook says no/)
   fs.rmSync(hook)
-  await errorDialog
-    .getByRole('button', { name: 'Ignore and Continue', exact: true })
-    .click()
+  await errorDialog.getByRole('button', { name: 'Retry', exact: true }).click()
   await errorDialog.waitFor({ state: 'hidden' })
   await waitForGitText(
     repository,
@@ -425,8 +357,18 @@ async function testHookFailureAndAmend(page, repository) {
     /^hook commit$/
   )
 
-  await refresh(page)
-  await waitForBranch(page, 'main')
+  await page.getByRole('tab', { name: 'Tools' }).click()
+  const refreshedTools = page.locator('.web-tools-panel')
+  await refreshedTools
+    .getByRole('button', { name: 'Refresh repository' })
+    .click()
+  await page.waitForFunction(
+    () =>
+      document.querySelector('.web-tools-panel')?.getAttribute('aria-busy') ===
+        'false' &&
+      document.querySelector('.branch-toolbar-button .title')?.textContent ===
+        'main'
+  )
   await page.getByRole('tab', { name: 'History' }).click()
   const commitRow = page.locator('#commit-list .list-item').filter({
     has: page.getByText('hook commit', { exact: true }),
@@ -435,20 +377,33 @@ async function testHookFailureAndAmend(page, repository) {
   await commitRow.click({ button: 'right' })
   const contextMenu = page.locator('#web-context-menu')
   await contextMenu.waitFor()
-  const amendAction = contextMenu.getByRole('menuitem', { name: /^Amend/i })
+  const amendAction = contextMenu
+    .locator('button')
+    .filter({ hasText: /^Amend/i })
   await amendAction.waitFor()
   await amendAction.click()
-  await page.getByRole('tab', { name: 'Changes' }).waitFor()
-  commitForm = page.getByRole('group', { name: 'Create commit' })
-  await commitForm.getByText(/modify your most recent commit/i).waitFor()
+  const amendDialog = page.getByRole('dialog').filter({
+    hasText: 'Commit changes',
+  })
+  try {
+    await amendDialog.getByText(/Amending .*hook commit/).waitFor()
+  } catch (error) {
+    throw new Error(
+      `${error.message}\nBody:\n${await page
+        .locator('body')
+        .innerText()}\nDialogs:\n${await page
+        .getByRole('dialog')
+        .allTextContents()}`
+    )
+  }
   assert.equal(
-    await commitForm.getByLabel('Commit summary').inputValue(),
+    await amendDialog.getByLabel('Commit message').inputValue(),
     'hook commit'
   )
-  await commitForm.getByRole('button', { name: 'Stop amending' }).click()
-  await commitForm
-    .getByText(/modify your most recent commit/i)
-    .waitFor({ state: 'hidden' })
+  await amendDialog.getByRole('button', { name: 'Stop amending' }).click()
+  await amendDialog.getByText(/Amending /).waitFor({ state: 'hidden' })
+  await amendDialog.getByRole('button', { name: 'Cancel', exact: true }).click()
+  await amendDialog.waitFor({ state: 'hidden' })
 
   fs.writeFileSync(path.join(repository, 'tracked.txt'), 'amended content\n')
   await refresh(page)
@@ -456,13 +411,16 @@ async function testHookFailureAndAmend(page, repository) {
   await commitRow.click({ button: 'right' })
   await page
     .locator('#web-context-menu')
-    .getByRole('menuitem', { name: /^Amend/i })
+    .locator('button')
+    .filter({ hasText: /^Amend/i })
     .click()
-  commitForm = page.getByRole('group', { name: 'Create commit' })
-  await commitForm.getByLabel('Commit summary').fill('amended hook commit')
-  await commitForm
-    .getByRole('button', { name: 'Amend last commit', exact: true })
-    .click()
+  const actualAmendDialog = page.getByRole('dialog').filter({
+    hasText: 'Commit changes',
+  })
+  await actualAmendDialog
+    .getByLabel('Commit message')
+    .fill('amended hook commit')
+  await actualAmendDialog.getByRole('button', { name: 'Amend commit' }).click()
   await waitForGitText(
     repository,
     ['log', '-1', '--format=%s'],
@@ -490,20 +448,28 @@ async function testOperationProgressAndCancellation(page, repository) {
   )
   fs.chmodSync(hook, 0o755)
 
-  const commitForm = page.getByRole('group', { name: 'Create commit' })
-  await commitForm.getByLabel('Commit summary').fill('cancelled commit')
-  await commitForm.getByRole('button', { name: /Commit .*to main/ }).click()
+  await page
+    .locator('.web-changes-actions')
+    .getByRole('button', { name: 'Commit', exact: true })
+    .click()
+  const commitDialog = page.getByRole('dialog').filter({
+    hasText: 'Commit changes',
+  })
+  await commitDialog.getByLabel('Commit message').fill('cancelled commit')
+  await commitDialog
+    .getByRole('button', { name: 'Commit changes', exact: true })
+    .click()
 
-  const progress = page.locator('#commit-progress-dialog')
+  const progress = page.getByRole('region', {
+    name: 'Git operation progress',
+  })
   await progress.waitFor()
+  await progress.getByRole('button', { name: 'Cancel Git operation' }).waitFor()
   await waitForFile(hookPidPath)
   const hookPid = Number(fs.readFileSync(hookPidPath, 'utf8').trim())
   assert.ok(Number.isInteger(hookPid) && hookPid > 0)
-  await progress
-    .getByRole('button', { name: 'Close', exact: true })
-    .last()
-    .click()
-  await progress.waitFor({ state: 'hidden' })
+  await progress.getByRole('button', { name: 'Cancel Git operation' }).click()
+  await progress.getByText(/commit cancelled/i).waitFor()
   await waitForProcessExit(hookPid)
   assert.notEqual(
     git(repository, 'log', '-1', '--format=%s'),
@@ -526,17 +492,17 @@ async function testStashOptions(page, repository) {
   git(repository, 'add', 'staged.txt')
   fs.writeFileSync(path.join(repository, 'unstaged.txt'), 'unstaged\n')
   fs.writeFileSync(path.join(repository, 'untracked.txt'), 'untracked\n')
-  await refresh(page)
-  await page.getByRole('tab', { name: 'Changes' }).click()
-  await page
-    .locator('.filter-field-row')
-    .click({ button: 'right', position: { x: 24, y: 16 } })
-  await page
-    .locator('#web-context-menu')
-    .getByRole('menuitem', { name: 'Stash All Changes', exact: true })
-    .click()
-  await waitForText(page, '1 stash')
-  assert.equal(git(repository, 'status', '--short'), '')
+  const tools = await refresh(page)
+  await tools.getByRole('button', { name: 'Create stash', exact: true }).click()
+  const stashDialog = page.getByRole('dialog').filter({
+    hasText: 'Create stash',
+  })
+  await stashDialog.getByLabel('Message').fill('option stash')
+  await stashDialog.getByLabel('Include untracked files').check()
+  await stashDialog.getByLabel('Keep staged changes staged').check()
+  await stashDialog.getByRole('button', { name: 'Create stash' }).click()
+  await waitForText(page, 'option stash on main')
+  assert.match(git(repository, 'status', '--short'), /^M  staged\.txt$/m)
   assert.equal(
     fs.readFileSync(path.join(repository, 'unstaged.txt'), 'utf8'),
     'base\n'
@@ -554,31 +520,27 @@ async function testStashOptions(page, repository) {
     git(repository, 'stash', 'show', '--include-untracked', '--name-only'),
     /untracked\.txt/
   )
-  const stashRow = page.locator('.stashed-changes-button')
-  await stashRow.click()
-  const stashViewer = page.locator('#stash-diff-viewer:visible')
-  await stashViewer.getByRole('button', { name: 'Rename stash' }).click()
-  const renameDialog = page.locator('#rename-stash:visible')
-  await renameDialog.waitFor({ state: 'visible', timeout: 30000 })
-  await renameDialog.getByLabel('Name').fill('option stash')
-  await renameDialog.getByRole('button', { name: 'Rename Stash' }).click()
-  await renameDialog.waitFor({ state: 'hidden' })
-  await waitForText(page, 'option stash')
-  await testStashContextMenu(page)
+  await testStashContextMenu(page, repository)
 
-  await page
-    .locator('.stashed-changes-button')
-    .filter({ hasText: 'option stash' })
+  const preferencesButton = page.getByRole('button', {
+    name: 'Open preferences',
+  })
+  await preferencesButton.click()
+  const preferences = page
+    .getByRole('dialog')
+    .filter({ hasText: 'Preferences' })
+  await preferences.getByLabel('Confirm stash apply, pop, and drop').uncheck()
+  await preferences
+    .getByRole('button', { name: 'Close', exact: true })
+    .last()
     .click()
-  await stashViewer.getByRole('button', { name: 'Discard' }).click()
-  await page
-    .getByRole('alertdialog')
-    .getByRole('button', { name: 'Discard', exact: true })
-    .click()
-  await page
-    .locator('.stashed-changes-button')
-    .filter({ hasText: 'option stash' })
-    .waitFor({ state: 'hidden' })
+  await preferences.waitFor({ state: 'hidden' })
+
+  const stashRow = tools
+    .locator('.web-tool-row')
+    .filter({ hasText: 'option stash on main' })
+  await stashRow.getByRole('button', { name: 'Drop' }).click()
+  await waitForText(page, 'option stash on main', 'hidden')
   assert.doesNotMatch(git(repository, 'stash', 'list'), /option%20stash/)
 }
 
@@ -618,12 +580,40 @@ async function testCommitMetadata(page, repository) {
     await page.evaluate(() => navigator.clipboard.readText()),
     'metadata-v1'
   )
-  await page.getByRole('button', { name: 'Expand commit details' }).click()
-  const summary = page.locator('#expandable-commit-summary')
-  await summary.getByText('body line one').waitFor()
-  await summary.getByText('body line two').waitFor()
-  await summary.getByText('metadata-v1', { exact: true }).waitFor()
-  const expandedAuthors = summary.locator('.author')
+  const details = page.getByRole('region', { name: 'Commit details' })
+  await details.waitFor()
+  const metadata = details.locator('[aria-label="Commit metadata"]')
+  await metadata
+    .getByText(/Author: Metadata Author <author@example\.com>/)
+    .waitFor()
+  await metadata
+    .getByText(/Committer: Metadata Committer <committer@example\.com>/)
+    .waitFor()
+  await metadata.getByText('Tags: metadata-v1').waitFor()
+  await metadata.getByText('Commit body', { exact: true }).click()
+  await metadata.getByText('body line one').waitFor()
+  await metadata.getByText('body line two').waitFor()
+  await metadata.getByText('Commit trailers', { exact: true }).click()
+  const trailers = metadata.locator('details').filter({
+    hasText: 'Commit trailers',
+  })
+  await trailers
+    .locator('li')
+    .getByText('Reviewed-by: Reviewer <reviewer@example.com>', { exact: true })
+    .waitFor()
+  await trailers
+    .locator('li')
+    .getByText('Co-authored-by: Co Author <co-author@example.com>', {
+      exact: true,
+    })
+    .waitFor()
+  await page
+    .locator('#history')
+    .getByRole('button', { name: 'Expand commit details' })
+    .click()
+  const expandedAuthors = page.locator(
+    '#history #expandable-commit-summary .author'
+  )
   await expandedAuthors
     .getByText(/Metadata Author <author@example\.com>/)
     .waitFor()
@@ -635,89 +625,115 @@ async function testCommitMetadata(page, repository) {
     .waitFor()
 }
 
-async function testManageRemotesEntry(page, repository, root) {
-  const temporaryRemote = path.join(root, 'managed-remote.git')
-  fs.mkdirSync(temporaryRemote)
-  git(temporaryRemote, 'init', '--bare')
-
-  await page
-    .locator('.branch-toolbar-button')
-    .click({ button: 'right', position: { x: 24, y: 16 } })
+async function testRemoteContextMenu(page, repository, remoteName) {
+  const tools = page.getByRole('region', { name: 'Repository tools' })
+  const remotes = tools.getByRole('region', { name: 'Remotes and tags' })
+  const remoteRow = remotes
+    .locator('.web-tool-row')
+    .filter({ hasText: `${remoteName}:` })
+  await remoteRow.waitFor()
+  await remoteRow.dispatchEvent('contextmenu')
   const menu = page.locator('#web-context-menu')
   await menu.waitFor()
-  await menu
-    .getByRole('menuitem', { name: 'Manage Remotes…', exact: true })
-    .click()
-  const manageRemotes = page.locator('#manage-remotes')
-  await manageRemotes.waitFor()
-  await manageRemotes
-    .getByRole('button', { name: 'New Remote', exact: true })
-    .click()
+  await menu.getByRole('menuitem', { name: 'Copy remote URL' }).waitFor()
+  await menu.getByRole('menuitem', { name: 'Open remote in browser' }).waitFor()
+  await menu.getByRole('menuitem', { name: 'Set remote URL' }).waitFor()
+  await menu.getByRole('menuitem', { name: 'Remove remote' }).waitFor()
+  assert.equal(
+    await menu
+      .getByRole('menuitem', { name: 'Open remote in browser' })
+      .isDisabled(),
+    true
+  )
+  await menu.getByRole('menuitem', { name: 'Copy remote URL' }).click()
+  assert.equal(
+    await page.evaluate(() => navigator.clipboard.readText()),
+    git(repository, 'remote', 'get-url', remoteName)
+  )
 
-  const addRemote = page.locator('#add-remote')
-  await addRemote.waitFor()
-  await addRemote.getByLabel('Name').fill('managed')
-  await addRemote.getByLabel('URL').fill(temporaryRemote)
-  await addRemote
-    .getByRole('button', { name: 'Add Remote', exact: true })
+  await remoteRow.dispatchEvent('contextmenu')
+  await page
+    .locator('#web-context-menu')
+    .getByRole('menuitem', { name: 'Set remote URL' })
     .click()
-  await addRemote.waitFor({ state: 'hidden' })
-  await manageRemotes.getByText('managed', { exact: true }).waitFor()
-  assert.equal(git(repository, 'remote', 'get-url', 'managed'), temporaryRemote)
+  const setDialog = page
+    .getByRole('dialog')
+    .filter({ hasText: 'Set remote URL' })
+  await setDialog.waitFor()
+  await setDialog.getByLabel('Remote name').fill(remoteName)
+  await setDialog
+    .getByLabel('Remote URL')
+    .fill(git(repository, 'remote', 'get-url', remoteName))
+  await setDialog.getByRole('button', { name: 'Set URL' }).click()
+  await setDialog.waitFor({ state: 'hidden' })
 
-  await manageRemotes
-    .getByRole('button', { name: 'Remove the "managed" remote' })
+  await remoteRow.dispatchEvent('contextmenu')
+  await page
+    .locator('#web-context-menu')
+    .getByRole('menuitem', { name: 'Remove remote' })
     .click()
-  await manageRemotes.getByText('managed', { exact: true }).waitFor({
-    state: 'hidden',
+  const removeDialog = page.getByRole('alertdialog').filter({
+    hasText: 'Remove this remote configuration',
   })
-  assert.throws(() => git(repository, 'remote', 'get-url', 'managed'))
-  await manageRemotes
-    .locator('.dialog-footer')
-    .getByRole('button', { name: 'Close', exact: true })
-    .click()
-  await manageRemotes.waitFor({ state: 'hidden' })
+  await removeDialog.waitFor()
+  await removeDialog.getByRole('button', { name: 'Remove remote' }).click()
+  await remoteRow.waitFor({ state: 'hidden' })
+  assert.doesNotMatch(
+    git(repository, 'remote'),
+    new RegExp(`^${remoteName}$`, 'm')
+  )
 }
 
 async function testWorktreeContextAndPreferences(page, repository, root) {
   const worktreePath = path.join(root, 'context-worktree')
-  let preferences = await openPreferencesTab(page, 'Appearance')
-  await preferences.getByLabel('Show worktrees in repository list').check()
-  await savePreferences(preferences)
+  const tools = await refresh(page)
+  await tools.getByRole('button', { name: 'Create worktree' }).click()
+  const createDialog = page
+    .getByRole('dialog')
+    .filter({ hasText: 'Create a linked worktree' })
+  await createDialog.getByLabel('Worktree path').fill(worktreePath)
+  await createDialog.getByLabel('New branch').fill('context-worktree-branch')
+  await createDialog.getByRole('button', { name: 'Create worktree' }).click()
+  await tools.getByText(worktreePath, { exact: false }).waitFor()
 
-  await createWorktree(page, 'main', worktreePath, 'context-worktree-branch')
-  await selectRepository(page, repository)
-  const { menu } = await openWorktreeContextMenu(page, worktreePath)
+  const worktreeRow = tools
+    .locator('.web-tool-row')
+    .filter({ hasText: worktreePath })
+  await worktreeRow.dispatchEvent('contextmenu')
+  const menu = page.locator('#web-context-menu')
+  await menu.waitFor()
   for (const label of [
-    'New Worktree…',
-    'Rename Worktree…',
-    'Copy Worktree Name',
-    'Copy Worktree Path',
-    'Open Worktree in New Window',
-    'Delete Worktree…',
+    'Open worktree in new window',
+    'Copy worktree name',
+    'Copy worktree path',
+    'Rename worktree',
+    'Remove worktree',
   ])
     await menu.getByRole('menuitem', { name: label, exact: true }).waitFor()
-  await menu.getByRole('menuitem', { name: 'Copy Worktree Path' }).click()
+  await menu.getByRole('menuitem', { name: 'Copy worktree path' }).click()
   assert.equal(
     await page.evaluate(() => navigator.clipboard.readText()),
-    fs.realpathSync(worktreePath)
+    worktreePath
   )
 
-  preferences = await openPreferencesTab(page, 'Prompts')
-  const removingWorktrees = preferences.getByLabel('Removing worktrees')
-  assert.equal(await removingWorktrees.isChecked(), true)
-  await removingWorktrees.uncheck()
-  await page.waitForTimeout(50)
-  assert.equal(await removingWorktrees.isChecked(), false)
-  await savePreferences(preferences)
-  await waitForStorageValue(page, 'confirm-worktree-removal', '0')
-
-  const worktree = await openWorktreeContextMenu(page, worktreePath)
-  await worktree.menu
-    .getByRole('menuitem', { name: 'Delete Worktree…', exact: true })
+  const preferencesButton = page.getByRole('button', {
+    name: 'Open preferences',
+  })
+  await preferencesButton.click()
+  const preferences = page
+    .getByRole('dialog')
+    .filter({ hasText: 'Preferences' })
+  const confirmRemoval = preferences.getByLabel('Confirm worktree removal')
+  await confirmRemoval.uncheck()
+  await preferences
+    .getByRole('button', { name: 'Close', exact: true })
+    .last()
     .click()
-  await worktree.worktreeRow.waitFor({ state: 'hidden' })
-  await waitForPathAbsent(worktreePath)
+  await preferences.waitFor({ state: 'hidden' })
+
+  await worktreeRow.getByRole('button', { name: 'Remove' }).click()
+  await worktreeRow.waitFor({ state: 'hidden' })
+  assert.equal(fs.existsSync(worktreePath), false)
   assert.doesNotMatch(
     git(repository, 'worktree', 'list'),
     /context-worktree-branch/
@@ -725,31 +741,20 @@ async function testWorktreeContextAndPreferences(page, repository, root) {
 }
 
 async function testWorktreeInclude(page, repository, root) {
-  const worktreePath = path.join(root, 'included-worktree')
-  const preferences = await openPreferencesTab(page, 'Appearance')
-  await preferences.getByLabel('Show worktrees in repository list').check()
-  await savePreferences(preferences)
-  const promptPreferences = await openPreferencesTab(page, 'Prompts')
-  await promptPreferences.getByLabel('Removing worktrees').check()
-  await savePreferences(promptPreferences)
-  await waitForStorageValue(page, 'confirm-worktree-removal', '1')
-  const menu = await openBranchContextMenu(page, 'main')
-  await menu
-    .getByRole('menuitem', {
-      name: 'Checkout in New Worktree…',
-      exact: true,
-    })
-    .click()
+  const tools = await refresh(page)
+  await tools.getByRole('button', { name: 'Create worktree' }).click()
   const createDialog = page
     .getByRole('dialog')
-    .filter({ hasText: 'Add worktree' })
+    .filter({ hasText: 'Create a linked worktree' })
   await createDialog
-    .getByLabel('Worktree name')
-    .fill(path.basename(worktreePath))
-  await createDialog.getByLabel('Local path').fill(path.dirname(worktreePath))
-  await createDialog.getByLabel('Branch name').fill('included-worktree-branch')
+    .getByRole('status')
+    .getByText(/This repository has 1 .*\.worktreeinclude.*pattern/)
+    .waitFor()
+  const worktreePath = path.join(root, 'included-worktree')
+  await createDialog.getByLabel('Worktree path').fill(worktreePath)
+  await createDialog.getByLabel('New branch').fill('included-worktree-branch')
   await createDialog.getByRole('button', { name: 'Create worktree' }).click()
-  await createDialog.waitFor({ state: 'hidden' })
+  await tools.getByText(worktreePath, { exact: false }).waitFor()
   await waitForGitText(
     worktreePath,
     ['branch', '--show-current'],
@@ -759,19 +764,13 @@ async function testWorktreeInclude(page, repository, root) {
     fs.readFileSync(path.join(worktreePath, 'local', 'settings.json'), 'utf8'),
     '{"included":true}\n'
   )
-  await selectRepository(page, repository)
-  const worktree = await openWorktreeContextMenu(page, worktreePath)
-  await worktree.menu
-    .getByRole('menuitem', { name: 'Delete Worktree…', exact: true })
+  await tools
+    .locator('.web-tool-row')
+    .filter({ hasText: worktreePath })
+    .getByRole('button', { name: 'Remove' })
     .click()
-  const deleteConfirmation = page
-    .getByRole('alertdialog')
-    .filter({ hasText: 'Delete worktree' })
-  if (await deleteConfirmation.isVisible().catch(() => false))
-    await deleteConfirmation
-      .getByRole('button', { name: 'Delete', exact: true })
-      .click()
-  await waitForPathAbsent(worktreePath)
+  await confirm(page, 'Remove worktree')
+  assert.equal(fs.existsSync(worktreePath), false)
   assert.doesNotMatch(
     git(repository, 'worktree', 'list'),
     /included-worktree-branch/
@@ -780,45 +779,49 @@ async function testWorktreeInclude(page, repository, root) {
 
 async function testPushedTagDeletion(page, repository, remote) {
   git(repository, 'remote', 'add', 'origin', remote)
+  git(repository, 'remote', 'add', 'backup', remote)
   git(repository, 'push', '-u', 'origin', 'main')
   git(repository, 'tag', '-a', 'release-v1', '-m', 'release v1')
-  await refresh(page)
-  await testManageRemotesEntry(page, repository, path.dirname(remote))
-  await page.getByRole('tab', { name: 'History' }).click()
-  const commitRow = page.locator('#commit-list .list-item').filter({
-    has: page.getByText('initial', { exact: true }),
-  })
-  await commitRow.click({ button: 'right', position: { x: 24, y: 16 } })
-  await page
-    .locator('#web-context-menu')
-    .getByRole('menuitem', { name: 'Create Tag…', exact: true })
-    .click()
-  const tagDialog = page.getByRole('dialog').filter({ hasText: 'Create a tag' })
-  await tagDialog.getByLabel('Name').fill('release-v2')
+  const tools = await refresh(page)
+  await testRemoteContextMenu(page, repository, 'backup')
+  await tools.getByRole('button', { name: 'Create tag', exact: true }).click()
+  const tagDialog = page.getByRole('dialog').filter({ hasText: 'Create tag' })
+  await tagDialog.getByLabel('Tag name').fill('release-v2')
+  await tagDialog.getByLabel('Tag message').fill('release v2')
   await tagDialog.getByRole('button', { name: 'Create tag' }).click()
-  await tagDialog.waitFor({ state: 'hidden' })
-  git(repository, 'push', 'origin', 'refs/tags/release-v2')
+  const tagRow = tools
+    .locator('.web-tool-row')
+    .filter({ hasText: 'release-v2' })
+  await tagRow.getByText(/release-v2 \(local only\)/).waitFor()
+  await tagRow.getByRole('button', { name: 'Push tag' }).click()
+  for (let attempt = 0; attempt < 50; attempt++) {
+    try {
+      if (hasRemoteTag(remote, 'release-v2')) break
+    } catch {}
+    await new Promise(resolve => setTimeout(resolve, 100))
+  }
   assert.ok(hasRemoteTag(remote, 'release-v2'))
-  await refresh(page)
-  await page.getByRole('tab', { name: 'History' }).click()
-  const taggedRow = page.locator('#commit-list .list-item').filter({
-    has: page.getByText('initial', { exact: true }),
-  })
-  await taggedRow.click({ button: 'right', position: { x: 24, y: 16 } })
+  await tools.getByRole('button', { name: 'Refresh repository' }).click()
+  await tagRow.getByText(/release-v2 \(pushed to origin\)/).waitFor()
+  await tagRow.getByRole('button', { name: 'Delete' }).click()
   await page
-    .locator('#web-context-menu')
-    .getByRole('menuitem', { name: 'Delete tag release-v2', exact: true })
+    .getByRole('alertdialog')
+    .getByRole('button', { name: 'Delete local tag' })
     .click()
-  const deleteDialog = page.getByRole('alertdialog').filter({
-    hasText: 'This tag has already been pushed to the remote',
+  const remoteDelete = page.getByRole('alertdialog').filter({
+    hasText: 'Delete pushed tag remotely',
   })
-  await deleteDialog.waitFor({ state: 'visible', timeout: 5000 })
-  await deleteDialog.getByRole('button', { name: 'Delete' }).click()
-  await deleteDialog.waitFor({ state: 'hidden' })
-  assert.throws(() =>
-    git(repository, 'show-ref', '--verify', 'refs/tags/release-v2')
-  )
-  assert.ok(hasRemoteTag(remote, 'release-v2'))
+  await remoteDelete.waitFor()
+  await remoteDelete.getByRole('button', { name: 'Delete remote tag' }).click()
+  for (let attempt = 0; attempt < 50; attempt++) {
+    try {
+      hasRemoteTag(remote, 'release-v2')
+    } catch {
+      return
+    }
+    await new Promise(resolve => setTimeout(resolve, 100))
+  }
+  assert.throws(() => hasRemoteTag(remote, 'release-v2'))
 }
 
 async function main() {
