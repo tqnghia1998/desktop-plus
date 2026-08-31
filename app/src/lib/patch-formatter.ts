@@ -281,10 +281,10 @@ export function formatPatchToDiscardChanges(
         // Reverse the change (if it was an added line, treat it as removed and vice versa).
         if (line.type === DiffLineType.Add) {
           hunkBuf += `-${line.text.substring(1)}\n`
-          newCount++
+          oldCount++
         } else if (line.type === DiffLineType.Delete) {
           hunkBuf += `+${line.text.substring(1)}\n`
-          oldCount++
+          newCount++
         } else {
           assertNever(line.type, `Unsupported line type ${line.type}`)
         }
@@ -319,9 +319,9 @@ export function formatPatchToDiscardChanges(
 
     patch += formatHunkHeader(
       hunk.header.newStartLine,
-      newCount,
+      oldCount,
       hunk.header.oldStartLine,
-      oldCount
+      newCount
     )
     patch += hunkBuf
   })
