@@ -3,7 +3,7 @@ const path = require('path')
 const fs = require('fs')
 const os = require('os')
 const crypto = require('crypto')
-const { execFile, execFileSync, spawn } = require('child_process')
+const { execFile, spawn } = require('child_process')
 const { AsyncLocalStorage } = require('async_hooks')
 const ignore = require('ignore')
 const platform = require('./platform')
@@ -23,7 +23,6 @@ const {
   normalizeGitLabEndpoint,
 } = require('./gitlab')
 const { getDesktopRepositories } = require('./desktop-data')
-const { applyEmbedding } = require('./src/embedding')
 const {
   operations: webOperationNames,
 } = require('./src/web-operation-contract')
@@ -36,36 +35,17 @@ try {
 }
 
 const publicDir = path.join(__dirname, 'public')
+const indexTemplate = fs.readFileSync(
+  path.join(publicDir, 'index.html'),
+  'utf8'
+)
+const PORT = Number(process.env.PORT || 3000)
 const MAX_REQUEST_BYTES = 10 * 1024 * 1024
 const MAX_RESPONSE_BYTES = 50 * 1024 * 1024
 const MAX_FILE_CONTENT_BYTES = 1024 * 1024
-const { Router } = require('./src/http')
-const { registerRepositoryRoutes } = require('./routes/repository')
-const { registerFsRoutes } = require('./routes/fs')
-const { registerHostingRoutes } = require('./routes/hosting')
-const { registerSystemRoutes } = require('./routes/system')
-const {
-  MAX_ARGUMENT_LENGTH,
-  MAX_PATH_LENGTH,
-  requireString,
-  requireText,
-  requireGitValue,
-  requireAbsolutePath,
-  requireArray,
-  requireBoolean,
-  requireInteger,
-} = require('./src/validation')
-const {
-  DESKTOP_STASH_ENTRY_MARKER,
-  DESKTOP_STASH_ENTRY_MESSAGE_RE,
-  parseDesktopStashMessage,
-} = require('./src/git-stash-parser')
+const MAX_ARGUMENT_LENGTH = 64 * 1024
+const MAX_PATH_LENGTH = 32 * 1024
 const STALE_GIT_CONFIG_LOCK_AGE_MS = 5 * 60 * 1000
-const SSH_AUTH_PROMPT_TIMEOUT_MS = 120_000
-const SSH_ASKPASS_SCRIPT_PATH = path.join(__dirname, 'ssh-askpass.js')
-const SSH_CREDENTIAL_SERVICE = 'desktop-plus-web-ssh'
-let macOSCredentialHelperExecPath
-let resolvedMacOSCredentialHelperExecPath = false
 const EMPTY_TREE_SHA = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
 const operationContext = new AsyncLocalStorage()
 const IMAGE_MEDIA_TYPES = Object.freeze({
@@ -90,10 +70,10 @@ const CONTENT_SECURITY_POLICY = [
   "img-src 'self' data: https:",
   "object-src 'none'",
   "script-src 'self'",
-  // The shared desktop React components calculate geometry through style
-  // properties. Chromium applies those CSSOM mutations to style-src in the
-  // release browser, so inline styles must be allowed for the reused UI.
-  "style-src 'self' 'unsafe-inline'",
+  "style-src 'self'",
+  // The source renderer reuses desktop virtualized-list and diff components
+  // that calculate geometry through React style attributes. Keep stylesheet
+  // elements strict while allowing only those attributes.
   "style-src-attr 'unsafe-inline'",
   "worker-src 'self'",
 ].join('; ')
@@ -101,45 +81,6 @@ let keytar
 try {
   keytar = require('../app/node_modules/keytar')
 } catch {}
-
-function resolveServerPort(argv = process.argv.slice(2), env = process.env) {
-  let configuredPort
-  let portProvided = false
-
-  for (let i = 0; i < argv.length; i++) {
-    const arg = argv[i]
-    if (arg === '--port') {
-      portProvided = true
-      configuredPort = argv[i + 1]
-      break
-    }
-    if (arg.startsWith('--port=')) {
-      portProvided = true
-      configuredPort = arg.slice('--port='.length)
-      break
-    }
-  }
-
-  const rawPort = portProvided
-    ? configuredPort
-    : env.PORT !== undefined
-    ? env.PORT
-    : '3000'
-  const port = Number(rawPort)
-
-  if (
-    !Number.isInteger(port) ||
-    String(rawPort).trim() === '' ||
-    port < 0 ||
-    port > 65535
-  ) {
-    throw new Error(
-      `Invalid port: ${rawPort}. Use an integer between 0 and 65535.`
-    )
-  }
-
-  return port
-}
 
 function parseJsonBody(req) {
   return new Promise((resolve, reject) => {
@@ -206,7 +147,7 @@ function parseJsonBody(req) {
 }
 
 function securityHeaders(extra = {}) {
-  return applyEmbedding({
+  return {
     'Content-Security-Policy': CONTENT_SECURITY_POLICY,
     'Cross-Origin-Opener-Policy': 'same-origin',
     'Cross-Origin-Resource-Policy': 'same-origin',
@@ -216,7 +157,7 @@ function securityHeaders(extra = {}) {
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'DENY',
     ...extra,
-  })
+  }
 }
 
 function sendJson(res, statusCode, data) {
@@ -241,6 +182,45 @@ function sendJson(res, statusCode, data) {
     })
   )
   res.end(body)
+}
+
+function requireString(value, name, maxLength = MAX_ARGUMENT_LENGTH) {
+  if (typeof value !== 'string' || value.length === 0) {
+    throw Object.assign(new Error(`${name} (string) is required`), {
+      statusCode: 400,
+    })
+  }
+  if (value.length > maxLength || value.includes('\0')) {
+    throw Object.assign(new Error(`${name} is too large or invalid`), {
+      statusCode: 400,
+    })
+  }
+  return value
+}
+
+function requireText(value, name, maxLength = MAX_ARGUMENT_LENGTH) {
+  if (typeof value !== 'string' || value.includes('\0')) {
+    throw Object.assign(new Error(`${name} (string) is required`), {
+      statusCode: 400,
+    })
+  }
+  if (value.length > maxLength) {
+    throw Object.assign(new Error(`${name} is too large or invalid`), {
+      statusCode: 400,
+    })
+  }
+  return value
+}
+
+function requireGitValue(value, name) {
+  const result = requireString(value, name)
+  if (
+    result.startsWith('-') ||
+    /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/u.test(result)
+  ) {
+    throw Object.assign(new Error(`${name} is invalid`), { statusCode: 400 })
+  }
+  return result
 }
 
 function requireCommitTrailers(value) {
@@ -280,6 +260,16 @@ async function mergeCommitTrailers(repoPath, message, trailers) {
   for (const trailer of trailers)
     args.push('--trailer', `${trailer.token}=${trailer.value}`)
   return (await git(args, repoPath, [0], message)).stdout
+}
+
+function requireAbsolutePath(value, name = 'path') {
+  const result = requireString(value, name, MAX_PATH_LENGTH)
+  if (!path.isAbsolute(result)) {
+    throw Object.assign(new Error(`${name} must be an absolute path`), {
+      statusCode: 400,
+    })
+  }
+  return path.normalize(result)
 }
 
 async function repositoryDeletionTarget(value) {
@@ -605,7 +595,7 @@ function classifyGitHostingError(error) {
         detail
       )
     ? 'ssh-host-key'
-    : /could not read username|credential helper|askpass|terminal prompts disabled|no such device or address/i.test(
+    : /could not read username|credential helper|terminal prompts disabled|no such device or address/i.test(
         detail
       )
     ? 'credential-helper-failed'
@@ -657,7 +647,7 @@ function classifyGitRemoteError(error, operation) {
       detail
     )
       ? 'ssh-host-key'
-      : /could not read username|credential helper|askpass|terminal prompts disabled|no such device or address/i.test(
+      : /could not read username|credential helper|terminal prompts disabled|no such device or address/i.test(
           detail
         )
       ? 'credential-helper-failed'
@@ -1212,17 +1202,12 @@ async function inspectRepository(repositoryPath) {
       }
     const topLevel = await git(['rev-parse', '--show-toplevel'], repositoryPath)
     const resolvedPath = path.resolve(topLevel.stdout.trim() || repositoryPath)
-    const [requestedRealPath, topLevelRealPath] = await Promise.all([
-      fs.promises.realpath(repositoryPath),
-      fs.promises.realpath(resolvedPath),
-    ])
     return {
       path: repositoryPath,
       repositoryPath: resolvedPath,
       kind: 'regular',
       exists: true,
       isDirectory: true,
-      isRepositoryRoot: requestedRealPath === topLevelRealPath,
       ...repositoryInspectionPathParts(resolvedPath),
     }
   }
@@ -1914,32 +1899,6 @@ async function appendGitIgnore(repoPath, body) {
   return getStatus(repoPath)
 }
 
-async function readGitIgnore(repoPath) {
-  try {
-    return {
-      text: await fs.promises.readFile(
-        path.join(repoPath, '.gitignore'),
-        'utf8'
-      ),
-    }
-  } catch (error) {
-    if (error.code === 'ENOENT') return { text: null }
-    throw error
-  }
-}
-
-async function saveGitIgnore(repoPath, text) {
-  const ignorePath = path.join(repoPath, '.gitignore')
-  if (text === '') {
-    await fs.promises.unlink(ignorePath).catch(error => {
-      if (error.code !== 'ENOENT') throw error
-    })
-  } else {
-    await fs.promises.writeFile(ignorePath, text, 'utf8')
-  }
-  return getStatus(repoPath)
-}
-
 async function git(
   args,
   repoPath,
@@ -2205,33 +2164,6 @@ function operationTaskError(error) {
   }
 }
 
-function parseSSHAuthPrompt(prompt) {
-  const text = String(prompt || '')
-  const host =
-    /^The authenticity of host '([^ ]+) \(([^)]+)\)' can't be established[^.]*\.\s*([^ ]+) key fingerprint is ([^.]+)\./s.exec(
-      text
-    )
-  if (host)
-    return {
-      type: 'host',
-      host: host[1],
-      ip: host[2],
-      keyType: host[3],
-      fingerprint: host[4],
-    }
-  const passphrase = /^Enter passphrase for key '(.+?)':\s*$/s.exec(text)
-  if (passphrase) return { type: 'passphrase', keyPath: passphrase[1] }
-  const password = /^(.+@.+)'s password:\s*$/s.exec(text)
-  if (password) return { type: 'password', username: password[1] }
-  return null
-}
-
-function sshCredentialAccount(prompt) {
-  if (prompt.type === 'passphrase') return `passphrase:${prompt.keyPath}`
-  if (prompt.type === 'password') return `password:${prompt.username}`
-  return null
-}
-
 function createOperationTaskManager(services) {
   const tasks = new Map()
   const retentionMs = 5 * 60 * 1000
@@ -2269,7 +2201,6 @@ function createOperationTaskManager(services) {
       : null,
     configLockScope: task.configLockScope,
     bypassURL: task.bypassURL,
-    authPrompt: task.authPrompt,
   })
   const get = id => {
     const task = tasks.get(id)
@@ -2321,10 +2252,6 @@ function createOperationTaskManager(services) {
       hookFailure: null,
       configLockScope: null,
       bypassURL: null,
-      authToken: crypto.randomBytes(24).toString('base64url'),
-      authPrompt: null,
-      authWaiter: null,
-      authStoredAccounts: new Set(),
       processes: new Set(),
       cancelled: false,
       beginCommand(args) {
@@ -2349,72 +2276,6 @@ function createOperationTaskManager(services) {
           )
         }
         if (currentCommit) task.currentCommit = currentCommit
-      },
-      async requestAuth(prompt) {
-        const parsed = parseSSHAuthPrompt(prompt)
-        if (!parsed) return Promise.resolve('')
-        const account = sshCredentialAccount(parsed)
-        if (account && typeof services?.keytar?.getPassword === 'function') {
-          try {
-            const stored = await services.keytar.getPassword(
-              SSH_CREDENTIAL_SERVICE,
-              account
-            )
-            if (stored) {
-              task.authStoredAccounts.add(account)
-              return stored
-            }
-          } catch {}
-        }
-        if (task.authWaiter) return Promise.resolve('')
-        task.authPrompt = parsed
-        task.phase = 'Waiting for SSH credentials'
-        return new Promise(resolve => {
-          const timeout = setTimeout(() => {
-            if (!task.authWaiter) return
-            task.authWaiter = null
-            task.authPrompt = null
-            resolve('')
-          }, SSH_AUTH_PROMPT_TIMEOUT_MS)
-          timeout.unref?.()
-          task.authWaiter = response => {
-            clearTimeout(timeout)
-            task.authWaiter = null
-            task.authPrompt = null
-            resolve(response)
-          }
-        })
-      },
-      async respondAuth(token, response, remember = false) {
-        if (token !== task.authToken)
-          throw Object.assign(new Error('Invalid SSH authentication token'), {
-            statusCode: 403,
-          })
-        if (!task.authWaiter || !task.authPrompt)
-          throw Object.assign(
-            new Error('No SSH authentication prompt is pending'),
-            {
-              statusCode: 409,
-            }
-          )
-        const answer = typeof response === 'string' ? response : ''
-        const account = sshCredentialAccount(task.authPrompt)
-        if (
-          remember &&
-          account &&
-          answer &&
-          typeof services?.keytar?.setPassword === 'function'
-        ) {
-          try {
-            await services.keytar.setPassword(
-              SSH_CREDENTIAL_SERVICE,
-              account,
-              answer
-            )
-          } catch {}
-        }
-        task.authWaiter(answer)
-        return snapshot(task)
       },
       attachProcess(child) {
         task.processes.add(child)
@@ -2451,7 +2312,7 @@ function createOperationTaskManager(services) {
       }
       void operationContext.run(null, async () => {
         try {
-          const status = await getStatus(repoPath, { noOptionalLocks: true })
+          const status = await getStatus(repoPath)
           const operationState = status.operationState
           if (operationState?.position && operationState.totalCommitCount)
             task.setCommitProgress(
@@ -2483,21 +2344,8 @@ function createOperationTaskManager(services) {
         clearInterval(monitor)
         scheduleEviction(id)
       })
-      .catch(async error => {
-        if (task.authWaiter) task.authWaiter('')
+      .catch(error => {
         const details = operationTaskError(error)
-        if (
-          details.errorCode === 'authentication-required' &&
-          typeof services?.keytar?.deletePassword === 'function'
-        ) {
-          await Promise.all(
-            [...task.authStoredAccounts].map(account =>
-              services.keytar
-                .deletePassword(SSH_CREDENTIAL_SERVICE, account)
-                .catch(() => false)
-            )
-          )
-        }
         task.status = task.cancelled ? 'cancelled' : 'failed'
         task.phase = task.cancelled ? 'Cancelled' : 'Failed'
         task.error = task.cancelled ? null : details.error
@@ -2526,32 +2374,10 @@ function createOperationTaskManager(services) {
     }
     return get(id)
   }
-  const requestAuth = async (id, token, prompt) => {
-    const task = tasks.get(id)
-    if (!task)
-      throw Object.assign(new Error('Git operation was not found'), {
-        statusCode: 404,
-      })
-    if (token !== task.authToken)
-      throw Object.assign(new Error('Invalid SSH authentication token'), {
-        statusCode: 403,
-      })
-    return task.requestAuth(prompt)
-  }
-  const respondAuth = (id, response, remember = false) => {
-    const task = tasks.get(id)
-    if (!task)
-      throw Object.assign(new Error('Git operation was not found'), {
-        statusCode: 404,
-      })
-    return task.respondAuth(task.authToken, response, remember)
-  }
   return {
     start,
     get,
     cancel,
-    requestAuth,
-    respondAuth,
     cancelAll: () => {
       for (const task of tasks.values()) {
         if (task.status !== 'running') continue
@@ -2748,6 +2574,8 @@ async function gitOperationAuthenticationEnvironment(
     !Array.isArray(body.hostingAccount)
       ? body.hostingAccount
       : null
+  if (!account) return undefined
+
   const remoteURL = await gitOperationRemoteURL(
     repoPath,
     body,
@@ -2756,67 +2584,9 @@ async function gitOperationAuthenticationEnvironment(
   )
   if (!remoteURL) return undefined
 
-  const genericEnvironment = credentials => {
-    const username = requireString(credentials.username, 'username')
-    const password = requireString(credentials.password, 'password')
-    let remote
-    try {
-      remote = new URL(remoteURL)
-    } catch {
-      throw Object.assign(new Error('The repository URL is invalid.'), {
-        statusCode: 400,
-        code: 'invalid-url',
-      })
-    }
-    if (!['http:', 'https:'].includes(remote.protocol))
-      throw Object.assign(
-        new Error(
-          'Username and password authentication is only available for HTTP(S) remotes.'
-        ),
-        { statusCode: 400, code: 'authentication-required' }
-      )
-    const authorization = Buffer.from(`${username}:${password}`).toString(
-      'base64'
-    )
-    return {
-      ...nonInteractiveGitEnvironment(),
-      GIT_CONFIG_COUNT: '3',
-      GIT_CONFIG_KEY_2: `http.${remote.origin}/.extraHeader`,
-      GIT_CONFIG_VALUE_2: `Authorization: Basic ${authorization}`,
-    }
-  }
-
-  // Do not inherit an editor's askpass handler. In particular, VS Code would
-  // otherwise show its credential prompt outside the web application.
-  const genericCredentials = body.genericCredentials
-  if (genericCredentials) {
-    if (
-      typeof genericCredentials !== 'object' ||
-      Array.isArray(genericCredentials)
-    )
-      throw Object.assign(
-        new Error('Credentials must include a username and password.'),
-        { statusCode: 400 }
-      )
-    return genericEnvironment(genericCredentials)
-  }
-
-  // Git's configured credential helper is the user's source of truth for
-  // repository authentication. Check it before considering a signed-in
-  // hosting account, which may contain a different or expired token.
-  const storedCredentials = await readStoredGitCredential(repoPath, remoteURL)
-  if (storedCredentials) return credentialLookupEnvironment()
-
-  // Keep the helper available to the Git operation itself. This matters for
-  // `fetch --all`, where additional remotes may need their own credentials,
-  // and lets helpers handle their native authentication flow without opening
-  // a terminal or editor prompt.
-  if (!account) return credentialLookupEnvironment()
-
   if (account.provider === 'gitlab') {
     const { credentialId, endpoint } = requireGitLabCredential(account)
-    if (!gitLabRemoteMatchesEndpoint(remoteURL, endpoint))
-      return credentialLookupEnvironment()
+    if (!gitLabRemoteMatchesEndpoint(remoteURL, endpoint)) return undefined
     if (!services?.keytar)
       throw Object.assign(new Error('OS credential store is unavailable'), {
         statusCode: 501,
@@ -2832,13 +2602,12 @@ async function gitOperationAuthenticationEnvironment(
     try {
       return authenticatedGitLabEnvironment(remoteURL, token)
     } catch {
-      return nonInteractiveGitEnvironment()
+      return undefined
     }
   }
 
   const { credentialId, endpoint } = requireGitHubCredential(account)
-  if (!gitHubRemoteMatchesEndpoint(remoteURL, endpoint))
-    return credentialLookupEnvironment()
+  if (!gitHubRemoteMatchesEndpoint(remoteURL, endpoint)) return undefined
   if (!services?.keytar)
     throw Object.assign(new Error('OS credential store is unavailable'), {
       statusCode: 501,
@@ -2852,143 +2621,6 @@ async function gitOperationAuthenticationEnvironment(
       statusCode: 401,
     })
   return authenticatedGitEnvironment(remoteURL, token)
-}
-
-async function readStoredGitCredential(repoPath, remoteURL) {
-  let remote
-  try {
-    remote = new URL(remoteURL)
-  } catch {
-    return null
-  }
-  if (!['http:', 'https:'].includes(remote.protocol)) return null
-
-  const input = [
-    `protocol=${remote.protocol.slice(0, -1)}`,
-    `host=${remote.host}`,
-    ...(remote.pathname === '/' ? [] : [`path=${remote.pathname.slice(1)}`]),
-    ...(remote.username
-      ? [`username=${decodeURIComponent(remote.username)}`]
-      : []),
-    '',
-  ].join('\n')
-  let result
-  try {
-    result = await operationContext.run(null, () =>
-      git(
-        ['credential', 'fill'],
-        repoPath,
-        [0, 1, 128],
-        input,
-        credentialLookupEnvironment(),
-        5_000
-      )
-    )
-  } catch {
-    return null
-  }
-  if (result.exitCode !== 0) return null
-
-  const values = new Map(
-    result.stdout.split(/\r?\n/).flatMap(line => {
-      const separator = line.indexOf('=')
-      return separator > 0
-        ? [[line.slice(0, separator), line.slice(separator + 1)]]
-        : []
-    })
-  )
-  const username = values.get('username')
-  const password = values.get('password')
-  return username && password ? { username, password } : null
-}
-
-function credentialLookupEnvironment() {
-  return {
-    ...process.env,
-    // Drop transient config inherited from an editor, while retaining helpers
-    // configured in the user's Git config (such as osxkeychain or GCM).
-    GIT_CONFIG_PARAMETERS: '',
-    GIT_TERMINAL_PROMPT: '0',
-    GIT_ASKPASS: process.execPath,
-    SSH_ASKPASS: process.execPath,
-    GCM_INTERACTIVE: 'never',
-    GIT_CONFIG_COUNT: '2',
-    GIT_CONFIG_KEY_0: 'credential.interactive',
-    GIT_CONFIG_VALUE_0: 'false',
-    GIT_CONFIG_KEY_1: 'core.askPass',
-    GIT_CONFIG_VALUE_1: '',
-    ...macOSCredentialHelperEnvironment(),
-  }
-}
-
-function macOSCredentialHelperEnvironment() {
-  if (process.platform !== 'darwin') return {}
-
-  // Dugite's macOS Git intentionally does not bundle the Keychain helper. If
-  // the user selected `credential.helper=osxkeychain`, point Git at a system
-  // Git exec directory that does include it. This preserves the user's helper
-  // configuration instead of replacing it with an app-specific credential.
-  if (!resolvedMacOSCredentialHelperExecPath) {
-    resolvedMacOSCredentialHelperExecPath = true
-    try {
-      const execPath = execFileSync('git', ['--exec-path'], {
-        encoding: 'utf8',
-        env: { ...process.env, GIT_EXEC_PATH: '' },
-        timeout: 5_000,
-      }).trim()
-      if (fs.existsSync(path.join(execPath, 'git-credential-osxkeychain')))
-        macOSCredentialHelperExecPath = execPath
-    } catch {}
-  }
-  if (macOSCredentialHelperExecPath)
-    return { GIT_EXEC_PATH: macOSCredentialHelperExecPath }
-
-  for (const execPath of [
-    '/opt/homebrew/opt/git/libexec/git-core',
-    '/usr/local/opt/git/libexec/git-core',
-    '/Library/Developer/CommandLineTools/usr/libexec/git-core',
-    '/Applications/Xcode.app/Contents/Developer/usr/libexec/git-core',
-  ]) {
-    if (fs.existsSync(path.join(execPath, 'git-credential-osxkeychain'))) {
-      macOSCredentialHelperExecPath = execPath
-      return { GIT_EXEC_PATH: execPath }
-    }
-  }
-  return {}
-}
-
-function nonInteractiveGitEnvironment() {
-  return {
-    ...process.env,
-    GIT_CONFIG_PARAMETERS: '',
-    GIT_TERMINAL_PROMPT: '0',
-    // Do not inherit an editor's configured credential or askpass helper.
-    // Git exits non-zero and the renderer can collect credentials in its own
-    // modal instead.
-    GIT_ASKPASS: process.execPath,
-    SSH_ASKPASS: process.execPath,
-    GIT_CONFIG_COUNT: '2',
-    GIT_CONFIG_KEY_0: 'credential.helper',
-    GIT_CONFIG_VALUE_0: '',
-    GIT_CONFIG_KEY_1: 'core.askPass',
-    GIT_CONFIG_VALUE_1: '',
-  }
-}
-
-function interactiveSSHEnvironment(environment, task, services) {
-  if (!task || !services?.getServerURL) return environment
-  const serverURL = services.getServerURL()
-  if (!serverURL) return environment
-  return {
-    ...environment,
-    SSH_ASKPASS: SSH_ASKPASS_SCRIPT_PATH,
-    SSH_ASKPASS_REQUIRE: 'force',
-    DISPLAY: '.',
-    DESKTOP_PLUS_AUTH_URL: serverURL,
-    DESKTOP_PLUS_AUTH_OPERATION: task.id,
-    DESKTOP_PLUS_AUTH_TOKEN: task.authToken,
-    DESKTOP_PLUS_SESSION_TOKEN: services.sessionToken,
-  }
 }
 
 function withGitEnvironment(base, additional) {
@@ -3354,15 +2986,10 @@ async function getCherryPickState(repoPath) {
   }
 }
 
-async function getStatus(repoPath, options = {}) {
+async function getStatus(repoPath) {
   const result = await git(
     ['status', '--porcelain=v2', '-z', '-uall', '--ignore-submodules=none'],
-    repoPath,
-    [0],
-    undefined,
-    options.noOptionalLocks
-      ? { ...process.env, GIT_OPTIONAL_LOCKS: '0' }
-      : undefined
+    repoPath
   )
   const records = result.stdout.split('\0')
   const files = []
@@ -3419,10 +3046,12 @@ async function getStatus(repoPath, options = {}) {
   }
 }
 
+const desktopStashMessageRe = /(?:!!Name<([^<>]+)>)?!!GitHub_Desktop<(.+)>$/
+
 function desktopStashMessage(branchName, customName = null) {
   return `${
     customName ? `!!Name<${encodeURIComponent(customName)}>` : ''
-  }${DESKTOP_STASH_ENTRY_MARKER}<${branchName}>`
+  }!!GitHub_Desktop<${branchName}>`
 }
 
 async function getStashEntries(repoPath) {
@@ -3443,24 +3072,29 @@ async function getStashEntries(repoPath) {
     const values = raw.replace(/^\n+|\n+$/g, '').split('\0')
     if (values.length < 6) return []
     const [name, stashSha, message, tree, parentText, createdAt] = values
-    const desktopStash = parseDesktopStashMessage(message)
+    const desktopMatch = desktopStashMessageRe.exec(message)
     const genericMatch = /^(?:WIP on|On) ([^:]+):\s*(.*)$/.exec(message)
-    let customName = desktopStash?.customStashMessage || null
-    if (!customName && genericMatch?.[2] && !message.startsWith('WIP on ')) {
+    let customName = null
+    if (desktopMatch?.[1]) {
+      try {
+        customName = decodeURIComponent(desktopMatch[1])
+      } catch {
+        customName = desktopMatch[1]
+      }
+    } else if (genericMatch?.[2] && !message.startsWith('WIP on ')) {
       customName = genericMatch[2] || null
     }
-    const branchName = desktopStash?.branchName || genericMatch?.[1] || 'HEAD'
     return [
       {
         name,
-        branchName,
+        branchName: desktopMatch?.[2] || genericMatch?.[1] || 'HEAD',
         customName,
         stashSha,
         createdAt,
         files: { kind: 'NotLoaded' },
         tree,
         parents: parentText ? parentText.split(' ') : [],
-        isDesktop: desktopStash !== null,
+        isDesktop: desktopMatch !== null,
       },
     ]
   })
@@ -3806,11 +3440,9 @@ async function getBranches(repoPath, includeRemoteTags = false) {
   const tagsToPush = includeRemoteTags
     ? tagRows.filter(tag => tag.pushedRemotes.length === 0).map(tag => tag.name)
     : []
-  const lastFetched = await getLastFetchedAt(repoPath)
   return {
     branch,
     defaultBranch,
-    lastFetched,
     recentBranches,
     tip: head,
     aheadBehind,
@@ -3825,16 +3457,6 @@ async function getBranches(repoPath, includeRemoteTags = false) {
     pullWithRebase,
     localCommitSHAs,
     ...(includeRemoteTags ? { tagsToPush } : {}),
-  }
-}
-
-async function getLastFetchedAt(repoPath) {
-  const fetchHeadPath = await gitPath(repoPath, 'FETCH_HEAD')
-  try {
-    return (await fs.promises.stat(fetchHeadPath)).mtime.toISOString()
-  } catch (error) {
-    if (error.code === 'ENOENT') return null
-    throw error
   }
 }
 
@@ -4090,52 +3712,6 @@ async function getGitConfigIdentityValue(repoPath, name) {
     [0, 1]
   )
   return result.exitCode === 0 ? parseGitConfigOrigin(result.stdout) : null
-}
-
-async function editGitConfigValue(repoPath, scope, name, value, operation) {
-  if (!['local', 'global', 'effective', 'origin'].includes(scope))
-    throw Object.assign(new Error('Git config scope is invalid'), {
-      statusCode: 400,
-    })
-  if (!['get', 'set', 'remove'].includes(operation))
-    throw Object.assign(new Error('Git config operation is invalid'), {
-      statusCode: 400,
-    })
-  if (operation !== 'get' && !['local', 'global'].includes(scope))
-    throw Object.assign(new Error('Git config scope does not support writes'), {
-      statusCode: 400,
-    })
-
-  if (operation === 'get') {
-    if (scope === 'origin') {
-      const origin = await getGitConfigIdentityValue(repoPath, name)
-      return { origin }
-    }
-    return {
-      value: await getGitConfigValue(
-        repoPath,
-        scope === 'effective' ? 'effective' : scope,
-        name
-      ),
-    }
-  }
-
-  const configScope = scope === 'local' ? '--local' : '--global'
-  if (operation === 'set') {
-    await git(
-      [
-        'config',
-        configScope,
-        '--replace-all',
-        name,
-        requireGitValue(value, 'Git config value'),
-      ],
-      repoPath
-    )
-  } else {
-    await git(['config', configScope, '--unset-all', name], repoPath, [0, 1])
-  }
-  return { ok: true }
 }
 
 async function getGitIdentity(repoPath) {
@@ -5481,11 +5057,6 @@ async function runOperation(repoPath, body, services = null) {
     operation,
     values
   )
-  gitEnvironment = interactiveSSHEnvironment(
-    gitEnvironment,
-    operationContext.getStore(),
-    services
-  )
   switch (operation) {
     case 'prune-branches':
       return pruneBranches(repoPath, body)
@@ -5943,7 +5514,9 @@ async function runOperation(repoPath, body, services = null) {
         '-a',
         value(0, 'tag'),
         '-m',
-        body.message === undefined ? '' : requireText(body.message, 'message'),
+        body.message === undefined
+          ? ''
+          : requireString(body.message, 'message'),
         ...(values[1] ? [value(1, 'commit')] : []),
       ]
       break
@@ -6670,41 +6243,8 @@ async function runOperation(repoPath, body, services = null) {
   return git(args, repoPath, [0], undefined, gitEnvironment)
 }
 
-const router = new Router()
-registerRepositoryRoutes(router, {
-  repositorySetupOptions,
-  previewRepositoryInitialization,
-  previewCloneRepository,
-  createRepositoryFiles,
-  requireRepositoryInspectionPath,
-  inspectRepository,
-  trustRepository,
-  deleteRepositoryFromDisk,
-  getWorktreeIndicators: getRepositoryIndicators,
-})
-registerFsRoutes(router, {
-  MAX_RESPONSE_BYTES,
-  MAX_REQUEST_BYTES,
-})
-registerHostingRoutes(router, {
-  normalizeGitLabEndpoint,
-  gitLabCredentialId,
-  requireGitLabCredential,
-  gitLabCredentialService,
-  githubCredentialService,
-  sendJson,
-  parseJsonBody,
-})
-registerSystemRoutes(router)
-
 async function routeApi(req, res, url, services) {
-  const handled = await router.dispatch(req, res, services, url)
-  if (handled) {
-    return
-  }
-
   const { pathname } = url
-
   if (req.method === 'GET' && pathname === '/api/health') {
     return sendJson(res, 200, { status: 'ok', time: new Date().toISOString() })
   }
@@ -6730,49 +6270,6 @@ async function routeApi(req, res, url, services) {
   ) {
     const body = await parseJsonBody(req)
     return sendJson(res, 200, await previewCloneRepository(body))
-  }
-
-  if (req.method === 'POST' && pathname === '/api/repository-setup/files') {
-    const body = await parseJsonBody(req)
-    const repositoryPath = requireAbsolutePath(
-      body.repositoryPath,
-      'repository path'
-    )
-    const action = requireString(body.action, 'repository setup file action')
-    const repositoryName = path.basename(repositoryPath)
-
-    switch (action) {
-      case 'readme':
-        await createRepositoryFiles(repositoryPath, repositoryName, {
-          createReadme: true,
-          description: body.description,
-        })
-        break
-      case 'gitignore':
-        await createRepositoryFiles(repositoryPath, repositoryName, {
-          gitignore: requireString(body.name, 'gitignore'),
-        })
-        break
-      case 'license':
-        await createRepositoryFiles(repositoryPath, repositoryName, {
-          license: requireString(body.name, 'license'),
-        })
-        break
-      case 'description':
-        await createRepositoryFiles(repositoryPath, repositoryName, {
-          description: requireText(body.description, 'description'),
-        })
-        break
-      case 'attributes':
-        await createRepositoryFiles(repositoryPath, repositoryName, {})
-        break
-      default:
-        throw Object.assign(
-          new Error('Unsupported repository setup file action'),
-          { statusCode: 400 }
-        )
-    }
-    return sendJson(res, 200, { ok: true })
   }
 
   if (req.method === 'POST' && pathname === '/api/repository/inspect') {
@@ -6822,33 +6319,6 @@ async function routeApi(req, res, url, services) {
       res,
       200,
       await recoverGitConfigLock(repositoryPath, scope, body.confirmed)
-    )
-  }
-
-  if (req.method === 'POST' && pathname === '/api/git/config') {
-    const body = await parseJsonBody(req)
-    const scope = requireString(body.scope, 'scope')
-    let repositoryPath
-    if (body.path || body.repoPath || url.searchParams.has('path'))
-      repositoryPath = repoPathFrom(url, body)
-    else if (scope === 'global') repositoryPath = process.cwd()
-    else
-      throw Object.assign(
-        new Error('A repository path is required for this config scope.'),
-        { statusCode: 400 }
-      )
-    const name = requireGitValue(body.name, 'Git config name')
-    const operation = requireString(body.operation, 'Git config operation')
-    return sendJson(
-      res,
-      200,
-      await editGitConfigValue(
-        repositoryPath,
-        scope,
-        name,
-        body.value,
-        operation
-      )
     )
   }
 
@@ -6907,23 +6377,8 @@ async function routeApi(req, res, url, services) {
     return sendJson(res, 200, await getStashDiff(repoPathFrom(url), url))
   }
 
-  if (req.method === 'GET' && pathname === '/api/gitignore')
-    return sendJson(res, 200, await readGitIgnore(repoPathFrom(url)))
-
   if (req.method === 'POST' && pathname === '/api/gitignore') {
     const body = await parseJsonBody(req)
-    if (body.text !== undefined) {
-      const text = requireString(
-        body.text,
-        'gitignore text',
-        MAX_FILE_CONTENT_BYTES
-      )
-      return sendJson(
-        res,
-        200,
-        await saveGitIgnore(repoPathFrom(url, body), text)
-      )
-    }
     return sendJson(
       res,
       200,
@@ -6988,7 +6443,6 @@ async function routeApi(req, res, url, services) {
       'log',
       'ls-files',
       'merge-base',
-      'merge-tree',
       'remote',
       'rev-list',
       'rev-parse',
@@ -7088,33 +6542,6 @@ async function routeApi(req, res, url, services) {
     )
   if (operationMatch && req.method === 'POST') {
     const body = await parseJsonBody(req)
-    const operationID = decodeURIComponent(operationMatch[1])
-    if (body.action === 'auth-prompt') {
-      const prompt = requireString(body.prompt, 'SSH authentication prompt')
-      if (prompt.length > 4096)
-        return sendJson(res, 400, {
-          error: 'SSH authentication prompt is too long',
-        })
-      return sendJson(res, 200, {
-        response: await services.operationTasks.requestAuth(
-          operationID,
-          body.token,
-          prompt
-        ),
-      })
-    }
-    if (body.action === 'auth-response') {
-      const response = typeof body.response === 'string' ? body.response : ''
-      return sendJson(
-        res,
-        200,
-        await services.operationTasks.respondAuth(
-          operationID,
-          response,
-          body.remember === true
-        )
-      )
-    }
     if (body.action !== 'cancel')
       return sendJson(res, 400, { error: 'Unsupported operation task action' })
     return sendJson(
@@ -7206,35 +6633,6 @@ async function routeApi(req, res, url, services) {
   if (req.method === 'POST' && pathname === '/api/dialog/show-save-dialog') {
     const selectedPath = await services.selectSavePath(await parseJsonBody(req))
     return sendJson(res, 200, { path: selectedPath })
-  }
-
-  if (req.method === 'POST' && pathname === '/api/files/read-directory') {
-    const body = await parseJsonBody(req)
-    const directoryPath = requireAbsolutePath(body.path, 'directory path')
-    return sendJson(res, 200, {
-      entries: await fs.promises.readdir(directoryPath),
-    })
-  }
-
-  if (req.method === 'POST' && pathname === '/api/files/stat') {
-    const body = await parseJsonBody(req)
-    const filePath = requireAbsolutePath(body.path)
-    const stats = await fs.promises.stat(filePath).catch(error => {
-      if (error.code === 'ENOENT') return null
-      throw error
-    })
-    return sendJson(res, 200, {
-      exists: stats !== null,
-      isDirectory: stats?.isDirectory() === true,
-    })
-  }
-
-  if (req.method === 'POST' && pathname === '/api/files/mkdir') {
-    const body = await parseJsonBody(req)
-    await fs.promises.mkdir(requireAbsolutePath(body.path), {
-      recursive: body.recursive === true,
-    })
-    return sendJson(res, 200, { ok: true })
   }
 
   if (req.method === 'POST' && pathname === '/api/os/open') {
@@ -8559,6 +7957,105 @@ async function routeApi(req, res, url, services) {
     })
   }
 
+  if (req.method === 'POST' && pathname === '/api/fs/read-file') {
+    const body = await parseJsonBody(req)
+    const filePath = requireAbsolutePath(body.path)
+    if (body.encoding !== undefined && body.encoding !== 'utf8')
+      return sendJson(res, 400, { error: 'Only utf8 encoding is supported' })
+    let stats
+    let data
+    try {
+      stats = await fs.promises.stat(filePath)
+      data = await fs.promises.readFile(
+        filePath,
+        body.encoding ? { encoding: body.encoding } : undefined
+      )
+    } catch (error) {
+      if (error.code === 'ENOENT')
+        throw Object.assign(new Error('File not found'), { statusCode: 404 })
+      throw error
+    }
+    if (stats.size > MAX_RESPONSE_BYTES)
+      throw Object.assign(new Error('File is too large'), { statusCode: 413 })
+    return sendJson(
+      res,
+      200,
+      body.encoding
+        ? { content: data }
+        : { content: data.toString('base64'), isBase64: true }
+    )
+  }
+
+  if (req.method === 'POST' && pathname === '/api/fs/read-dir') {
+    const body = await parseJsonBody(req)
+    const entries = await fs.promises.readdir(requireAbsolutePath(body.path), {
+      withFileTypes: true,
+    })
+    return sendJson(res, 200, {
+      entries: entries.map(entry => ({
+        name: entry.name,
+        isDirectory: entry.isDirectory(),
+        isFile: entry.isFile(),
+        isSymbolicLink: entry.isSymbolicLink(),
+      })),
+    })
+  }
+
+  if (req.method === 'POST' && pathname === '/api/fs/stat') {
+    const body = await parseJsonBody(req)
+    const stats = await fs.promises.stat(requireAbsolutePath(body.path))
+    return sendJson(res, 200, {
+      isFile: stats.isFile(),
+      isDirectory: stats.isDirectory(),
+      size: stats.size,
+      mtimeMs: stats.mtimeMs,
+      birthtimeMs: stats.birthtimeMs,
+    })
+  }
+
+  if (req.method === 'POST' && pathname === '/api/fs/write-file') {
+    const body = await parseJsonBody(req)
+    const content =
+      body.content === undefined
+        ? ''
+        : requireString(body.content, 'content', MAX_REQUEST_BYTES)
+    if (
+      body.encoding !== undefined &&
+      body.encoding !== 'utf8' &&
+      body.isBase64 !== true
+    )
+      return sendJson(res, 400, { error: 'Only utf8 encoding is supported' })
+    await fs.promises.writeFile(
+      requireAbsolutePath(body.path),
+      body.isBase64 ? Buffer.from(content, 'base64') : content,
+      body.isBase64 ? undefined : body.encoding || 'utf8'
+    )
+    return sendJson(res, 200, { ok: true })
+  }
+
+  if (req.method === 'POST' && pathname === '/api/fs/mkdir') {
+    const body = await parseJsonBody(req)
+    await fs.promises.mkdir(requireAbsolutePath(body.path), {
+      recursive: body.recursive === true,
+    })
+    return sendJson(res, 200, { ok: true })
+  }
+
+  if (req.method === 'POST' && pathname === '/api/fs/unlink') {
+    const body = await parseJsonBody(req)
+    await fs.promises.unlink(requireAbsolutePath(body.path))
+    return sendJson(res, 200, { ok: true })
+  }
+
+  if (req.method === 'POST' && pathname === '/api/fs/copy-file') {
+    const body = await parseJsonBody(req)
+    await fs.promises.copyFile(
+      requireAbsolutePath(body.from, 'from'),
+      requireAbsolutePath(body.to, 'to')
+    )
+    return sendJson(res, 200, { ok: true })
+  }
+
   return false
 }
 
@@ -8656,7 +8153,6 @@ async function serveStatic(req, res, pathname, sessionToken) {
   const contentType =
     contentTypes[path.extname(fullPath)] || 'application/octet-stream'
   if (relative === 'index.html') {
-    const indexTemplate = await fs.promises.readFile(fullPath, 'utf8')
     const home = os.homedir()
     const runtime = {
       session: sessionToken,
@@ -8688,14 +8184,9 @@ async function serveStatic(req, res, pathname, sessionToken) {
     res.end(req.method === 'HEAD' ? undefined : html)
     return true
   }
-  const isHashedAsset =
-    relative.startsWith('assets/') && /-[a-f0-9]{8,32}\./.test(relative)
-  const isFont = extension === '.woff2' || extension === '.ttf'
   const cacheControl =
-    isHashedAsset || isFont
+    relative.startsWith('assets/') && /-[a-f0-9]{12}\./.test(relative)
       ? 'public, max-age=31536000, immutable'
-      : relative.startsWith('static/') || extension === '.png'
-      ? 'public, max-age=86400, stale-while-revalidate=3600'
       : 'no-cache'
   const stat = await fs.promises.stat(fullPath)
   res.writeHead(
@@ -8720,7 +8211,6 @@ async function serveStatic(req, res, pathname, sessionToken) {
 function createServer(options = {}) {
   const sessionToken =
     options.sessionToken || crypto.randomBytes(32).toString('base64url')
-  let server = null
   const services = {
     selectDirectory: options.selectDirectory || platform.selectDirectory,
     selectSavePath: options.selectSavePath || platform.selectSavePath,
@@ -8747,17 +8237,10 @@ function createServer(options = {}) {
         openArtifact: options.openUpdateArtifact || platform.openPath,
       }),
     lfsTasks: options.lfsTasks || createLfsTaskManager(),
-    sessionToken,
-    getServerURL: () => {
-      const address = server?.address()
-      return address && typeof address === 'object'
-        ? `http://127.0.0.1:${address.port}`
-        : null
-    },
   }
   services.operationTasks =
     options.operationTasks || createOperationTaskManager(services)
-  server = http.createServer(async (req, res) => {
+  const server = http.createServer(async (req, res) => {
     if (!parseLoopbackHost(req.headers.host))
       return sendJson(res, 403, { error: 'Invalid Host header' })
     const url = new URL(req.url, `http://${req.headers.host}`)
@@ -8808,18 +8291,11 @@ function createServer(options = {}) {
 }
 
 if (require.main === module) {
-  const port = resolveServerPort()
-  createServer().listen(port, '127.0.0.1', () => {
+  createServer().listen(PORT, '127.0.0.1', () => {
     console.log(
-      `[Desktop Plus Web Server] listening at http://127.0.0.1:${port}`
+      `[Desktop Plus Web Server] listening at http://127.0.0.1:${PORT}`
     )
   })
 }
 
-module.exports = {
-  createServer,
-  resolveServerPort,
-  webOperationNames,
-  readStoredGitCredential,
-  gitOperationAuthenticationEnvironment,
-}
+module.exports = { createServer, webOperationNames }

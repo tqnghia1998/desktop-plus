@@ -193,18 +193,6 @@ export const webGitClient: WebGitClient = {
     return request('/api/git/global-config-path')
   },
 
-  readGitIgnore(path): Promise<{ readonly text: string | null }> {
-    return request(`/api/gitignore${repositoryQuery(path)}`)
-  },
-
-  saveGitIgnore(path, text): Promise<WebStatus> {
-    return request('/api/gitignore', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path, text }),
-    })
-  },
-
   appendIgnore(path, body): Promise<WebStatus> {
     return request('/api/gitignore', {
       method: 'POST',
@@ -248,18 +236,6 @@ export const webGitClient: WebGitClient = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'cancel' }),
-    })
-  },
-
-  respondOperationAuth(
-    id: string,
-    response: string,
-    remember = false
-  ): Promise<WebOperationTask> {
-    return request(`/api/git/operations/${encodeURIComponent(id)}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'auth-response', response, remember }),
     })
   },
 

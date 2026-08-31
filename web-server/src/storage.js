@@ -13,7 +13,10 @@ const __WEB_LEGACY_KEYS = [
   'pull-request-files-width',
   'commitGraph-branch-list-width',
 ]
+const __webStorageRecoveryIssues = []
+
 function __webStorageIssue(message) {
+  __webStorageRecoveryIssues.push(message)
   console.error(`[Desktop Plus Web storage] ${message}`)
 }
 
@@ -268,3 +271,40 @@ const __webStorage = Object.freeze({
     for (const key of __WEB_LEGACY_KEYS) localStorage.removeItem(key)
   },
 })
+
+function __showWebRecovery(title, error, retry) {
+  const existing = document.getElementById('desktop-plus-web-recovery')
+  existing?.remove()
+
+  const recovery = document.createElement('section')
+  recovery.id = 'desktop-plus-web-recovery'
+  recovery.setAttribute('role', 'alert')
+  recovery.innerHTML =
+    '<h2></h2><p></p><div class="actions"><button type="button" data-action="dismiss">Dismiss</button><button type="button" class="primary" data-action="recover">Reset saved data</button></div>'
+  recovery.querySelector('h2').textContent = title
+  recovery.querySelector('p').textContent =
+    error instanceof Error ? error.message : String(error)
+  recovery.querySelector('[data-action="dismiss"]').onclick = () =>
+    recovery.remove()
+  const recover = recovery.querySelector('[data-action="recover"]')
+  if (retry) {
+    recover.textContent = 'Try again'
+    recover.onclick = async () => {
+      recover.disabled = true
+      try {
+        await retry()
+        recovery.remove()
+      } catch (retryError) {
+        recovery.querySelector('p').textContent =
+          retryError instanceof Error ? retryError.message : String(retryError)
+        recover.disabled = false
+      }
+    }
+  } else {
+    recover.onclick = () => {
+      __webStorage.clear()
+      location.reload()
+    }
+  }
+  document.body.appendChild(recovery)
+}
