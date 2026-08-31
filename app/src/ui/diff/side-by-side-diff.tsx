@@ -1308,8 +1308,8 @@ export class SideBySideDiff extends React.Component<
       return
     }
 
-    const lineBefore = this.getDiffLineNumber(row, column)
-    const lineAfter = this.getDiffLineNumber(row, column)
+    const lineBefore = this.getDiffLineNumber(row, DiffColumn.Before)
+    const lineAfter = this.getDiffLineNumber(row, DiffColumn.After)
 
     if (lineBefore !== null) {
       selection = selection.withLineSelection(lineBefore, isSelected)
