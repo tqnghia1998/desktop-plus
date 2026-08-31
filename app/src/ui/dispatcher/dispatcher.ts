@@ -1,6 +1,7 @@
 import { Disposable } from 'event-kit'
 
 import {
+  API,
   IAPIOrganization,
   IAPIPullRequest,
   IAPIFullRepository,
@@ -2149,6 +2150,14 @@ export class Dispatcher {
     repository: RepositoryWithGitHubRepository
   ): Promise<void> {
     await this.appStore._showCreateForkDialog(repository)
+  }
+
+  public forkRepository(
+    account: Account,
+    owner: string,
+    name: string
+  ): Promise<IAPIFullRepository> {
+    return API.fromAccount(account).forkRepository(owner, name)
   }
 
   public async showUnknownAuthorsCommitWarning(

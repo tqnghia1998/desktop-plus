@@ -104,6 +104,7 @@ interface ICommitListProps {
 
   /** Callback that fires when a scroll event has occurred */
   readonly onScroll?: (start: number, end: number) => void
+  readonly onRowsRendered?: (start: number, end: number) => void
 
   /** Callback to fire to undo a given commit in the current repository */
   readonly onUndoCommit?: (commit: Commit) => void
@@ -721,6 +722,7 @@ export class CommitList extends React.Component<
           onRowContextMenu={this.onRowContextMenu}
           selectionMode="multi"
           onScroll={this.onScroll}
+          onRowsRendered={this.props.onRowsRendered}
           keyboardInsertionData={this.props.keyboardReorderData}
           keyboardInsertionElementRenderer={this.renderKeyboardInsertionElement}
           insertionDragType={
