@@ -97,8 +97,6 @@ export type WebSubmoduleUpdateStrategy = 'checkout' | 'merge' | 'rebase'
 export interface WebBranches {
   readonly branch: WebBranch | null
   readonly defaultBranch: string | null
-  /** Timestamp of the most recent successful fetch, derived from FETCH_HEAD. */
-  readonly lastFetched: string | null
   readonly recentBranches: ReadonlyArray<string>
   readonly pullWithRebase?: boolean
   readonly branches?: ReadonlyArray<WebBranch>
@@ -158,10 +156,6 @@ export interface WebStashFiles {
 export interface WebGitIgnoreRequest {
   readonly paths: ReadonlyArray<string>
   readonly kind: 'file' | 'pattern'
-}
-
-export interface WebGitIgnore {
-  readonly text: string | null
 }
 
 export interface WebWorktree {
@@ -261,10 +255,6 @@ export interface WebHistoryRewriteUndo {
   readonly rewrittenTip: string
 }
 
-export interface WebCherryPickUndo extends WebHistoryRewriteUndo {
-  readonly count: number
-}
-
 export interface WebChangesFilter {
   readonly filterText: string
   readonly isIncludedInCommit: boolean
@@ -318,19 +308,7 @@ export interface WebOperationTask {
   readonly hookFailure?: WebHookFailure | null
   readonly configLockScope?: WebGitConfigScope | null
   readonly bypassURL?: string | null
-  readonly authPrompt?: WebSSHAuthPrompt | null
 }
-
-export type WebSSHAuthPrompt =
-  | {
-      readonly type: 'host'
-      readonly host: string
-      readonly ip: string
-      readonly keyType: string
-      readonly fingerprint: string
-    }
-  | { readonly type: 'passphrase'; readonly keyPath: string }
-  | { readonly type: 'password'; readonly username: string }
 
 export type WebGitConfigScope = 'local' | 'global'
 
@@ -435,14 +413,6 @@ export interface WebOperationOptions {
   readonly createLocalBranch?: string
   readonly moveChanges?: boolean
   readonly stashChanges?: boolean
-  /**
-   * Credentials supplied by the in-app authentication dialog for one remote
-   * operation. They are never persisted in browser storage.
-   */
-  readonly genericCredentials?: {
-    readonly username: string
-    readonly password: string
-  }
   readonly resolutions?: ReadonlyArray<
     readonly [string, 'ours' | 'theirs' | 'manual']
   >
@@ -712,13 +682,14 @@ export interface WebApplicationState {
     | 'pull-requests'
     | 'notifications'
     | 'account'
+    | 'repository-tools'
     | 'copilot'
     | 'updates'
   readonly status: WebStatus | null
   readonly branches: WebBranches | null
   readonly history: ReadonlyArray<WebCommit>
   readonly historyRewriteUndo: WebHistoryRewriteUndo | null
-  readonly cherryPickUndo: WebCherryPickUndo | null
+  readonly cherryPickUndo: WebHistoryRewriteUndo | null
   readonly hasMoreHistory: boolean
   readonly selectedHistoryCommitSHA: string | null
   readonly historyCommitDetails: WebCommitDetails | null
@@ -780,9 +751,6 @@ export interface WebDispatcher {
   inspectRepository(path: string): Promise<WebRepositoryInspection>
   trustRepository(path: string): Promise<void>
   addRepository(path: string): Promise<void>
-  /** Adds the repository plus any sibling worktrees so the picker lists the
-   * whole worktree family without selecting the siblings. */
-  addRepositoryWithWorktrees(path: string): Promise<void>
   chooseRepository(): Promise<void>
   cloneRepository(url: string, path: string, branch?: string): Promise<void>
   initializeRepository(
@@ -832,7 +800,6 @@ export interface WebDispatcher {
   selectHistoryFile(path: string): Promise<void>
   clearHistoryInspection(): void
   loadComparison(branch: string, mode: 'Ahead' | 'Behind'): Promise<void>
-  loadRemoteTagMetadata(): Promise<WebBranches>
   inspectStash(stash: WebStash): Promise<void>
   selectStashFile(path: string): Promise<void>
   clearStashInspection(): void
@@ -853,8 +820,6 @@ export interface WebDispatcher {
   setCommitSpellcheckEnabled(enabled: boolean): void
   appendIgnoreFile(paths: ReadonlyArray<string>): Promise<void>
   appendIgnorePattern(patterns: ReadonlyArray<string>): Promise<void>
-  readGitIgnore(): Promise<string | null>
-  saveGitIgnore(text: string): Promise<void>
   copyPaths(paths: ReadonlyArray<string>, relative: boolean): Promise<void>
   copyText(text: string): Promise<void>
   openPath(path: string, reveal?: boolean): Promise<void>
@@ -867,16 +832,7 @@ export interface WebDispatcher {
     operation: WebGitOperation,
     options?: WebOperationOptions
   ): Promise<void>
-  runOperationOrThrow(
-    operation: WebGitOperation,
-    options?: WebOperationOptions
-  ): Promise<void>
   cancelOperation(): Promise<void>
-  respondOperationAuth(
-    id: string,
-    response: string,
-    remember?: boolean
-  ): Promise<void>
   previewPruneBranches(): Promise<ReadonlyArray<WebBranchPruneCandidate>>
   commit(
     message: string,
@@ -895,6 +851,7 @@ export interface WebDispatcher {
       | 'pull-requests'
       | 'notifications'
       | 'account'
+      | 'repository-tools'
       | 'copilot'
       | 'updates'
   ): Promise<void>
@@ -935,12 +892,6 @@ export interface WebDispatcher {
     checkSuiteIds: ReadonlyArray<number>
   ): Promise<void>
   retryLastAction(): Promise<void>
-  retryLastActionWithCredentials(
-    username: string,
-    password: string
-  ): Promise<void>
-  dismissHistoryRewriteUndo(): void
-  dismissCherryPickUndo(): void
   loadLfsStatus(): Promise<void>
   installLfs(scope: 'local' | 'global', confirmed: boolean): Promise<void>
   repairLfs(confirmed: boolean): Promise<void>
@@ -954,8 +905,7 @@ export interface WebDispatcher {
   launchIntegration(
     kind: 'editor' | 'shell',
     name: string | null,
-    custom?: WebCustomIntegration | null,
-    target?: string
+    custom?: WebCustomIntegration | null
   ): Promise<void>
   loadRepositoryPolicies(owner: string, repository: string): Promise<void>
   pushRepository(owner: string, repository: string): Promise<void>
@@ -1023,8 +973,6 @@ export interface WebGitClient {
     scope: WebGitConfigScope,
     confirmed: boolean
   ): Promise<void>
-  readGitIgnore(path: string): Promise<WebGitIgnore>
-  saveGitIgnore(path: string, text: string): Promise<WebStatus>
   appendIgnore(path: string, request: WebGitIgnoreRequest): Promise<WebStatus>
   getLfsStatus(path: string): Promise<WebLfsStatus>
   installLfs(
@@ -1051,11 +999,6 @@ export interface WebGitClient {
   ): Promise<WebOperationTask>
   getOperation(id: string): Promise<WebOperationTask>
   cancelOperation(id: string): Promise<WebOperationTask>
-  respondOperationAuth(
-    id: string,
-    response: string,
-    remember?: boolean
-  ): Promise<WebOperationTask>
 }
 
 export interface WebHostingClient {
