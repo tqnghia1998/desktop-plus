@@ -30,7 +30,7 @@ const inventoryRows = [
   ),
 ].map(match => ({ id: match[1], status: match[2] }))
 
-assert.equal(inventoryRows.length, 134, 'Parity inventory row count changed')
+assert.equal(inventoryRows.length, 131, 'Parity inventory row count changed')
 const inventoryCounts = Object.fromEntries(
   ['Supported', 'Partial', 'Missing', 'Deferred'].map(status => [
     status,
@@ -39,9 +39,9 @@ const inventoryCounts = Object.fromEntries(
 )
 assert.deepEqual(inventoryCounts, {
   Supported: 99,
-  Partial: 10,
-  Missing: 1,
-  Deferred: 24,
+  Partial: 6,
+  Missing: 0,
+  Deferred: 26,
 })
 
 const integrationSuites = new Set([
@@ -51,8 +51,6 @@ const integrationSuites = new Set([
   'test-source-compare-workflows.js',
   'test-source-local-workflows.js',
   'test-source-sync-workflows.js',
-  'test-source-ssh-auth.js',
-  'test-source-application-menu.js',
   'test-source-advanced-workflows.js',
   'test-source-parity-round.js',
   'test-source-repository-recovery.js',
@@ -61,6 +59,7 @@ const integrationSuites = new Set([
   'test-source-preferences-history.js',
   'test-source-state-persistence.js',
   'test-source-trash-recovery.js',
+  'test-source-tutorial.js',
   'test-source-platform-gaps.js',
 ])
 const evidenceOnlySuites = new Set(['test-docs.js'])
