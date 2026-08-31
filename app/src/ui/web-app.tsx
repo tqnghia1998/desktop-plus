@@ -1,75 +1,20 @@
 import * as React from 'react'
 
 import { NoRepositoriesView } from './no-repositories/no-repositories-view'
-import { MissingRepository } from './missing-repository'
-import { AppError } from './app-error'
-import { GenericGitAuthentication } from './generic-git-auth'
-import { AddSSHHost } from './ssh/add-ssh-host'
-import { SSHKeyPassphrase } from './ssh/ssh-key-passphrase'
-import { SSHUserPassword } from './ssh/ssh-user-password'
-import { HookFailed } from './hook-failed/hook-failed'
-import { AppContents, FocusedAppChrome } from './app-chrome'
-import { DialogStackContext } from './dialog/dialog'
+import { AppTheme } from './app-theme'
+import { Dialog, DialogStackContext } from './dialog/dialog'
+import { DialogContent } from './dialog/content'
+import { DialogFooter } from './dialog/footer'
+import { Button } from './lib/button'
 import { ApplicationTheme } from './lib/application-theme'
-import { Preferences } from './preferences/preferences'
-import { RepositoriesList } from './repositories-list/repositories-list'
-import { ChangeRepositoryAlias } from './change-repository-alias/change-repository-alias-dialog'
-import { AddExistingRepository } from './add-repository/add-existing-repository'
-import { CreateRepository } from './add-repository/create-repository'
-import { CloneRepository } from './clone-repository/clone-repository'
-import {
-  ApplicationToolbar,
-  BranchDropdown,
-  PushPullButton,
-  RepositoryToolbarDropdown,
-  WorktreeDropdown,
-  ToolbarActionMenu,
-  ToolbarActionMenuItem,
-} from './toolbar'
+import { TabBar } from './tab-bar'
+import { Toolbar } from './toolbar/toolbar'
+import { ToolbarButtonStyle } from './toolbar/button'
+import { ToolbarDropdown } from './toolbar/dropdown'
+import { Octicon, syncClockwise } from './octicons'
 import * as octicons from './octicons/octicons.generated'
-import { Changes, ChangesSidebar } from './changes'
-import { NoChanges } from './changes/no-changes'
-import { StashDiffViewer } from './stashing'
-import { CreateTag } from './create-tag/create-tag-dialog'
-import { DeleteTag } from './delete-tag/delete-tag-dialog'
-import { DeleteBranch } from './delete-branch/delete-branch-dialog'
-import { DeleteRemoteBranch } from './delete-branch/delete-remote-branch-dialog'
-import { DeleteUnusedLocalBranches } from './delete-branch/delete-unused-local-branches-dialog'
-import { AddRemoteDialog } from './manage-remotes/add-remote-dialog'
-import { ManageRemotesDialog } from './manage-remotes/manage-remotes-dialog'
-import {
-  RepositorySettings,
-  RepositorySettingsTab,
-} from './repository-settings/repository-settings'
-import { ConfirmCheckoutCommitDialog } from './checkout/confirm-checkout-commit'
-import { ConfirmRemoveRepository } from './remove-repository/confirm-remove-repository'
-import { OpenWithExternalEditor } from './open-with-external-editor/open-with-external-editor'
-import { DiscardChanges } from './discard-changes/discard-changes-dialog'
-import { DiscardSelection } from './discard-changes/discard-selection-dialog'
-import { ConfirmDeletePushedTagDialog } from './tag/confirm-delete-pushed-tag'
-import { ConfirmCommitFilteredChanges } from './changes/confirm-commit-filtered-changes-dialog'
-import { CreateRepositoryGroup } from './create-repository-group/create-repository-group-dialog'
-import { CreateBranch } from './create-branch/create-branch-dialog'
-import { RenameBranch } from './rename-branch/rename-branch-dialog'
-import { AddWorktreeDialog } from './worktrees/add-worktree-dialog'
-import { RenameWorktreeDialog } from './worktrees/rename-worktree-dialog'
-import { DeleteWorktreeDialog } from './worktrees/delete-worktree-dialog'
-import { DeleteWorktreeFailedDialog } from './worktrees/delete-worktree-failed-dialog'
-import { TutorialPanel } from './tutorial'
-import { WarnResetToPushedCommit } from './reset/warn-reset-to-pushed-commit'
-import { ConfirmForcePush } from './rebase/confirm-force-push'
-import { StashAndSwitchBranch } from './stash-changes/stash-and-switch-branch-dialog'
-import { ChooseTargetBranchDialog } from './multi-commit-operation/choose-branch/choose-target-branch'
-import { MergeChooseBranchDialog } from './multi-commit-operation/choose-branch/merge-choose-branch-dialog'
-import { RebaseChooseBranchDialog } from './multi-commit-operation/choose-branch/rebase-choose-branch-dialog'
-import { ConflictsDialog } from './multi-commit-operation/dialog/conflicts-dialog'
-import { ConfirmAbortDialog } from './multi-commit-operation/dialog/confirm-abort-dialog'
-import { ConflictsFoundBanner } from './banners/conflicts-found-banner'
-import { SuccessfulCherryPick } from './banners/successful-cherry-pick'
-import { CherryPickUndone } from './banners/cherry-pick-undone'
-import { renderBanner } from './banners'
-import { CommitMessageDialog } from './commit-message/commit-message-dialog'
-import { CommitProgress } from './commit-progress/commit-progress'
+import { ChangedFile } from './changes/changed-file'
+import { FilterList, IFilterListItem } from './lib/filter-list'
 import {
   AppFileStatus,
   AppFileStatusKind,
@@ -77,9 +22,7 @@ import {
   GitStatusEntry,
   UnmergedEntrySummary,
   WorkingDirectoryFileChange,
-  WorkingDirectoryStatus,
 } from '../models/status'
-import { StashedChangesLoadStates } from '../models/stash-entry'
 import {
   DiffLineType,
   DiffSelection,
@@ -93,42 +36,39 @@ import {
   BranchSortOrder,
   DEFAULT_BRANCH_SORT_ORDER,
 } from '../models/branch-sort-order'
-import { CommitGraphSidebar, CompareSidebar, SelectedCommits } from './history'
-import { ConfirmDiscardStashDialog } from './stashing/confirm-discard-stash'
-import { RenameStashDialog } from './stashing/rename-stash-dialog'
+import { CommitList } from './history/commit-list'
+import { List } from './lib/list'
+import { CommitGraphCommitListItem } from './history/commit-graph-commit-list-item'
+import {
+  commitGraph_buildRows,
+  commitGraph_getColor,
+  commitGraph_RowHeight,
+  ICommitGraphRow,
+} from './history/commit-graph-model'
+import { CommitHistoryViewMode } from '../lib/stores/commit-graph-state'
+import { ExpandableCommitSummary } from './history/expandable-commit-summary'
+import { KeyboardInsertionData } from './lib/list'
+import { DragType } from '../models/drag-drop'
+import {
+  UnreachableCommitsDialog,
+  UnreachableCommitsTab,
+} from './history/unreachable-commits-dialog'
+import { AutocompletingTextArea } from './autocompletion/autocompletion-provider'
+import { EmojiAutocompletionProvider } from './autocompletion/emoji-autocompletion-provider'
+import { DiffHeader } from './diff/diff-header'
+import { SeamlessDiffSwitcher } from './diff/seamless-diff-switcher'
+import { IFileContents } from './diff/syntax-highlighting'
 import { DiffParser } from '../lib/diff-parser'
 import { IDiff, DiffType } from '../models/diff'
 import {
   formatPatch,
   formatPatchToDiscardChanges,
 } from '../lib/patch-formatter'
-import { Repository } from '../models/repository'
-import type { IRemote } from '../models/remote'
-import {
-  defaultDiffFontFamily,
-  defaultDiffFontSize,
-  DiffFontFamily,
-} from '../models/diff-font'
+import type { Repository } from '../models/repository'
 import { Branch, BranchType } from '../models/branch'
-import { BranchesTab } from '../models/branches-tab'
-import { Popup, PopupType } from '../models/popup'
-import { BannerType } from '../models/banner'
-import { CloneRepositoryTab } from '../models/clone-repository-tab'
-import { Tip, TipState } from '../models/tip'
-import { FoldoutType } from '../lib/app-state'
-import type { Progress } from '../models/progress'
-import { ShowBranchNameInRepoListSetting } from '../models/show-branch-name-in-repo-list'
-import { defaultCopyPathNormalization } from '../models/copy-path-normalization'
-import type { Dispatcher } from './dispatcher'
-import { RepositoryLayout } from './repository-layout'
-import { RepositoryTabs } from './repository-tabs'
-import { AppMenu as AppMenuState } from '../models/app-menu'
-import type {
-  IMenu,
-  IMenuItem,
-  ISubmenuItem,
-  MenuItem,
-} from '../models/app-menu'
+import { UiView } from './ui-view'
+import { FocusContainer } from './lib/focus-container'
+import { Resizable } from './resizable'
 import {
   getHideWhitespaceInDiff,
   getImageDiffType,
@@ -145,8 +85,20 @@ import {
   setShowWholeFile,
   setWrapDiffLines,
 } from './lib/diff-mode'
+type DiffFontFamily = string
+
+const defaultDiffFontFamily = 'default'
+const defaultDiffFontSize = 11
+const availableTabSizes = [1, 2, 3, 4, 6, 8]
+const getDiffFontFamilyCssValue = (fontFamily: DiffFontFamily) =>
+  fontFamily === defaultDiffFontFamily
+    ? 'var(--font-family-monospace)'
+    : `${JSON.stringify(fontFamily)}, var(--font-family-monospace)`
+const getDiffLineHeight = (diffFontSize: number) =>
+  Math.max(20, diffFontSize + 8)
 import {
   getBoolean,
+  getFloatNumber,
   getNumber,
   setBoolean,
   setNumber,
@@ -158,82 +110,45 @@ import {
   WebDispatcher,
   WebFile,
   WebBranch,
-  WebBranches,
+  WebGitOperation,
   WebDiff,
+  WebRemote,
   WebStash,
   WebTag,
+  WebBranchPruneCandidate,
+  WebPullStrategy,
+  WebSubmoduleUpdateStrategy,
+  WebWorktree,
+  WebRepositoryInitializationOptions,
+  WebRepositoryInspection,
+  WebRepositorySetupPreview,
+  WebCloneSetupPreview,
+  WebGitIdentity,
+  WebCommitOptions,
   WebOperationOptions,
   WebOperationTask,
+  WebRepositoryDeleteMode,
+  WebCustomIntegration,
   WebIntegrationSelection,
+  WebIntegrations,
 } from './web/contracts'
 import { TutorialStep } from '../models/tutorial-step'
 import {
   UncommittedChangesStrategy,
   defaultUncommittedChangesStrategy,
 } from '../models/uncommitted-changes-strategy'
-import { RepoRulesInfo } from '../models/repo-rules'
-import { ICommitMessage } from '../models/commit-message'
-import { ICommitContext } from '../models/commit'
-import {
-  ChangesSelectionKind,
-  ComparisonMode,
-  HistoryTabMode,
-  ICompareState,
-  IChangesState,
-  IRepositoryState,
-  RepositorySectionTab,
-} from '../lib/app-state'
-import { AheadBehindStore } from '../lib/stores/ahead-behind-store'
-import { getCurrentBranchForcePushState } from '../lib/rebase'
-import { MultiCommitOperationKind } from '../models/multi-commit-operation'
-import { ManualConflictResolution } from '../models/manual-conflict-resolution'
-import { getGlobalConfigValue } from '../lib/git'
-import { TerminalOutputListener } from '../lib/git'
-import { getDefaultBranch } from '../lib/helpers/default-branch'
-import { getAvailableEditors } from '../lib/editors/lookup'
-import { getAvailableShells, parse as parseShell } from '../lib/shells'
+import { showContextualMenu } from '../lib/menu-item'
+import type { IMenuItem } from '../lib/menu-item'
 
 interface WebAppProps {
   readonly store: WebApplicationStore
   readonly dispatcher: WebDispatcher
 }
 
-type CommitMessagePopup = Extract<
-  Popup,
-  { readonly type: PopupType.CommitMessage }
->
-type HistoryRewriteKind = 'reorder' | 'squash'
-
-let webPreferencesWarmup: Promise<void> | null = null
-
-function warmWebPreferences(): Promise<void> {
-  if (webPreferencesWarmup === null) {
-    webPreferencesWarmup = Promise.all([
-      getGlobalConfigValue('user.name'),
-      getGlobalConfigValue('user.email'),
-      getDefaultBranch(),
-      getAvailableEditors(),
-      getAvailableShells(),
-    ])
-      .then(() => undefined)
-      .catch(() => {
-        webPreferencesWarmup = null
-      })
-  }
-  return webPreferencesWarmup
-}
-
-function formatCommitContextMessage(context: ICommitContext): string {
-  const message = [context.summary, context.description]
-    .filter((part): part is string => Boolean(part))
-    .join('\n\n')
-  const trailers = (context.trailers || []).map(
-    trailer => `${trailer.token}: ${trailer.value}`
-  )
-  return trailers.length > 0 ? `${message}\n\n${trailers.join('\n')}` : message
-}
-
+const webRepositoryParentPathStorageKey =
+  'desktop-plus-web-default-repository-parent'
 const webShowBranchNameStorageKey = 'show-branch-name-in-repository-list'
+const webBranchSortOrderStorageKey = 'branch-sort-order'
 const webPreferAbsoluteDatesStorageKey = 'prefer-absolute-dates'
 const webShowConventionalCommitBadgesStorageKey =
   'show-conventional-commit-badges'
@@ -243,28 +158,16 @@ const webShowWorktreesInRepositoryListStorageKey =
 const webRepositoryIndicatorsEnabledStorageKey = 'enable-repository-indicators'
 const webConfirmRepositoryRemovalStorageKey = 'confirm-repository-removal'
 const webConfirmWorktreeRemovalStorageKey = 'confirm-worktree-removal'
-const webConfirmCheckoutCommitStorageKey = 'confirmCheckoutCommit'
-const webConfirmDiscardChangesStorageKey = 'confirmDiscardChanges'
-const webConfirmDiscardChangesPermanentlyStorageKey =
-  'confirmDiscardChangesPermanently'
-const webConfirmCommitFilteredChangesStorageKey = 'confirmCommitFilteredChanges'
-const webConfirmCommitMessageOverrideStorageKey = 'confirmCommitMessageOverride'
-const webConfirmForcePushStorageKey = 'confirmForcePush'
-const webConfirmUndoCommitStorageKey = 'confirmUndoCommit'
+const webRepositorySortOrderStorageKey = 'repository-sort-order'
+const webDiscardPermanentlyStorageKey = 'discard-permanently'
+const webPullStrategyStorageKey = 'pull-strategy'
+const webUpdateStrategyStorageKey = 'update-from-default-strategy'
 const webShowCommitLengthWarningStorageKey = 'show-commit-length-warning'
-const webShowCommitAuthorInfoStorageKey = 'show-commit-author-info'
-const webShowCompareTabStorageKey = 'show-compare-tab'
-const webShowWorktreesStorageKey = 'show-worktrees'
 const webCommitSummaryLengthWarningThresholdStorageKey =
   'commit-summary-length-warning-threshold'
 const webShowRecentRepositoriesStorageKey = 'show-recent-repositories'
 const webUncommittedChangesStrategyStorageKey = 'uncommitted-changes-strategy'
-const webUpdateBranchStrategyStorageKey = 'update-branch-strategy'
-const webHideWindowOnQuitStorageKey = 'hide-window-on-quit'
-const webOptOutOfUsageTrackingStorageKey = 'opt-out-of-usage-tracking'
-const webUseExternalCredentialHelperStorageKey =
-  'use-external-credential-helper'
-const webUseWindowsOpenSSHStorageKey = 'use-windows-openssh'
+const webResetUpstreamStrategyStorageKey = 'reset-upstream-strategy'
 const webHistorySelectionStorageKey = 'desktop-plus-history-selection'
 const webBrowserNotificationsEnabledStorageKey = 'browser-notifications-enabled'
 const webShowChangesFilterStorageKey = 'show-changes-filter'
@@ -272,149 +175,9 @@ const webShowStashedChangesStorageKey = 'show-stashed-changes'
 const webSidebarWidthStorageKey = 'desktop-plus-web-sidebar-width'
 const webChangesScrollStorageKey = 'desktop-plus-web-changes-scroll'
 const webCompareScrollStorageKey = 'desktop-plus-web-compare-scroll'
+const webZoomFactorStorageKey = 'desktop-plus-web-zoom-factor'
 const webEditorIntegrationStorageKey = 'desktop-plus-web-editor-integration'
 const webShellIntegrationStorageKey = 'desktop-plus-web-shell-integration'
-const webBranchDropdownWidthStorageKey = 'branch-dropdown-width'
-const webPushPullButtonWidthStorageKey = 'push-pull-button-width'
-const webWorktreeDropdownWidthStorageKey = 'worktree-dropdown-width'
-const webSidebarWidth = { min: 220, max: 800, default: 480 }
-const webToolbarButtonWidth = { min: 140, max: 620, default: 300 }
-
-function updateBranchStrategyStorageKey(repositoryPath: string) {
-  return `${webUpdateBranchStrategyStorageKey}:${repositoryPath}`
-}
-
-function getStoredUpdateBranchStrategy(repositoryPath: string) {
-  return localStorage.getItem(
-    updateBranchStrategyStorageKey(repositoryPath)
-  ) === 'rebase'
-    ? 'rebase'
-    : 'merge'
-}
-
-function setStoredUpdateBranchStrategy(
-  repositoryPath: string,
-  strategy: string
-) {
-  if (strategy === 'rebase')
-    localStorage.setItem(
-      updateBranchStrategyStorageKey(repositoryPath),
-      strategy
-    )
-  else localStorage.removeItem(updateBranchStrategyStorageKey(repositoryPath))
-}
-
-const webSuggestedActionsMenu: IMenu = {
-  type: 'menu',
-  items: [
-    'open-working-directory',
-    'open-external-editor',
-    'preferences',
-    'toggle-stashed-changes',
-    'push',
-    'pull',
-    'create-pull-request',
-    'preview-pull-request',
-  ].map(id => ({
-    type: 'menuItem' as const,
-    id,
-    label: id,
-    enabled: true,
-    visible: true,
-    accelerator: null,
-    accessKey: null,
-  })),
-}
-
-function webMenuItem(
-  id: string,
-  label: string,
-  accelerator: string | null = null
-): IMenuItem {
-  return {
-    type: 'menuItem',
-    id,
-    label,
-    enabled: true,
-    visible: true,
-    accelerator,
-    accessKey: null,
-  }
-}
-
-function webSubmenu(
-  id: string,
-  label: string,
-  items: ReadonlyArray<MenuItem>
-): ISubmenuItem {
-  return {
-    type: 'submenuItem',
-    id,
-    label,
-    enabled: true,
-    visible: true,
-    accessKey: null,
-    menu: { type: 'menu', id, items },
-  }
-}
-
-const webApplicationMenu: IMenu = {
-  type: 'menu',
-  items: [
-    webSubmenu('file', 'File', [
-      webMenuItem('add-repository', 'Add Local Repository…'),
-      webMenuItem('clone-repository', 'Clone Repository…'),
-      webMenuItem('create-repository', 'Create New Repository…'),
-      { type: 'separator', id: 'file-separator', visible: true },
-      webMenuItem('show-preferences', 'Preferences…', 'CmdOrCtrl+,'),
-    ]),
-    webSubmenu('view', 'View', [
-      webMenuItem('show-changes', 'Changes'),
-      webMenuItem('show-history', 'History'),
-      webMenuItem('show-compare', 'Compare'),
-    ]),
-    webSubmenu('repository', 'Repository', [
-      webMenuItem('push', 'Push'),
-      webMenuItem('pull', 'Pull'),
-      webMenuItem('fetch', 'Fetch'),
-      { type: 'separator', id: 'repository-separator', visible: true },
-      webMenuItem('view-repository-in-browser', 'View in your browser'),
-      webMenuItem('open-external-editor', 'Open in External Editor'),
-      webMenuItem('open-with-editor', 'Open With…'),
-      webMenuItem('open-in-shell', 'Open in Terminal'),
-      webMenuItem('open-working-directory', 'Show in File Manager'),
-      webMenuItem('new-worktree', 'New Worktree…'),
-      webMenuItem('repository-settings', 'Repository Settings…'),
-      webMenuItem('manage-remotes', 'Manage Remotes…'),
-      webMenuItem('remove-repository', 'Remove Repository…'),
-    ]),
-    webSubmenu('branch', 'Branch', [
-      webMenuItem('create-branch', 'New Branch…'),
-      webMenuItem('rename-branch', 'Rename…'),
-      webMenuItem('delete-branch', 'Delete…'),
-      webMenuItem(
-        'delete-unused-local-branches',
-        'Delete Unused Local Branches…'
-      ),
-      { type: 'separator', id: 'branch-separator', visible: true },
-      webMenuItem('discard-all-changes', 'Discard All Changes…'),
-      webMenuItem(
-        'permanently-discard-all-changes',
-        'Permanently Discard All Changes…'
-      ),
-      webMenuItem('stash-all-changes', 'Stash All Changes'),
-      { type: 'separator', id: 'branch-changes-separator', visible: true },
-      webMenuItem('update-from-default', 'Update from Default Branch'),
-      webMenuItem('compare-to-branch', 'Compare to Branch'),
-      webMenuItem('merge-branch', 'Merge into Current Branch…'),
-      webMenuItem(
-        'squash-and-merge-branch',
-        'Squash and Merge into Current Branch…'
-      ),
-      webMenuItem('rebase-branch', 'Rebase Current Branch…'),
-    ]),
-  ],
-}
 
 function getStoredIntegrationSelection(key: string): WebIntegrationSelection {
   try {
@@ -463,6 +226,12 @@ function useWebIntegrationSelection(kind: 'editor' | 'shell') {
   return preferences[kind]
 }
 
+function getWebNotificationPermission():
+  | NotificationPermission
+  | 'unsupported' {
+  return 'Notification' in window ? Notification.permission : 'unsupported'
+}
+
 function getStoredUncommittedChangesStrategy(): UncommittedChangesStrategy {
   const value = localStorage.getItem(webUncommittedChangesStrategyStorageKey)
   return value === UncommittedChangesStrategy.MoveToNewBranch ||
@@ -488,6 +257,10 @@ function repositoryViewStorageKey(
   return `${prefix}:${repositoryPath || 'none'}`
 }
 
+function clampWebZoomFactor(value: number) {
+  return Math.min(1.5, Math.max(0.75, Math.round(value * 20) / 20))
+}
+
 function getStoredHistorySelection(key: string): ReadonlyArray<string> {
   try {
     const value = JSON.parse(localStorage.getItem(key) || '[]')
@@ -506,10 +279,242 @@ function setStoredHistorySelection(
   localStorage.setItem(key, JSON.stringify(selection))
 }
 
+type WebRepositorySortOrder = 'recent' | 'alphabetical'
+
+interface DesktopChangedFileListItem extends IFilterListItem {
+  readonly file: WorkingDirectoryFileChange
+}
+
+function pathBasename(value: string) {
+  return value.split(/[\\/]/).pop() || value
+}
+
+function pathExtension(value: string) {
+  const basename = pathBasename(value)
+  const dot = basename.lastIndexOf('.')
+  return dot > 0 ? basename.slice(dot) : ''
+}
+
+function pathName(value: string) {
+  const normalized = value.replace(/[\\/]+$/, '')
+  return normalized.split(/[\\/]/).pop() || normalized
+}
+
+function pathParent(value: string) {
+  const normalized = value.replace(/[\\/]+$/, '')
+  const separator = Math.max(
+    normalized.lastIndexOf('/'),
+    normalized.lastIndexOf('\\')
+  )
+  return separator > 0 ? normalized.slice(0, separator) : normalized
+}
+
+function validateGitRefName(value: string, label: string) {
+  const name = value.trim()
+  if (!name) return `${label} is required.`
+  if (
+    name.startsWith('-') ||
+    name.endsWith('.') ||
+    name.endsWith('/') ||
+    name.includes('..') ||
+    name.includes('//') ||
+    /[\s~^:?*\[\\]/.test(name) ||
+    name.endsWith('.lock') ||
+    name.includes('@{')
+  )
+    return `${label} contains characters Git does not allow.`
+  return null
+}
+
+function validateRemoteName(value: string) {
+  const name = value.trim()
+  if (!name) return 'Remote name is required.'
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(name))
+    return 'Remote names may contain letters, numbers, dots, underscores, and hyphens.'
+  return null
+}
+
+function validateRemoteURL(value: string) {
+  const url = value.trim()
+  if (!url) return 'Remote URL is required.'
+  if (
+    !/^(?:https?|ssh|git|file):\/\/\S+$/i.test(url) &&
+    !/^[^@\s]+@[^:\s]+:\S+$/.test(url) &&
+    !/^(?:~|\.{1,2})?[\\/][^\s]+$/.test(url)
+  )
+    return 'Enter an HTTPS, SSH, Git, file, or local path remote URL.'
+  return null
+}
+
+function validateAbsolutePath(value: string, label: string) {
+  const path = value.trim()
+  if (!path) return `${label} is required.`
+  if (!path.startsWith('/') && !path.startsWith('~'))
+    return `${label} must be an absolute path.`
+  return null
+}
+
+function validateWebCustomIntegration(
+  selection: WebIntegrationSelection,
+  label: string
+) {
+  if (!selection.custom) return null
+  const pathError = validateAbsolutePath(
+    selection.custom.path,
+    `${label} executable`
+  )
+  if (pathError) return pathError
+  if (!selection.custom.arguments.includes('%TARGET_PATH%'))
+    return `${label} arguments must contain %TARGET_PATH%.`
+  return null
+}
+
+function repositoryFilePath(repositoryPath: string, filePath: string) {
+  return `${repositoryPath.replace(/[\\/]+$/, '')}/${filePath.replace(
+    /^[\\/]+/,
+    ''
+  )}`
+}
+
+function WebFileActions(props: {
+  readonly path: string
+  readonly fullPath: string
+  readonly dispatcher: WebDispatcher
+  readonly openDisabled?: boolean
+}) {
+  const editorSelection = useWebIntegrationSelection('editor')
+  return (
+    <div
+      aria-label={`${props.path} file actions`}
+      className="web-file-actions"
+      role="group"
+    >
+      <Button
+        disabled={props.openDisabled}
+        onClick={() => void props.dispatcher.openPath(props.fullPath)}
+      >
+        Open in default app
+      </Button>
+      <Button
+        disabled={props.openDisabled}
+        onClick={() => void props.dispatcher.openPath(props.fullPath, true)}
+      >
+        Reveal in Finder
+      </Button>
+      <Button
+        disabled={props.openDisabled}
+        onClick={() =>
+          void props.dispatcher.openIntegration(
+            'editor',
+            props.fullPath,
+            editorSelection
+          )
+        }
+      >
+        Open in editor
+      </Button>
+      <Button onClick={() => void props.dispatcher.copyText(props.fullPath)}>
+        Copy full path
+      </Button>
+    </div>
+  )
+}
+
+function WebSubmoduleActions(props: {
+  readonly fullPath: string | null | undefined
+  readonly filePath: string
+  readonly dispatcher: WebDispatcher
+  readonly status?: WebFile['status']['submoduleStatus']
+  readonly disabled?: boolean
+}) {
+  const [strategy, setStrategy] =
+    React.useState<WebSubmoduleUpdateStrategy>('checkout')
+
+  return (
+    <div className="web-submodule-actions" role="group">
+      {props.status?.recordedCommit || props.status?.currentCommit ? (
+        <p role="status">
+          Recorded commit:{' '}
+          {props.status.recordedCommit
+            ? props.status.recordedCommit.slice(0, 8)
+            : 'unknown'}
+          ; current commit:{' '}
+          {props.status.currentCommit
+            ? props.status.currentCommit.slice(0, 8)
+            : 'unavailable'}
+        </p>
+      ) : null}
+      {props.status?.nested?.length ? (
+        <div aria-label="Nested submodules" className="web-submodule-nested">
+          <strong>Nested submodules</strong>
+          {props.status.nested.map(nested => (
+            <Button
+              disabled={props.disabled}
+              key={nested.path}
+              onClick={() =>
+                void props.dispatcher.addRepository(
+                  repositoryFilePath(props.fullPath || '', nested.path)
+                )
+              }
+            >
+              Open nested submodule {nested.path}
+            </Button>
+          ))}
+        </div>
+      ) : null}
+      {props.fullPath ? (
+        <Button
+          disabled={props.disabled}
+          onClick={() => void props.dispatcher.addRepository(props.fullPath!)}
+        >
+          Open submodule repository
+        </Button>
+      ) : null}
+      <label htmlFor={`web-submodule-strategy-${props.filePath}`}>
+        Update strategy
+      </label>
+      <select
+        disabled={props.disabled}
+        id={`web-submodule-strategy-${props.filePath}`}
+        onChange={event =>
+          setStrategy(event.target.value as WebSubmoduleUpdateStrategy)
+        }
+        value={strategy}
+      >
+        <option value="checkout">Checkout recorded commit</option>
+        <option value="merge">Merge recorded commit</option>
+        <option value="rebase">Rebase onto recorded commit</option>
+      </select>
+      <Button
+        disabled={props.disabled}
+        onClick={() =>
+          void props.dispatcher.runOperation('submodule-update', {
+            values: [props.filePath],
+            submoduleStrategy: strategy,
+          })
+        }
+      >
+        Update submodule
+      </Button>
+    </div>
+  )
+}
+
+const coAuthorPattern = /^.+\s+<[^<>\r\n]+>$/
+
+function invalidCoAuthorLines(value: string) {
+  return value
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(line => line.length > 0 && !coAuthorPattern.test(line))
+}
+
 type WebStashAction = {
   readonly stash: WebStash
   readonly operation: 'stash-apply' | 'stash-pop' | 'stash-drop'
 }
+
+type WebResetUpstreamStrategy = 'stash' | 'cancel'
 
 interface WebDiffPresentationPreferences {
   readonly theme: ApplicationTheme
@@ -648,10 +653,10 @@ function useWebDiffPresentationPreferencesState() {
   }
 }
 
-function DesktopPreferencesDialog(props: {
+function WebPreferencesDialog(props: {
   readonly open: boolean
   readonly preferences: WebDiffPresentationPreferences
-  readonly selectedRepositoryPath: string | null
+  readonly dispatcher: WebDispatcher
   readonly browserNotificationsEnabled: boolean
   readonly onBrowserNotificationsEnabledChanged: (value: boolean) => void
   readonly showBranchName: 'never' | 'always' | 'non-default'
@@ -674,211 +679,604 @@ function DesktopPreferencesDialog(props: {
   readonly onConfirmRepositoryRemovalChanged: (value: boolean) => void
   readonly confirmWorktreeRemoval: boolean
   readonly onConfirmWorktreeRemovalChanged: (value: boolean) => void
-  readonly confirmCheckoutCommit: boolean
-  readonly onConfirmCheckoutCommitChanged: (value: boolean) => void
-  readonly confirmDiscardChanges: boolean
-  readonly onConfirmDiscardChangesChanged: (value: boolean) => void
-  readonly confirmCommitFilteredChanges: boolean
-  readonly onConfirmCommitFilteredChangesChanged: (value: boolean) => void
-  readonly confirmCommitMessageOverride: boolean
-  readonly onConfirmCommitMessageOverrideChanged: (value: boolean) => void
-  readonly confirmDiscardChangesPermanently: boolean
-  readonly onConfirmDiscardChangesPermanentlyChanged: (value: boolean) => void
-  readonly confirmForcePush: boolean
-  readonly onConfirmForcePushChanged: (value: boolean) => void
-  readonly confirmUndoCommit: boolean
-  readonly onConfirmUndoCommitChanged: (value: boolean) => void
-  readonly hideWindowOnQuit: boolean
-  readonly onHideWindowOnQuitChanged: (value: boolean) => void
-  readonly optOutOfUsageTracking: boolean
-  readonly onOptOutOfUsageTrackingChanged: (value: boolean) => void
-  readonly showCommitAuthorInfo: boolean
-  readonly onShowCommitAuthorInfoChanged: (value: boolean) => void
-  readonly showCompareTab: boolean
-  readonly onShowCompareTabChanged: (value: boolean) => void
-  readonly showWorktrees: boolean
-  readonly onShowWorktreesChanged: (value: boolean) => void
-  readonly useExternalCredentialHelper: boolean
-  readonly onUseExternalCredentialHelperChanged: (value: boolean) => void
-  readonly useWindowsOpenSSH: boolean
-  readonly onUseWindowsOpenSSHChanged: (value: boolean) => void
-  readonly underlineLinks: boolean
-  readonly onUnderlineLinksChanged: (value: boolean) => void
-  readonly onEditGlobalGitConfig: () => void
   readonly showCommitLengthWarning: boolean
   readonly onShowCommitLengthWarningChanged: (value: boolean) => void
+  readonly commitSummaryLengthWarningThreshold: number
+  readonly onCommitSummaryLengthWarningThresholdChanged: (value: number) => void
   readonly uncommittedChangesStrategy: UncommittedChangesStrategy
   readonly onUncommittedChangesStrategyChanged: (
     value: UncommittedChangesStrategy
   ) => void
   readonly showRecentRepositories: boolean
   readonly onShowRecentRepositoriesChanged: (value: boolean) => void
+  readonly showChangesFilter: boolean
+  readonly onShowChangesFilterChanged: (value: boolean) => void
+  readonly showStashedChanges: boolean
+  readonly onShowStashedChangesChanged: (value: boolean) => void
+  readonly integrations: WebIntegrations | null
   readonly editorIntegration: WebIntegrationSelection
   readonly shellIntegration: WebIntegrationSelection
   readonly onEditorIntegrationChanged: (value: WebIntegrationSelection) => void
   readonly onShellIntegrationChanged: (value: WebIntegrationSelection) => void
+  readonly repositorySortOrder: WebRepositorySortOrder
+  readonly onRepositorySortOrderChanged: (value: WebRepositorySortOrder) => void
   readonly onDismiss: () => void
 }) {
+  const [notificationPermission, setNotificationPermission] = React.useState<
+    NotificationPermission | 'unsupported'
+  >(getWebNotificationPermission)
   if (!props.open) return null
 
-  const desktopDispatcher = {
-    fetchCopilotModels: () => undefined,
-    fetchCopilotQuotaSnapshots: () => undefined,
-    openInBrowser: (url: string) => window.open(url, '_blank', 'noopener'),
-    postError: () => undefined,
-    refreshAuthor: () => undefined,
-    removeAccount: () => undefined,
-    setAlwaysUseCopilotForConflictResolution: () => undefined,
-    setBranchPresetScript: () => undefined,
-    setBranchSortOrder: props.onBranchSortOrderChanged,
-    setConfirmCheckoutCommitSetting: props.onConfirmCheckoutCommitChanged,
-    setConfirmCommitFilteredChanges: (value: boolean) =>
-      props.onConfirmCommitFilteredChangesChanged(value),
-    setConfirmCommitMessageOverrideSetting: (value: boolean) =>
-      props.onConfirmCommitMessageOverrideChanged(value),
-    setConfirmDiscardChangesPermanentlySetting: (value: boolean) =>
-      props.onConfirmDiscardChangesPermanentlyChanged(value),
-    setConfirmDiscardChangesSetting: props.onConfirmDiscardChangesChanged,
-    setConfirmDiscardStashSetting: props.onConfirmStashActionsChanged,
-    setConfirmForcePushSetting: props.onConfirmForcePushChanged,
-    setConfirmRepoRemovalSetting: props.onConfirmRepositoryRemovalChanged,
-    setConfirmUndoCommitSetting: props.onConfirmUndoCommitChanged,
-    setConfirmWorktreeRemovalSetting: (value: boolean) => {
-      setBoolean(webConfirmWorktreeRemovalStorageKey, value)
-      props.onConfirmWorktreeRemovalChanged(value)
-    },
-    setCustomEditor: (custom: WebIntegrationSelection['custom']) =>
-      props.onEditorIntegrationChanged({ name: null, custom }),
-    setCustomShell: (custom: WebIntegrationSelection['custom']) =>
-      props.onShellIntegrationChanged({ name: null, custom }),
-    setDiffCheckMarksSetting: props.preferences.onShowDiffCheckMarksChanged,
-    setExternalEditor: (name: string) =>
-      props.onEditorIntegrationChanged({ name, custom: null }),
-    setHideWindowOnQuit: props.onHideWindowOnQuitChanged,
-    setNotificationsEnabled: props.onBrowserNotificationsEnabledChanged,
-    setPreferAbsoluteDates: props.onPreferAbsoluteDatesChanged,
-    setRepositoryIndicatorsEnabled: props.onRepositoryIndicatorsEnabledChanged,
-    setSelectedCopilotModelsByAccount: () => undefined,
-    setSelectedDiffFontFamily: props.preferences.onDiffFontFamilyChanged,
-    setSelectedDiffFontSize: props.preferences.onDiffFontSizeChanged,
-    setSelectedTabSize: props.preferences.onTabSizeChanged,
-    setSelectedTheme: props.preferences.onThemeChanged,
-    setShell: (name: string) =>
-      props.onShellIntegrationChanged({ name, custom: null }),
-    setShowBranchNameInRepoList: (value: ShowBranchNameInRepoListSetting) =>
-      props.onShowBranchNameChanged(
-        value === ShowBranchNameInRepoListSetting.Always
-          ? 'always'
-          : value === ShowBranchNameInRepoListSetting.WhenNotDefault
-          ? 'non-default'
-          : 'never'
-      ),
-    setShowCommitAuthorInfo: props.onShowCommitAuthorInfoChanged,
-    setShowCommitLengthWarning: props.onShowCommitLengthWarningChanged,
-    setShowCompareTab: props.onShowCompareTabChanged,
-    setShowConventionalCommitBadges:
-      props.onShowConventionalCommitBadgesChanged,
-    setShowRecentRepositories: props.onShowRecentRepositoriesChanged,
-    setShowWorktrees: props.onShowWorktreesChanged,
-    setShowWorktreesInRepoList: props.onShowWorktreesInRepositoryListChanged,
-    setStatsOptOut: async (value: boolean) => {
-      props.onOptOutOfUsageTrackingChanged(value)
-    },
-    setTitleBarStyle: async () => undefined,
-    setUnderlineLinksSetting: props.onUnderlineLinksChanged,
-    setUncommittedChangesStrategySetting: (
-      value: UncommittedChangesStrategy
-    ) => {
-      localStorage.setItem(webUncommittedChangesStrategyStorageKey, value)
-      props.onUncommittedChangesStrategyChanged(value)
-    },
-    setUseCustomEditor: (useCustom: boolean) => {
-      if (!useCustom && props.editorIntegration.custom)
-        props.onEditorIntegrationChanged({ name: null, custom: null })
-    },
-    setUseCustomShell: (useCustom: boolean) => {
-      if (!useCustom && props.shellIntegration.custom)
-        props.onShellIntegrationChanged({ name: null, custom: null })
-    },
-    setUseExternalCredentialHelper: props.onUseExternalCredentialHelperChanged,
-    setUseWindowsOpenSSH: props.onUseWindowsOpenSSHChanged,
-  } as unknown as Dispatcher
-
-  const defaultIntegration = { path: '', arguments: '%TARGET_PATH%' }
-  const shellName =
-    props.shellIntegration.name ||
-    props.shellIntegration.custom?.path ||
-    'Terminal'
+  const preferences = props.preferences
+  const integrationChoice = (selection: WebIntegrationSelection): string =>
+    selection.custom ? '__custom__' : selection.name || ''
+  const editorIntegrationError = validateWebCustomIntegration(
+    props.editorIntegration,
+    'Custom editor'
+  )
+  const shellIntegrationError = validateWebCustomIntegration(
+    props.shellIntegration,
+    'Custom shell'
+  )
+  const updateIntegration = (kind: 'editor' | 'shell', value: string) => {
+    const current =
+      kind === 'editor' ? props.editorIntegration : props.shellIntegration
+    const next =
+      value === '__custom__'
+        ? {
+            name: null,
+            custom: current.custom || {
+              path: '',
+              arguments: '%TARGET_PATH%',
+            },
+          }
+        : { name: value || null, custom: null }
+    ;(kind === 'editor'
+      ? props.onEditorIntegrationChanged
+      : props.onShellIntegrationChanged)(next)
+  }
+  const updateCustomIntegration = (
+    kind: 'editor' | 'shell',
+    field: keyof WebCustomIntegration,
+    value: string
+  ) => {
+    const current =
+      kind === 'editor' ? props.editorIntegration : props.shellIntegration
+    const next: WebIntegrationSelection = {
+      name: null,
+      custom: {
+        ...(current.custom || { path: '', arguments: '%TARGET_PATH%' }),
+        [field]: value,
+      },
+    }
+    ;(kind === 'editor'
+      ? props.onEditorIntegrationChanged
+      : props.onShellIntegrationChanged)(next)
+  }
+  const diffTypes: ReadonlyArray<[ImageDiffType, string]> = [
+    [ImageDiffType.TwoUp, 'Two-up'],
+    [ImageDiffType.Swipe, 'Swipe'],
+    [ImageDiffType.OnionSkin, 'Onion skin'],
+    [ImageDiffType.Difference, 'Difference'],
+  ]
 
   return (
     <DialogStackContext.Provider value={{ isTopMost: true }}>
-      <Preferences
-        accounts={[]}
-        alwaysUseCopilotForConflictResolution={false}
-        askForConfirmationOnCommitFilteredChanges={
-          props.confirmCommitFilteredChanges
-        }
-        branchPresetScript={defaultIntegration}
-        branchSortOrder={props.branchSortOrder}
-        byokProviders={[]}
-        confirmCheckoutCommit={props.confirmCheckoutCommit}
-        confirmCommitMessageOverride={props.confirmCommitMessageOverride}
-        confirmDiscardChanges={props.confirmDiscardChanges}
-        confirmDiscardChangesPermanently={
-          props.confirmDiscardChangesPermanently
-        }
-        confirmDiscardStash={props.confirmStashActions}
-        confirmForcePush={props.confirmForcePush}
-        confirmRepositoryRemoval={props.confirmRepositoryRemoval}
-        confirmUndoCommit={props.confirmUndoCommit}
-        confirmWorktreeRemoval={props.confirmWorktreeRemoval}
-        copilotModelsByAccount={new Map()}
-        copilotQuotaSnapshotsByAccount={new Map()}
-        copyPathNormalization={defaultCopyPathNormalization}
-        customEditor={props.editorIntegration.custom}
-        customShell={props.shellIntegration.custom}
-        dispatcher={desktopDispatcher}
-        hideWindowOnQuit={props.hideWindowOnQuit}
-        notificationsEnabled={props.browserNotificationsEnabled}
+      <Dialog
+        ariaDescribedBy="web-preferences-description"
         onDismissed={props.onDismiss}
-        onEditGlobalGitConfig={props.onEditGlobalGitConfig}
-        optOutOfUsageTracking={props.optOutOfUsageTracking}
-        repository={
-          props.selectedRepositoryPath
-            ? getDesktopRepository(props.selectedRepositoryPath)
-            : null
-        }
-        repositoryIndicatorsEnabled={props.repositoryIndicatorsEnabled}
-        selectedCopilotModelsByAccount={new Map()}
-        selectedDiffFontFamily={props.preferences.diffFontFamily}
-        selectedDiffFontSize={props.preferences.diffFontSize}
-        selectedExternalEditor={props.editorIntegration.name}
-        selectedShell={parseShell(shellName)}
-        selectedTabSize={props.preferences.tabSize}
-        selectedTheme={props.preferences.theme}
-        showBranchNameInRepoList={
-          props.showBranchName === 'always'
-            ? ShowBranchNameInRepoListSetting.Always
-            : props.showBranchName === 'non-default'
-            ? ShowBranchNameInRepoListSetting.WhenNotDefault
-            : ShowBranchNameInRepoListSetting.Never
-        }
-        showCommitAuthorInfo={props.showCommitAuthorInfo}
-        showCommitLengthWarning={props.showCommitLengthWarning}
-        showCompareTab={props.showCompareTab}
-        showConventionalCommitBadges={props.showConventionalCommitBadges}
-        showDiffCheckMarks={props.preferences.showDiffCheckMarks}
-        showRecentRepositories={props.showRecentRepositories}
-        showWorktrees={props.showWorktrees}
-        showWorktreesInRepoList={props.showWorktreesInRepositoryList}
-        titleBarStyle="native"
-        underlineLinks={props.underlineLinks}
-        uncommittedChangesStrategy={props.uncommittedChangesStrategy}
-        useCustomEditor={props.editorIntegration.custom !== null}
-        useCustomShell={props.shellIntegration.custom !== null}
-        useExternalCredentialHelper={props.useExternalCredentialHelper}
-        useWindowsOpenSSH={props.useWindowsOpenSSH}
-      />
+        onSubmit={props.onDismiss}
+        title="Preferences"
+      >
+        <DialogContent>
+          <p id="web-preferences-description">
+            Customize the appearance and diff presentation for this browser.
+          </p>
+          <fieldset className="web-dialog-options" aria-label="Appearance">
+            <legend>Appearance</legend>
+            {(
+              [
+                [ApplicationTheme.Dark, 'Dark'],
+                [ApplicationTheme.Light, 'Light'],
+                [ApplicationTheme.System, 'System'],
+              ] as const
+            ).map(([value, label]) => (
+              <label key={value}>
+                <input
+                  checked={preferences.theme === value}
+                  name="web-theme"
+                  onChange={() => preferences.onThemeChanged(value)}
+                  type="radio"
+                />
+                {label}
+              </label>
+            ))}
+          </fieldset>
+          <label htmlFor="web-diff-font-size">Diff font size</label>
+          <input
+            id="web-diff-font-size"
+            max={24}
+            min={8}
+            onChange={event =>
+              preferences.onDiffFontSizeChanged(Number(event.target.value))
+            }
+            type="number"
+            value={preferences.diffFontSize}
+          />
+          <label htmlFor="web-diff-font-family">Diff font</label>
+          <select
+            id="web-diff-font-family"
+            onChange={event =>
+              preferences.onDiffFontFamilyChanged(event.target.value)
+            }
+            value={preferences.diffFontFamily}
+          >
+            <option value={defaultDiffFontFamily}>System monospace</option>
+            <option value="Menlo">Menlo</option>
+            <option value="SFMono-Regular">SF Mono</option>
+            <option value="Monaco">Monaco</option>
+          </select>
+          <label htmlFor="web-tab-size">Tab size</label>
+          <select
+            id="web-tab-size"
+            onChange={event =>
+              preferences.onTabSizeChanged(Number(event.target.value))
+            }
+            value={preferences.tabSize}
+          >
+            {availableTabSizes.map(value => (
+              <option key={value} value={value}>
+                {value}
+              </option>
+            ))}
+          </select>
+          <label htmlFor="web-branch-sort-order">Branch sort order</label>
+          <select
+            id="web-branch-sort-order"
+            onChange={event =>
+              props.onBranchSortOrderChanged(
+                event.target.value as BranchSortOrder
+              )
+            }
+            value={props.branchSortOrder}
+          >
+            <option value={BranchSortOrder.LastModified}>Last modified</option>
+            <option value={BranchSortOrder.Alphabetical}>Alphabetical</option>
+          </select>
+          <label htmlFor="web-show-branch-name">
+            Show current branch next to repository
+          </label>
+          <select
+            id="web-show-branch-name"
+            onChange={event =>
+              props.onShowBranchNameChanged(
+                event.target.value as 'never' | 'always' | 'non-default'
+              )
+            }
+            value={props.showBranchName}
+          >
+            <option value="never">Never</option>
+            <option value="always">Always</option>
+            <option value="non-default">
+              When it is not the default branch
+            </option>
+          </select>
+          <label htmlFor="web-repository-sort-order">
+            Repository sort order
+          </label>
+          <select
+            id="web-repository-sort-order"
+            onChange={event =>
+              props.onRepositorySortOrderChanged(
+                event.target.value as WebRepositorySortOrder
+              )
+            }
+            value={props.repositorySortOrder}
+          >
+            <option value="recent">Recently opened</option>
+            <option value="alphabetical">Alphabetical</option>
+          </select>
+          <fieldset
+            aria-label="External integrations"
+            className="web-dialog-options"
+          >
+            <legend>External integrations</legend>
+            <label htmlFor="web-editor-integration">Repository editor</label>
+            <select
+              id="web-editor-integration"
+              onChange={event =>
+                updateIntegration('editor', event.target.value)
+              }
+              value={integrationChoice(props.editorIntegration)}
+            >
+              <option value="">Automatic (first available)</option>
+              {(props.integrations?.editors || []).map(editor => (
+                <option key={editor.name} value={editor.name}>
+                  {editor.name}
+                </option>
+              ))}
+              <option value="__custom__">Custom executable</option>
+            </select>
+            {props.editorIntegration.custom ? (
+              <>
+                <label htmlFor="web-custom-editor-path">
+                  Custom editor executable
+                </label>
+                <input
+                  aria-invalid={Boolean(editorIntegrationError)}
+                  id="web-custom-editor-path"
+                  onChange={event =>
+                    updateCustomIntegration(
+                      'editor',
+                      'path',
+                      event.target.value
+                    )
+                  }
+                  placeholder="/Applications/My Editor.app"
+                  type="text"
+                  value={props.editorIntegration.custom.path}
+                />
+                <label htmlFor="web-custom-editor-arguments">
+                  Custom editor arguments
+                </label>
+                <input
+                  aria-invalid={Boolean(editorIntegrationError)}
+                  id="web-custom-editor-arguments"
+                  onChange={event =>
+                    updateCustomIntegration(
+                      'editor',
+                      'arguments',
+                      event.target.value
+                    )
+                  }
+                  placeholder="%TARGET_PATH%"
+                  type="text"
+                  value={props.editorIntegration.custom.arguments}
+                />
+                {editorIntegrationError ? (
+                  <p role="alert">{editorIntegrationError}</p>
+                ) : null}
+              </>
+            ) : null}
+            <label htmlFor="web-shell-integration">Repository shell</label>
+            <select
+              id="web-shell-integration"
+              onChange={event => updateIntegration('shell', event.target.value)}
+              value={integrationChoice(props.shellIntegration)}
+            >
+              <option value="">Automatic (first available)</option>
+              {(props.integrations?.shells || []).map(shell => (
+                <option key={shell.name} value={shell.name}>
+                  {shell.name}
+                </option>
+              ))}
+              <option value="__custom__">Custom executable</option>
+            </select>
+            {props.shellIntegration.custom ? (
+              <>
+                <label htmlFor="web-custom-shell-path">
+                  Custom shell executable
+                </label>
+                <input
+                  aria-invalid={Boolean(shellIntegrationError)}
+                  id="web-custom-shell-path"
+                  onChange={event =>
+                    updateCustomIntegration('shell', 'path', event.target.value)
+                  }
+                  placeholder="/usr/local/bin/my-shell"
+                  type="text"
+                  value={props.shellIntegration.custom.path}
+                />
+                <label htmlFor="web-custom-shell-arguments">
+                  Custom shell arguments
+                </label>
+                <input
+                  aria-invalid={Boolean(shellIntegrationError)}
+                  id="web-custom-shell-arguments"
+                  onChange={event =>
+                    updateCustomIntegration(
+                      'shell',
+                      'arguments',
+                      event.target.value
+                    )
+                  }
+                  placeholder="--cwd %TARGET_PATH%"
+                  type="text"
+                  value={props.shellIntegration.custom.arguments}
+                />
+                {shellIntegrationError ? (
+                  <p role="alert">{shellIntegrationError}</p>
+                ) : null}
+              </>
+            ) : null}
+            {props.integrations?.guidance ? (
+              <p role="status">{props.integrations.guidance}</p>
+            ) : null}
+          </fieldset>
+          <label>
+            <input
+              checked={props.preferAbsoluteDates}
+              onChange={event =>
+                props.onPreferAbsoluteDatesChanged(event.target.checked)
+              }
+              type="checkbox"
+            />
+            Use absolute dates in history
+          </label>
+          <label>
+            <input
+              checked={props.showConventionalCommitBadges}
+              onChange={event =>
+                props.onShowConventionalCommitBadgesChanged(
+                  event.target.checked
+                )
+              }
+              type="checkbox"
+            />
+            Show Conventional Commit badges
+          </label>
+          <label>
+            <input
+              checked={props.confirmStashActions}
+              onChange={event =>
+                props.onConfirmStashActionsChanged(event.target.checked)
+              }
+              type="checkbox"
+            />
+            Confirm stash apply, pop, and drop
+          </label>
+          <label>
+            <input
+              checked={props.showWorktreesInRepositoryList}
+              onChange={event =>
+                props.onShowWorktreesInRepositoryListChanged(
+                  event.target.checked
+                )
+              }
+              type="checkbox"
+            />
+            Show linked worktrees in repository list
+          </label>
+          <label>
+            <input
+              checked={props.repositoryIndicatorsEnabled}
+              onChange={event =>
+                props.onRepositoryIndicatorsEnabledChanged(event.target.checked)
+              }
+              type="checkbox"
+            />
+            Show repository change and sync indicators
+          </label>
+          <label>
+            <input
+              checked={props.confirmRepositoryRemoval}
+              onChange={event =>
+                props.onConfirmRepositoryRemovalChanged(event.target.checked)
+              }
+              type="checkbox"
+            />
+            Confirm repository removal
+          </label>
+          <label>
+            <input
+              checked={props.confirmWorktreeRemoval}
+              onChange={event =>
+                props.onConfirmWorktreeRemovalChanged(event.target.checked)
+              }
+              type="checkbox"
+            />
+            Confirm worktree removal
+          </label>
+          <label>
+            <input
+              checked={props.showRecentRepositories}
+              onChange={event =>
+                props.onShowRecentRepositoriesChanged(event.target.checked)
+              }
+              type="checkbox"
+            />
+            Show recent repositories
+          </label>
+          <label>
+            <input
+              checked={props.showChangesFilter}
+              onChange={event =>
+                props.onShowChangesFilterChanged(event.target.checked)
+              }
+              type="checkbox"
+            />
+            Show Changes filters
+          </label>
+          <label>
+            <input
+              checked={props.showStashedChanges}
+              onChange={event =>
+                props.onShowStashedChangesChanged(event.target.checked)
+              }
+              type="checkbox"
+            />
+            Show stashed changes in Changes
+          </label>
+          <fieldset
+            aria-label="Browser notifications"
+            className="web-dialog-options"
+          >
+            <legend>Browser notifications</legend>
+            <label>
+              <input
+                checked={props.browserNotificationsEnabled}
+                onChange={event =>
+                  props.onBrowserNotificationsEnabledChanged(
+                    event.target.checked
+                  )
+                }
+                type="checkbox"
+              />
+              Enable browser notifications
+            </label>
+            <p role="status">
+              {!props.browserNotificationsEnabled
+                ? 'Browser notifications are disabled in Desktop Plus.'
+                : notificationPermission === 'granted'
+                ? 'Browser notifications are allowed for this browser.'
+                : notificationPermission === 'denied'
+                ? 'Browser notifications are blocked. Allow them in the browser site settings.'
+                : notificationPermission === 'default'
+                ? 'Browser notifications need permission before they can appear.'
+                : 'This browser does not support notifications.'}
+            </p>
+            {props.browserNotificationsEnabled &&
+            notificationPermission !== 'granted' &&
+            notificationPermission !== 'unsupported' ? (
+              <Button
+                onClick={async () => {
+                  const permission =
+                    await props.dispatcher.requestNotificationPermission()
+                  setNotificationPermission(permission)
+                }}
+              >
+                Allow browser notifications
+              </Button>
+            ) : null}
+          </fieldset>
+          <label>
+            <input
+              checked={props.showCommitLengthWarning}
+              onChange={event =>
+                props.onShowCommitLengthWarningChanged(event.target.checked)
+              }
+              type="checkbox"
+            />
+            Show commit length warning
+          </label>
+          <label htmlFor="web-commit-summary-length-warning-threshold">
+            Commit summary warning length
+          </label>
+          <input
+            id="web-commit-summary-length-warning-threshold"
+            max={72}
+            min={1}
+            onChange={event =>
+              props.onCommitSummaryLengthWarningThresholdChanged(
+                Number(event.target.value)
+              )
+            }
+            type="number"
+            value={props.commitSummaryLengthWarningThreshold}
+          />
+          <fieldset
+            aria-label="Changes when switching branches"
+            className="web-dialog-options"
+          >
+            <legend>If I have changes and switch branches</legend>
+            {(
+              [
+                [
+                  UncommittedChangesStrategy.AskForConfirmation,
+                  'Ask me where I want the changes to go',
+                ],
+                [
+                  UncommittedChangesStrategy.MoveToNewBranch,
+                  'Always bring my changes to my new branch',
+                ],
+                [
+                  UncommittedChangesStrategy.StashOnCurrentBranch,
+                  'Always stash and leave my changes on the current branch',
+                ],
+              ] as const
+            ).map(([value, label]) => (
+              <label key={value}>
+                <input
+                  checked={props.uncommittedChangesStrategy === value}
+                  name="web-uncommitted-changes-strategy"
+                  onChange={() =>
+                    props.onUncommittedChangesStrategyChanged(value)
+                  }
+                  type="radio"
+                />
+                {label}
+              </label>
+            ))}
+          </fieldset>
+          <fieldset className="web-dialog-options" aria-label="Image diffs">
+            <legend>Image diffs</legend>
+            {diffTypes.map(([value, label]) => (
+              <label key={value}>
+                <input
+                  checked={preferences.imageDiffType === value}
+                  name="web-image-diff-type"
+                  onChange={() => preferences.onImageDiffTypeChanged(value)}
+                  type="radio"
+                />
+                {label}
+              </label>
+            ))}
+          </fieldset>
+          <label>
+            <input
+              checked={preferences.showDiffCheckMarks}
+              onChange={event =>
+                preferences.onShowDiffCheckMarksChanged(event.target.checked)
+              }
+              type="checkbox"
+            />
+            Show diff inclusion check marks
+          </label>
+          <label>
+            <input
+              checked={preferences.showSideBySideDiff}
+              onChange={event =>
+                preferences.onShowSideBySideDiffChanged(event.target.checked)
+              }
+              type="checkbox"
+            />
+            Show side-by-side diffs
+          </label>
+          <label>
+            <input
+              checked={preferences.showDiffMinimap}
+              onChange={event =>
+                preferences.onShowDiffMinimapChanged(event.target.checked)
+              }
+              type="checkbox"
+            />
+            Show diff minimap
+          </label>
+          <label>
+            <input
+              checked={preferences.wrapDiffLines}
+              onChange={event =>
+                preferences.onWrapDiffLinesChanged(event.target.checked)
+              }
+              type="checkbox"
+            />
+            Wrap diff lines
+          </label>
+          <label>
+            <input
+              checked={preferences.hideWhitespaceInDiff}
+              onChange={event =>
+                preferences.onHideWhitespaceInDiffChanged(event.target.checked)
+              }
+              type="checkbox"
+            />
+            Hide whitespace changes
+          </label>
+          <label>
+            <input
+              checked={preferences.showWholeFile}
+              onChange={event =>
+                preferences.onShowWholeFileChanged(event.target.checked)
+              }
+              type="checkbox"
+            />
+            Show whole files in diffs
+          </label>
+        </DialogContent>
+        <DialogFooter>
+          <Button onClick={props.onDismiss}>Close</Button>
+        </DialogFooter>
+      </Dialog>
     </DialogStackContext.Provider>
   )
 }
@@ -1058,7 +1456,7 @@ function getDesktopWorkingDirectoryFile(
 }
 
 function getDesktopRepository(path: string) {
-  return new Repository(path, 0, null, false)
+  return { gitHubRepository: null, path } as Repository
 }
 
 function decodeBase64(value: string): ArrayBuffer {
@@ -1120,6 +1518,29 @@ function getDesktopSubmoduleDiff(
   }
 }
 
+function getDesktopFileContents(
+  file: WorkingDirectoryFileChange | CommittedFileChange,
+  webDiff: WebDiff | null
+): IFileContents | null {
+  const contents = webDiff?.fileContents
+  if (!contents) return null
+  const cached = desktopFileContentsCache.get(contents)
+  if (cached?.file === file) return cached
+  const result = {
+    file,
+    oldContents: contents.oldContents,
+    newContents: contents.newContents,
+    canBeExpanded: contents.canBeExpanded,
+  }
+  desktopFileContentsCache.set(contents, result)
+  return result
+}
+
+const desktopFileContentsCache = new WeakMap<
+  NonNullable<WebDiff['fileContents']>,
+  IFileContents
+>()
+
 function getDesktopCommit(commit: WebApplicationState['history'][number]) {
   const authorDate = new Date(commit.author.date)
   const committerDate = new Date(commit.committer.date)
@@ -1166,7 +1587,49 @@ function getDesktopBranch(branch: WebBranch | null | undefined): Branch | null {
   )
 }
 
-function DesktopCommitGraphSidebar(props: {
+function getDesktopTag(tag: WebTag): Branch {
+  return new Branch(
+    tag.name,
+    null,
+    { sha: tag.sha, author: { date: new Date(0) } },
+    BranchType.Local,
+    `refs/tags/${tag.name}`,
+    false
+  )
+}
+
+function getReachableHistorySHAs(
+  tips: ReadonlyArray<string>,
+  commits: ReadonlyMap<string, Commit>
+) {
+  const reachable = new Set<string>()
+  const pending = [...tips]
+
+  while (pending.length > 0) {
+    const sha = pending.pop()
+    if (!sha || reachable.has(sha)) continue
+
+    const commit = commits.get(sha)
+    if (!commit) continue
+
+    reachable.add(sha)
+    pending.push(...commit.parentSHAs)
+  }
+
+  return reachable
+}
+
+type WebHistoryGraphGroup = 'local' | 'origin' | 'upstream' | 'remote' | 'tags'
+
+function getWebHistoryGraphGroup(branch: Branch): WebHistoryGraphGroup {
+  if (branch.ref.startsWith('refs/tags/')) return 'tags'
+  if (branch.type === BranchType.Local) return 'local'
+  if (branch.remoteName === 'origin') return 'origin'
+  if (branch.remoteName === 'upstream') return 'upstream'
+  return 'remote'
+}
+
+function WebHistoryGraphView(props: {
   readonly state: WebApplicationState
   readonly dispatcher: WebDispatcher
   readonly selectedSHAs: ReadonlyArray<string>
@@ -1182,303 +1645,287 @@ function DesktopCommitGraphSidebar(props: {
   readonly onCheckoutCommit: (commit: Commit) => void
   readonly onDeleteTag: (name: string) => void
   readonly onCherryPick: (commits: ReadonlyArray<Commit>) => void
-  readonly onCommitMessagePopup: (popup: CommitMessagePopup | null) => void
-  readonly onHistoryRewriteStarted: (
-    kind: HistoryRewriteKind,
-    count: number
-  ) => void
 }) {
-  const compareScrollStorageKey = repositoryViewStorageKey(
-    webCompareScrollStorageKey,
-    props.state.selectedRepositoryPath
-  )
-  const [compareListScrollTop, setCompareListScrollTop] = React.useState(() =>
-    Number(localStorage.getItem(compareScrollStorageKey) || 0)
-  )
-  React.useEffect(() => {
-    setCompareListScrollTop(
-      Number(localStorage.getItem(compareScrollStorageKey) || 0)
-    )
-  }, [compareScrollStorageKey])
   const webBranches = props.state.branches?.branches || []
-  const branches = React.useMemo(
-    () =>
-      webBranches
-        .map(getDesktopBranch)
-        .filter((branch): branch is Branch => branch !== null)
-        .filter(branch => !branch.name.endsWith('/HEAD')),
-    [webBranches]
+  const branches = webBranches
+    .map(getDesktopBranch)
+    .filter((branch): branch is Branch => branch !== null)
+    .filter(branch => !branch.name.endsWith('/HEAD'))
+  const tags = (props.state.branches?.tags || []).map(getDesktopTag)
+  const allBranches = [...branches, ...tags]
+  const hiddenRefs = new Set(props.state.historyGraphHiddenRefs)
+  const visibleBranches = allBranches.filter(
+    branch => !hiddenRefs.has(branch.ref)
   )
-  const commits = React.useMemo(
-    () => props.state.history.map(getDesktopCommit),
-    [props.state.history]
+  const commits = props.state.history.map(getDesktopCommit)
+  const commitLookup = new Map(commits.map(commit => [commit.sha, commit]))
+  const reachable = getReachableHistorySHAs(
+    visibleBranches.map(branch => branch.tip.sha),
+    commitLookup
   )
-  const historyIdentity = React.useMemo(
-    () => commits.map(commit => commit.sha).join(':'),
-    [commits]
-  )
-  const commitLookup = React.useMemo(
-    () => new Map(commits.map(commit => [commit.sha, commit])),
-    [commits]
-  )
-  const historySHAs = React.useMemo(
-    () => commits.map(commit => commit.sha),
-    [commits]
-  )
-  const currentBranch = React.useMemo(
-    () => getDesktopBranch(props.state.branches?.branch),
-    [props.state.branches?.branch]
-  )
-  const localTags = React.useMemo(
-    () =>
-      new Map(
-        (props.state.branches?.tags || []).map(tag => [tag.name, tag.sha])
-      ),
-    [props.state.branches?.tags]
-  )
-  const repository = React.useMemo(
-    () => getDesktopRepository(props.state.selectedRepositoryPath || ''),
-    [props.state.selectedRepositoryPath]
-  )
-  const [branchListWidth, setBranchListWidth] = React.useState(() =>
-    getNumber('desktop-plus-web-commit-graph-branch-list-width', 180)
-  )
-  const hiddenRefs = props.state.historyGraphHiddenRefs
-  const visibleRefs = React.useMemo(
-    () => [
-      ...branches
-        .filter(branch => !hiddenRefs.includes(branch.ref))
-        .map(branch => branch.ref),
-      ...Array.from(localTags.keys())
-        .map(name => `refs/tags/${name}`)
-        .filter(ref => !hiddenRefs.includes(ref)),
-    ],
-    [branches, hiddenRefs, localTags]
-  )
-  const desktopDispatcher = React.useMemo(
-    () =>
-      ({
-        changeCommitSelection: (
-          _repository: Repository,
-          shas: ReadonlyArray<string>
-        ) => {
-          props.onSelectedSHAsChanged(shas)
-          if (shas.length === 1)
-            void props.dispatcher.inspectHistoryCommit(shas[0])
-          else props.dispatcher.clearHistoryInspection()
-        },
-        checkoutBranch: (
-          _repository: Repository,
-          branch: Branch
-        ): Promise<Repository> => {
-          void props.dispatcher.runOperation('checkout', {
-            values: [branch.name],
-          })
-          return Promise.resolve(repository)
-        },
-        checkoutCommit: (_repository: Repository, commit: Commit) => {
-          props.onCheckoutCommit(commit)
-          return Promise.resolve(repository)
-        },
-        closePopup: () => props.onCommitMessagePopup(null),
-        clearDragElement: () => undefined,
-        commitGraph_load: () => props.dispatcher.setHistoryGraphMode(true),
-        commitGraph_loadNextCommitBatch: () =>
-          props.dispatcher.loadMoreHistory(),
-        commitGraph_resetBranchListWidth: () => {
-          setBranchListWidth(180)
-          localStorage.removeItem(
-            'desktop-plus-web-commit-graph-branch-list-width'
-          )
-          return Promise.resolve()
-        },
-        commitGraph_setBranchListWidth: (width: number) => {
-          const normalized = Math.min(400, Math.max(120, width))
-          setBranchListWidth(normalized)
-          setNumber(
-            'desktop-plus-web-commit-graph-branch-list-width',
-            normalized
-          )
-          return Promise.resolve()
-        },
-        commitGraph_setCollapsedBranchGroups: (
-          _repository: Repository,
-          groups: ReadonlyArray<string>
-        ) => props.dispatcher.setHistoryGraphCollapsedGroups(groups),
-        commitGraph_setHiddenBranchRefs: (
-          _repository: Repository,
-          refs: ReadonlyArray<string>
-        ) => props.dispatcher.setHistoryGraphHiddenRefs(refs),
-        initializeCompare: () => Promise.resolve(),
-        loadChangedFilesForCurrentSelection: () => Promise.resolve(),
-        loadNextCommitBatch: () => props.dispatcher.loadMoreHistory(),
-        recordSquashInvoked: () => undefined,
-        reorderCommits: (
-          _repository: Repository,
-          commitsToReorder: ReadonlyArray<Commit>,
-          beforeCommit: Commit | null,
-          lastRetainedCommitRef: string | null
-        ) => {
-          props.onHistoryRewriteStarted('reorder', commitsToReorder.length)
-          return props.dispatcher
-            .runOperation('reorder-commits', {
-              base: lastRetainedCommitRef,
-              commits: commitsToReorder.map(commit => commit.sha),
-              before: beforeCommit?.sha || null,
-            })
-            .then(() => props.onSelectedSHAsChanged([]))
-        },
-        resetToCommit: (_repository: Repository, commit: Commit) =>
-          props.onResetToCommit(commit),
-        setCommitSearchQuery: async (_repository: Repository, text: string) => {
-          await props.dispatcher.setHistoryGraphMode(false)
-          await props.dispatcher.setHistoryFilterText(text)
-        },
-        setDragElement: () => undefined,
-        showCreateTagDialog: (_repository: Repository, sha: string) =>
-          props.onCreateTag(commitLookup.get(sha) || commits[0]!),
-        showDeleteTagDialog: (_repository: Repository, tagName: string) =>
-          props.onDeleteTag(tagName),
-        showPopup: (popup: Popup) => {
-          if (popup.type === PopupType.CreateBranch && popup.targetCommit) {
-            const commit = commitLookup.get(popup.targetCommit.sha)
-            if (commit) props.onCreateBranch(commit)
-          } else if (
-            popup.type === PopupType.ConfirmCheckoutCommit &&
-            popup.commit
-          ) {
-            const commit = commitLookup.get(popup.commit.sha)
-            if (commit) props.onCheckoutCommit(commit)
-          } else if (
-            popup.type === PopupType.ConfirmDeletePushedTag &&
-            popup.tagName
-          )
-            props.onDeleteTag(popup.tagName)
-          else if (popup.type === PopupType.CommitMessage)
-            props.onCommitMessagePopup(popup)
-          return Promise.resolve()
-        },
-        squash: (
-          _repository: Repository,
-          toSquash: ReadonlyArray<Commit>,
-          squashOnto: Commit,
-          lastRetainedCommitRef: string | null,
-          context: ICommitContext
-        ) => {
-          props.onHistoryRewriteStarted('squash', toSquash.length + 1)
-          return props.dispatcher
-            .runOperation('squash-commits', {
-              base: lastRetainedCommitRef,
-              commits: toSquash.map(commit => commit.sha),
-              squashOnto: squashOnto.sha,
-              message: formatCommitContextMessage(context),
-              noVerify: props.state.commitOptions.noVerify,
-            })
-            .then(() => props.onSelectedSHAsChanged([]))
-        },
-        undoCommit: (_repository: Repository, commit: Commit) =>
-          props.onUndoCommit(commit),
-        updateCompareForm: (
-          _repository: Repository,
-          update: { readonly commitSearchQuery?: string }
-        ) => {
-          if (update.commitSearchQuery !== undefined)
-            void props.dispatcher.setHistoryFilterText(update.commitSearchQuery)
-        },
-      } as unknown as Dispatcher),
+  const visibleCommits = commits.filter(commit => reachable.has(commit.sha))
+  const visibleCommitSHAs = visibleCommits.map(commit => commit.sha)
+  const currentBranch = getDesktopBranch(props.state.branches?.branch)
+  const branchColors = new Map<string, string>()
+  const colorsByTip = new Map<string, string>()
+  allBranches.forEach(branch => {
+    let color = colorsByTip.get(branch.tip.sha)
+    if (!color) {
+      color = commitGraph_getColor(colorsByTip.size)
+      colorsByTip.set(branch.tip.sha, color)
+    }
+    branchColors.set(branch.ref, color)
+  })
+  const branchesByCommit = new Map<string, Branch[]>()
+  visibleBranches.forEach(branch => {
+    if (branch.ref.startsWith('refs/tags/')) return
+    const current = branchesByCommit.get(branch.tip.sha) || []
+    current.push(branch)
+    branchesByCommit.set(branch.tip.sha, current)
+  })
+  const refColors = visibleBranches.map(branch => ({
+    sha: branch.tip.sha,
+    color: branchColors.get(branch.ref) || commitGraph_getColor(0),
+  }))
+  const primaryLaneSha =
+    currentBranch &&
+    visibleBranches.some(branch => branch.ref === currentBranch.ref)
+      ? currentBranch.tip.sha
+      : undefined
+  const rows = commitGraph_buildRows(visibleCommits, refColors, primaryLaneSha)
+  const rowBySha = new Map(rows.map(row => [row.sha, row]))
+  const groups = (
     [
-      commitLookup,
-      commits,
-      props.dispatcher,
-      props.onAmendCommit,
-      props.onCheckoutCommit,
-      props.onCommitMessagePopup,
-      props.onCreateBranch,
-      props.onCreateTag,
-      props.onDeleteTag,
-      props.onHistoryRewriteStarted,
-      props.onResetToCommit,
-      props.onSelectedSHAsChanged,
-      props.onUndoCommit,
-      props.state.commitOptions.noVerify,
-      repository,
-    ]
+      'local',
+      'origin',
+      'upstream',
+      'remote',
+      'tags',
+    ] as ReadonlyArray<WebHistoryGraphGroup>
+  ).filter(group =>
+    allBranches.some(branch => getWebHistoryGraphGroup(branch) === group)
   )
-  const compareState: ICompareState = {
-    formState: { kind: HistoryTabMode.History },
-    mergeStatus: null,
-    showBranchList: false,
-    filterText: '',
-    commitSearchQuery: props.state.historyFilterText,
-    tip: props.state.branches?.branch?.tip?.sha || null,
-    allHistoryCommitSHAs: historySHAs,
-    commitGraphCommitSHAs: historySHAs,
-    commitGraphCollapsedBranchGroups: props.state.historyGraphCollapsedGroups,
-    commitGraphHiddenBranchRefs: hiddenRefs,
-    commitGraphRefs: visibleRefs,
-    filteredHistoryCommitSHAs: historySHAs,
-    compareCommitSHAs: [],
-    shasToHighlight: [],
-    branches,
-    recentBranches: branches.filter(
-      branch =>
-        branch.type === BranchType.Local &&
-        (props.state.branches?.recentBranches || []).includes(branch.name)
-    ),
-    defaultBranch:
-      branches.find(
-        branch =>
-          branch.type === BranchType.Local &&
-          branch.name === props.state.branches?.defaultBranch
-      ) || null,
+  const groupLabels: Record<WebHistoryGraphGroup, string> = {
+    local: 'Local branches',
+    origin: 'origin',
+    upstream: 'upstream',
+    remote: 'Other remotes',
+    tags: 'Tags',
+  }
+
+  const toggleBranch = (branch: Branch) => {
+    const next = new Set(hiddenRefs)
+    if (next.has(branch.ref)) next.delete(branch.ref)
+    else next.add(branch.ref)
+    props.dispatcher.setHistoryGraphHiddenRefs([...next])
+  }
+  const toggleGroup = (group: WebHistoryGraphGroup) => {
+    const groupBranches = allBranches.filter(
+      branch => getWebHistoryGraphGroup(branch) === group
+    )
+    const allSelected = groupBranches.every(
+      branch => !hiddenRefs.has(branch.ref)
+    )
+    const next = new Set(hiddenRefs)
+    groupBranches.forEach(branch => {
+      if (allSelected) next.add(branch.ref)
+      else next.delete(branch.ref)
+    })
+    props.dispatcher.setHistoryGraphHiddenRefs([...next])
+  }
+  const toggleCollapsed = (group: WebHistoryGraphGroup) => {
+    const next = new Set(props.state.historyGraphCollapsedGroups)
+    if (next.has(group)) next.delete(group)
+    else next.add(group)
+    props.dispatcher.setHistoryGraphCollapsedGroups([...next])
   }
 
   return (
-    <CommitGraphSidebar
-      key={historyIdentity}
-      accounts={[]}
-      allBranches={branches}
-      askForConfirmationOnCheckoutCommit={true}
-      commitGraphBranchListWidth={{
-        value: branchListWidth,
-        min: 120,
-        max: 400,
-      }}
-      commitLookup={commitLookup}
-      compareState={compareState}
-      currentBranch={currentBranch}
-      currentTipSha={props.state.branches?.branch?.tip?.sha || null}
-      dispatcher={desktopDispatcher}
-      emoji={props.state.emoji}
-      isLocalRepository={(props.state.branches?.remotes?.length || 0) === 0}
-      isMultiCommitOperationInProgress={
-        props.state.operationTask?.status === 'running'
-      }
-      localCommitSHAs={props.state.branches?.localCommitSHAs || []}
-      localTags={localTags}
-      onAmendCommit={commit => props.onAmendCommit(commit)}
-      onCherryPick={(_repository, commitLines) =>
-        props.onCherryPick(
-          commitLines.flatMap(commit => {
+    <div className="web-history-graph-view">
+      <aside className="commitGraph-branches-pane" aria-label="History refs">
+        <div className="commitGraph-branch-list" role="group">
+          {groups.map(group => {
+            const groupBranches = allBranches.filter(
+              branch => getWebHistoryGraphGroup(branch) === group
+            )
+            const collapsed =
+              props.state.historyGraphCollapsedGroups.includes(group)
+            const selectedCount = groupBranches.filter(
+              branch => !hiddenRefs.has(branch.ref)
+            ).length
+            return (
+              <div className="commitGraph-branch-group" key={group}>
+                <div className="commitGraph-branch-group-row">
+                  <button
+                    aria-expanded={!collapsed}
+                    aria-label={`${collapsed ? 'Expand' : 'Collapse'} ${
+                      groupLabels[group]
+                    }`}
+                    className="commitGraph-group-disclosure"
+                    onClick={() => toggleCollapsed(group)}
+                    type="button"
+                  >
+                    <Octicon
+                      symbol={
+                        collapsed
+                          ? octicons.triangleRight
+                          : octicons.triangleDown
+                      }
+                    />
+                  </button>
+                  <label className="commitGraph-group-checkbox">
+                    <input
+                      aria-label={`Select ${groupLabels[group]}`}
+                      checked={selectedCount === groupBranches.length}
+                      onChange={() => toggleGroup(group)}
+                      type="checkbox"
+                    />
+                    {groupLabels[group]} ({groupBranches.length})
+                  </label>
+                </div>
+                {!collapsed
+                  ? groupBranches.map(branch => (
+                      <label className="commitGraph-branch" key={branch.ref}>
+                        <input
+                          aria-label={`Show ${branch.name}`}
+                          checked={!hiddenRefs.has(branch.ref)}
+                          onChange={() => toggleBranch(branch)}
+                          type="checkbox"
+                        />
+                        <span
+                          className="commitGraph-branch-label-content"
+                          title={branch.name}
+                        >
+                          <span
+                            className="commitGraph-branch-color-swatch"
+                            style={{
+                              backgroundColor:
+                                branchColors.get(branch.ref) || undefined,
+                            }}
+                          />
+                          {branch.ref === currentBranch?.ref ? (
+                            <span className="commitGraph-branch-current-indicator" />
+                          ) : null}
+                          <span
+                            className={
+                              branch.ref === currentBranch?.ref
+                                ? 'commitGraph-branch-label current'
+                                : 'commitGraph-branch-label'
+                            }
+                          >
+                            {branch.name}
+                          </span>
+                        </span>
+                      </label>
+                    ))
+                  : null}
+              </div>
+            )
+          })}
+        </div>
+      </aside>
+      <div className="commitGraph-list">
+        <CommitList
+          accounts={[]}
+          allHistoryCommitSHAs={visibleCommitSHAs}
+          canAmendCommits={true}
+          canResetToCommits={false}
+          canUndoCommits={true}
+          className="commitGraph-commit-list"
+          commitGraphRowHeight={commitGraph_RowHeight}
+          commitLookup={commitLookup}
+          commitSHAs={visibleCommitSHAs}
+          disableReordering={true}
+          disableRowFocusTooltip={true}
+          dispatcher={props.dispatcher as never}
+          emptyListMessage={
+            visibleBranches.length === 0 ? 'No branches selected' : 'No history'
+          }
+          emoji={props.state.emoji}
+          headCommitSha={props.state.branches?.branch?.tip?.sha || undefined}
+          isInformationalView={false}
+          isLocalRepository={(props.state.branches?.remotes?.length || 0) === 0}
+          localCommitSHAs={props.state.branches?.localCommitSHAs || []}
+          preferAbsoluteDates={props.preferAbsoluteDates}
+          repository={getDesktopRepository(
+            props.state.selectedRepositoryPath || ''
+          )}
+          onAmendCommit={commit => props.onAmendCommit(commit)}
+          onCheckoutCommit={commit => {
             const selected = commitLookup.get(commit.sha)
-            return selected ? [selected] : []
-          })
-        )
-      }
-      onCompareListScrolled={scrollTop => {
-        localStorage.setItem(compareScrollStorageKey, String(scrollTop))
-        setCompareListScrollTop(scrollTop)
-      }}
-      compareListScrollTop={compareListScrollTop}
-      onRevertCommit={commit => props.onRevertCommit(commit)}
-      onViewCommitOnGitHub={() => undefined}
-      repository={repository}
-      selectedCommitShas={props.selectedSHAs}
-      shasToHighlight={[]}
-      showConventionalCommitBadges={props.showConventionalCommitBadges}
-      preferAbsoluteDates={props.preferAbsoluteDates}
-      tagsToPush={props.state.branches?.tagsToPush || []}
-    />
+            if (selected) props.onCheckoutCommit(selected)
+          }}
+          onCherryPick={commits =>
+            props.onCherryPick(
+              commits.flatMap(commit => {
+                const selected = commitLookup.get(commit.sha)
+                return selected ? [selected] : []
+              })
+            )
+          }
+          onCommitsSelected={commits => {
+            const shas = commits.map(commit => commit.sha)
+            props.onSelectedSHAsChanged(shas)
+            if (shas.length === 1)
+              void props.dispatcher.inspectHistoryCommit(shas[0])
+            else props.dispatcher.clearHistoryInspection()
+          }}
+          onCreateBranch={commit => {
+            const selected = commitLookup.get(commit.sha)
+            if (selected) props.onCreateBranch(selected)
+          }}
+          onCreateTag={sha => {
+            const commit = commitLookup.get(sha)
+            if (commit) props.onCreateTag(commit)
+          }}
+          onDeleteTag={name => props.onDeleteTag(name)}
+          onRevertCommit={commit => props.onRevertCommit(commit)}
+          onResetToCommit={commit => props.onResetToCommit(commit)}
+          onScroll={(_start, end) => {
+            if (
+              props.state.hasMoreHistory &&
+              end >= visibleCommitSHAs.length - 5
+            )
+              void props.dispatcher.loadMoreHistory()
+          }}
+          onUndoCommit={commit => props.onUndoCommit(commit)}
+          renderCommitItem={({
+            commit,
+            row,
+            showUnpushedIndicator,
+            unpushedIndicatorTitle,
+          }) => {
+            const graphRow: ICommitGraphRow | undefined = rowBySha.get(
+              commit.sha
+            )
+            if (!graphRow) return null
+            return (
+              <CommitGraphCommitListItem
+                accounts={[]}
+                branchColors={branchColors}
+                branches={branchesByCommit.get(commit.sha) || []}
+                commit={commit}
+                commitGraphRow={graphRow}
+                currentBranch={currentBranch}
+                currentTipSha={props.state.branches?.branch?.tip?.sha || null}
+                emoji={props.state.emoji}
+                gitHubRepository={null}
+                key={commit.sha}
+                preferAbsoluteDates={props.preferAbsoluteDates}
+                showConventionalCommitBadges={
+                  props.showConventionalCommitBadges
+                }
+                showUnpushedIndicator={showUnpushedIndicator}
+                unpushedIndicatorTitle={unpushedIndicatorTitle}
+              />
+            )
+          }}
+          selectedSHAs={props.selectedSHAs}
+          showConventionalCommitBadges={props.showConventionalCommitBadges}
+          tagsToPush={props.state.branches?.tagsToPush || []}
+        />
+      </div>
+    </div>
   )
 }
 
@@ -1505,397 +1952,1456 @@ function useApplicationState(store: WebApplicationStore) {
   return state
 }
 
-function DesktopOperationAuthPrompt(props: {
+function sanitizedOperationOutput(
+  output: {
+    readonly stdout: string
+    readonly stderr: string
+    readonly exitCode: number
+  } | null
+) {
+  if (!output) return ''
+  const text = [output.stderr, output.stdout].filter(Boolean).join('\n').trim()
+  return text
+    .replace(
+      /(https?:\/\/)([^@\s/:]+):([^@\s]+)@/gi,
+      '$1[credentials redacted]@'
+    )
+    .replace(
+      /\b(?:ghp|gho|ghu|ghs|ghr|glpat|github_pat)_[A-Za-z0-9_]+/g,
+      '[token redacted]'
+    )
+    .replace(
+      /(\b(?:authorization|password|token|oauth_token)\s*[:=]\s*)(\S+)/gi,
+      '$1[redacted]'
+    )
+    .slice(-256 * 1024)
+}
+
+function ErrorDialog(props: {
+  readonly error: string | null
+  readonly errorCode: string | null
+  readonly configLockScope: 'local' | 'global' | null
+  readonly canRetry: boolean
+  readonly hookFailure: {
+    readonly hookName: string
+    readonly terminalOutput: string
+  } | null
+  readonly operationOutput: {
+    readonly stdout: string
+    readonly stderr: string
+    readonly exitCode: number
+  } | null
+  readonly dispatcher: WebDispatcher
+  readonly onRefreshRepository?: () => void
+  readonly onChoosePermanentDelete?: () => void
+}) {
+  if (!props.error) return null
+  const remoteErrorCodes = new Set([
+    'authentication-required',
+    'credential-helper-failed',
+    'ssh-host-key',
+    'certificate-error',
+    'network-unavailable',
+    'git-remote-failed',
+  ])
+  const output = remoteErrorCodes.has(props.errorCode || '')
+    ? sanitizedOperationOutput(props.operationOutput)
+    : ''
+  return (
+    <DialogStackContext.Provider value={{ isTopMost: true }}>
+      <Dialog
+        ariaDescribedBy="error-message"
+        onDismissed={() => props.dispatcher.dismissError()}
+        title="Error"
+        type="error"
+      >
+        <DialogContent>
+          <p id="error-message">{props.error}</p>
+          {props.hookFailure ? (
+            <details open={true}>
+              <summary>{props.hookFailure.hookName} hook output</summary>
+              <pre className="web-error-output">
+                {props.hookFailure.terminalOutput}
+              </pre>
+            </details>
+          ) : null}
+          {props.errorCode === 'submodule-update-failed' &&
+          props.operationOutput ? (
+            <details open={true}>
+              <summary>Submodule command output</summary>
+              <pre className="web-error-output">
+                {(
+                  props.operationOutput.stderr ||
+                  props.operationOutput.stdout ||
+                  `Git exited with ${props.operationOutput.exitCode}`
+                ).trim()}
+              </pre>
+              <p>
+                Refresh the repository after fixing the nested repository or
+                remote, then retry the update.
+              </p>
+            </details>
+          ) : null}
+          {props.errorCode === 'authentication-required' ? (
+            <p role="alert">
+              Check the macOS Keychain or SSH key used by Git. Desktop Plus
+              never stores remote credentials in browser storage.
+            </p>
+          ) : null}
+          {props.errorCode === 'credential-helper-failed' ? (
+            <p role="alert">
+              Git could not obtain credentials from its configured helper. Check
+              the helper configuration and macOS Keychain access, then retry.
+            </p>
+          ) : null}
+          {props.errorCode === 'ssh-host-key' ? (
+            <p role="alert">
+              Confirm the remote host identity before changing{' '}
+              <code>~/.ssh/known_hosts</code>. Retry only after the host key is
+              trusted.
+            </p>
+          ) : null}
+          {props.errorCode === 'certificate-error' ? (
+            <p role="alert">
+              Check the remote certificate, proxy, and Git TLS configuration. Do
+              not bypass certificate verification unless the endpoint is
+              trusted.
+            </p>
+          ) : null}
+          {props.errorCode === 'network-unavailable' ? (
+            <p role="alert">
+              Check the network connection, proxy, and remote URL, then retry.
+            </p>
+          ) : null}
+          {output ? (
+            <details open={true}>
+              <summary>Git remote output</summary>
+              <pre className="web-error-output">
+                {output || `Git exited with ${props.operationOutput?.exitCode}`}
+              </pre>
+            </details>
+          ) : null}
+          {props.errorCode === 'missing-git' ? (
+            <p role="alert">
+              Git is unavailable on this Mac. Install Apple Command Line Tools
+              and restart Desktop Plus before retrying.
+            </p>
+          ) : null}
+          {props.errorCode === 'git-config-locked' && props.configLockScope ? (
+            <p role="alert">
+              Desktop Plus removes only a stale lock older than five minutes.
+              Make sure no Git editor or other Git process is using the{' '}
+              {props.configLockScope} config before continuing.
+            </p>
+          ) : null}
+        </DialogContent>
+        <DialogFooter>
+          {props.errorCode === 'missing-git' ? (
+            <Button
+              onClick={() =>
+                props.dispatcher.openExternal(
+                  'https://developer.apple.com/library/archive/technotes/tn2339/_index.html'
+                )
+              }
+              type="button"
+            >
+              Open Git installation guide
+            </Button>
+          ) : null}
+          {props.canRetry ? (
+            <Button
+              onClick={() => void props.dispatcher.retryLastAction()}
+              type="button"
+            >
+              Retry
+            </Button>
+          ) : null}
+          {props.errorCode === 'submodule-update-failed' &&
+          props.onRefreshRepository ? (
+            <Button onClick={props.onRefreshRepository} type="button">
+              Refresh repository
+            </Button>
+          ) : null}
+          {props.errorCode === 'git-config-locked' && props.configLockScope ? (
+            <Button
+              className="destructive"
+              onClick={() =>
+                void props.dispatcher.recoverGitConfigLock(
+                  props.configLockScope!
+                )
+              }
+              type="button"
+            >
+              Recover stale config lock
+            </Button>
+          ) : null}
+          {props.errorCode === 'trash-failed' &&
+          props.onChoosePermanentDelete ? (
+            <Button
+              className="destructive"
+              onClick={props.onChoosePermanentDelete}
+              type="button"
+            >
+              Delete permanently
+            </Button>
+          ) : null}
+          <Button onClick={() => props.dispatcher.dismissError()} type="button">
+            Close
+          </Button>
+        </DialogFooter>
+      </Dialog>
+    </DialogStackContext.Provider>
+  )
+}
+
+function WebOperationTaskStatus(props: {
   readonly task: WebOperationTask | null
-  readonly dispatcher: WebDispatcher
+  readonly onCancel: () => void
 }) {
-  const task = props.task
-  const prompt = task?.authPrompt
-  if (!prompt || !task) return null
-  const respond = (response: string, remember = false) =>
-    void props.dispatcher.respondOperationAuth(task.id, response, remember)
-
+  if (!props.task) return null
+  const output = sanitizedOperationOutput(
+    props.task.result
+      ? {
+          stdout: props.task.result.stdout,
+          stderr: props.task.result.stderr,
+          exitCode: props.task.result.exitCode,
+        }
+      : props.task.output
+      ? { stdout: props.task.output, stderr: '', exitCode: 0 }
+      : null
+  )
+  const running = props.task.status === 'running'
+  const cancelling = props.task.phase === 'Cancelling'
+  const operationTitle = props.task.operation
+    .replaceAll('-', ' ')
+    .replace(/\b\w/g, character => character.toUpperCase())
+  const commitProgress =
+    props.task.position !== null && props.task.totalCommitCount !== null
+      ? `${operationTitle} progress: ${props.task.position} of ${props.task.totalCommitCount}`
+      : null
   return (
-    <DialogStackContext.Provider value={{ isTopMost: true }}>
-      {prompt.type === 'host' ? (
-        <AddSSHHost
-          fingerprint={prompt.fingerprint}
-          host={prompt.host}
-          ip={prompt.ip}
-          keyType={prompt.keyType}
-          onDismissed={() => undefined}
-          onSubmit={addHost => respond(addHost ? 'yes' : 'no')}
+    <section
+      aria-label="Git operation progress"
+      aria-live="polite"
+      aria-busy={running}
+      className="web-operation-task"
+    >
+      <div className="web-operation-task-heading">
+        <strong>
+          {operationTitle} {props.task.phase.toLowerCase()}
+        </strong>
+        {props.task.progress !== null ? (
+          <span>{props.task.progress}%</span>
+        ) : null}
+      </div>
+      {commitProgress ? (
+        <p className="web-operation-progress" role="status">
+          {commitProgress}
+          {props.task.currentCommitSummary
+            ? ` (${props.task.currentCommitSummary})`
+            : props.task.currentCommit
+            ? ` (${props.task.currentCommit.slice(0, 8)})`
+            : ''}
+        </p>
+      ) : null}
+      {props.task.progress !== null ? (
+        <progress
+          max={100}
+          value={props.task.progress}
+          aria-label={`${props.task.operation} progress`}
         />
-      ) : prompt.type === 'passphrase' ? (
-        <SSHKeyPassphrase
-          keyPath={prompt.keyPath}
-          onDismissed={() => undefined}
-          onSubmit={(passphrase, remember) =>
-            respond(passphrase || '', remember)
-          }
-        />
-      ) : (
-        <SSHUserPassword
-          onDismissed={() => undefined}
-          onSubmit={(password, remember) => respond(password || '', remember)}
-          username={prompt.username}
-        />
-      )}
-    </DialogStackContext.Provider>
-  )
-}
-
-function DesktopRepositorySettingsDialog(props: {
-  readonly repository: WebApplicationState['repositories'][number]
-  readonly branches: WebBranches | null
-  readonly dispatcher: WebDispatcher
-  readonly onDismissed: () => void
-  readonly onManageRemotes: () => void
-}) {
-  const repository = React.useMemo(() => {
-    const value = getDesktopRepository(props.repository.path)
-    Object.assign(value, {
-      _url: props.repository.remoteURL || null,
-      workflowPreferences: {
-        updateBranchStrategy: getStoredUpdateBranchStrategy(
-          props.repository.path
-        ),
-      },
-    })
-    return value
-  }, [props.repository.path, props.repository.remoteURL])
-  const remote = React.useMemo<IRemote | null>(() => {
-    const origin =
-      props.branches?.remotes?.find(remote => remote.name === 'origin') ||
-      props.branches?.remotes?.[0]
-    return origin ? { name: origin.name, url: origin.url } : null
-  }, [props.branches?.remotes])
-  const desktopDispatcher = React.useMemo(
-    () =>
-      ({
-        openInBrowser: (url: string) => props.dispatcher.openExternal(url),
-        setRemoteURL: (_repository: Repository, name: string, url: string) =>
-          props.dispatcher.runOperationOrThrow('remote-set-url', {
-            values: [name, url],
-          }),
-        updateRepositoryDefaultBranch: (
-          _repository: Repository,
-          branch: string
-        ) => props.dispatcher.setRepositoryDefaultBranch(branch),
-        saveGitIgnore: (_repository: Repository, text: string) =>
-          props.dispatcher.saveGitIgnore(text),
-        updateRepositoryAccount: () => Promise.resolve(),
-        updateRepositoryWorkflowPreferences: (
-          _repository: Repository,
-          preferences: { readonly updateBranchStrategy?: string }
-        ) => {
-          setStoredUpdateBranchStrategy(
-            props.repository.path,
-            preferences.updateBranchStrategy || 'merge'
-          )
-          return Promise.resolve()
-        },
-        refreshAuthor: () => props.dispatcher.loadGitIdentity(),
-        updateRepositoryEditorOverride: () => Promise.resolve(),
-        showPopup: (popup: { readonly type: PopupType }) => {
-          if (popup.type === PopupType.ManageRemotes) props.onManageRemotes()
-          return Promise.resolve()
-        },
-      } as unknown as Dispatcher),
-    [props.dispatcher, props.onManageRemotes]
-  )
-
-  return (
-    <DialogStackContext.Provider value={{ isTopMost: true }}>
-      <RepositorySettings
-        initialSelectedTab={RepositorySettingsTab.Remote}
-        remote={remote}
-        dispatcher={desktopDispatcher}
-        repository={repository}
-        repositoryAccount={null}
-        accounts={[]}
-        onDismissed={props.onDismissed}
-      />
-    </DialogStackContext.Provider>
-  )
-}
-
-function DesktopAppError(props: {
-  readonly state: WebApplicationState
-  readonly dispatcher: WebDispatcher
-}) {
-  const hookFailure = props.state.hookFailure
-  const error = React.useMemo(
-    () => (props.state.error ? new Error(props.state.error) : null),
-    [props.state.error]
-  )
-  if (!error) return null
-
-  const remoteURL =
-    props.state.repositories.find(
-      repository => repository.path === props.state.selectedRepositoryPath
-    )?.remoteURL ||
-    props.state.branches?.remotes?.find(remote => remote.name === 'origin')
-      ?.url ||
-    null
-  const needsWebCredentials =
-    (props.state.errorCode === 'authentication-required' ||
-      props.state.errorCode === 'credential-helper-failed') &&
-    Boolean(remoteURL && /^https?:\/\//i.test(remoteURL))
-
-  return (
-    <DialogStackContext.Provider value={{ isTopMost: true }}>
-      {needsWebCredentials && remoteURL ? (
-        <GenericGitAuthentication
-          remoteUrl={remoteURL}
-          onDismiss={() => props.dispatcher.dismissError()}
-          onSave={(username, password) =>
-            void props.dispatcher.retryLastActionWithCredentials(
-              username,
-              password
-            )
-          }
-        />
-      ) : hookFailure ? (
-        <HookFailed
-          hookName={hookFailure.hookName}
-          onDismissed={() => props.dispatcher.dismissError()}
-          resolve={result => {
-            if (result === 'ignore') void props.dispatcher.retryLastAction()
-          }}
-          terminalOutput={hookFailure.terminalOutput}
-        />
-      ) : (
-        <AppError
-          error={error}
-          onDismissed={() => props.dispatcher.dismissError()}
-          onRetryAction={() => void props.dispatcher.retryLastAction()}
-          onShowPopup={() => undefined}
-        />
-      )}
-    </DialogStackContext.Provider>
-  )
-}
-
-function DesktopCommitProgressDialog(props: {
-  readonly output: string
-  readonly onDismissed: () => void
-}) {
-  const output = React.useRef(props.output)
-  const listeners = React.useRef(
-    new Set<Parameters<TerminalOutputListener>[0]>()
-  )
-
-  React.useEffect(() => {
-    const previous = output.current
-    output.current = props.output
-    const chunk = props.output.startsWith(previous)
-      ? props.output.slice(previous.length)
-      : props.output
-    if (!chunk) return
-    for (const listener of listeners.current) listener(chunk)
-  }, [props.output])
-
-  const subscribeToCommitOutput = React.useCallback<TerminalOutputListener>(
-    listener => {
-      if (output.current) listener(output.current)
-      listeners.current.add(listener)
-      return { unsubscribe: () => listeners.current.delete(listener) }
-    },
-    []
-  )
-
-  return (
-    <DialogStackContext.Provider value={{ isTopMost: true }}>
-      <CommitProgress
-        onDismissed={props.onDismissed}
-        subscribeToCommitOutput={subscribeToCommitOutput}
-      />
-    </DialogStackContext.Provider>
+      ) : null}
+      <p>
+        {running
+          ? 'Git is working in the companion.'
+          : props.task.status === 'failed'
+          ? `${operationTitle} stopped. Resolve any conflicts in Changes, then continue or abort the operation.`
+          : props.task.phase}
+      </p>
+      {output ? (
+        <details>
+          <summary>Git operation output</summary>
+          <pre className="web-error-output">{output}</pre>
+        </details>
+      ) : null}
+      {running ? (
+        <Button
+          className="destructive"
+          disabled={cancelling}
+          onClick={props.onCancel}
+        >
+          {cancelling ? 'Cancelling…' : 'Cancel Git operation'}
+        </Button>
+      ) : null}
+    </section>
   )
 }
 
 function DesktopAppChrome(props: {
   readonly children: React.ReactNode
+  readonly className?: string
   readonly theme: ApplicationTheme
   readonly tabSize: number
   readonly diffFontSize: number
   readonly diffFontFamily: DiffFontFamily
+  readonly zoomFactor?: number
+  readonly menu?: WebApplicationMenuProps
 }) {
   return (
-    <FocusedAppChrome
-      diffFontFamily={props.diffFontFamily}
-      diffFontSize={props.diffFontSize}
-      tabSize={props.tabSize}
-      theme={props.theme}
+    <div
+      className={props.className ? `focused ${props.className}` : 'focused'}
+      id="desktop-app-chrome"
+      style={
+        {
+          tabSize: props.tabSize,
+          '--diff-font-size': `${props.diffFontSize}px`,
+          '--diff-font-family': getDiffFontFamilyCssValue(props.diffFontFamily),
+          '--diff-line-height': `${getDiffLineHeight(props.diffFontSize)}px`,
+          zoom: props.zoomFactor || 1,
+        } as React.CSSProperties
+      }
     >
-      <AppContents>{props.children}</AppContents>
-    </FocusedAppChrome>
+      <AppTheme theme={props.theme} />
+      <div id="desktop-app-contents">
+        {props.menu ? <WebApplicationMenu {...props.menu} /> : null}
+        {props.children}
+      </div>
+    </div>
   )
 }
 
-function DesktopAddExistingRepositoryDialog(props: {
-  readonly dispatcher: WebDispatcher
-  readonly onDismiss: () => void
-  readonly onCreateRepository: (path: string) => void
-}) {
-  const desktopDispatcher = React.useMemo(
-    () =>
-      ({
-        addRepositories: async (paths: ReadonlyArray<string>) => {
-          const repositories: Repository[] = []
-          for (const path of paths) {
-            const inspection = await props.dispatcher.inspectRepository(path)
-            await props.dispatcher.addRepository(path)
-            repositories.push(
-              getDesktopRepository(
-                inspection.kind === 'regular' ? inspection.repositoryPath : path
-              )
-            )
-          }
-          return repositories
+type WebApplicationMenuProps = {
+  readonly onOpenRepositoryDialog: () => void
+  readonly onOpenCloneDialog: () => void
+  readonly onOpenInitDialog: () => void
+  readonly onOpenPreferences: () => void
+  readonly zoomFactor?: number
+  readonly onZoomIn?: () => void
+  readonly onZoomOut?: () => void
+  readonly onResetZoom?: () => void
+  readonly onSelectSection?: (
+    section: 'changes' | 'history' | 'compare' | 'repository-tools'
+  ) => void
+  readonly onRefresh?: () => void
+  readonly onCommit?: () => void
+  readonly showChangesFilter?: boolean
+  readonly onToggleChangesFilter?: () => void
+  readonly showStashedChanges?: boolean
+  readonly onToggleStashedChanges?: () => void
+  readonly onEdit?: (
+    action: 'undo' | 'redo' | 'cut' | 'copy' | 'paste' | 'select-all' | 'find'
+  ) => void
+  readonly onRequestAction?: (action: WebMenuAction) => void
+  readonly onOpenRepositoryList?: () => void
+  readonly onOpenBranchList?: () => void
+  readonly onOpenWorktreesList?: () => void
+  readonly onToggleFullscreen?: () => void
+  readonly onResize?: (direction: 'increase' | 'decrease') => void
+  readonly onRemoveRepository?: () => void
+  readonly onOpenShell?: () => void
+  readonly onOpenEditor?: () => void
+  readonly onRevealRepository?: () => void
+  readonly onOpenRepositorySettings?: () => void
+  readonly onManageRemotes?: () => void
+  readonly onBranchAction?: (
+    action:
+      | 'create'
+      | 'rename'
+      | 'delete'
+      | 'discard'
+      | 'stash'
+      | 'update'
+      | 'merge'
+      | 'squash-merge'
+      | 'rebase'
+  ) => void
+  readonly onOpenExternal?: (url: string) => void
+  readonly onRunOperation?: (
+    operation: WebGitOperation,
+    options?: WebOperationOptions
+  ) => void
+}
+
+type WebMenuAction =
+  | 'repository-list'
+  | 'branch-list'
+  | 'worktrees-list'
+  | 'branch-create'
+  | 'branch-rename'
+  | 'branch-delete'
+  | 'branch-discard'
+  | 'branch-stash'
+  | 'branch-update'
+  | 'branch-merge'
+  | 'branch-squash-merge'
+  | 'branch-rebase'
+
+type WebApplicationMenuGroup = {
+  readonly label: string
+  readonly items: ReadonlyArray<{
+    readonly label: string
+    readonly shortcut?: string
+    readonly onSelect: () => void
+  }>
+}
+
+function WebApplicationMenu(props: WebApplicationMenuProps) {
+  const [openMenu, setOpenMenu] = React.useState<string | null>(null)
+  const menuRef = React.useRef<HTMLElement | null>(null)
+
+  const viewItems: WebApplicationMenuGroup['items'] = [
+    ...(props.onSelectSection
+      ? [
+          {
+            label: 'Changes',
+            shortcut: '⌘1',
+            onSelect: () => props.onSelectSection?.('changes'),
+          },
+          {
+            label: 'History',
+            shortcut: '⌘2',
+            onSelect: () => props.onSelectSection?.('history'),
+          },
+          {
+            label: 'Compare',
+            shortcut: '⌘3',
+            onSelect: () => props.onSelectSection?.('compare'),
+          },
+          {
+            label: 'Repository tools',
+            shortcut: '⌘4',
+            onSelect: () => props.onSelectSection?.('repository-tools'),
+          },
+        ]
+      : []),
+    ...(props.onRequestAction
+      ? [
+          {
+            label: 'Repository list',
+            shortcut: '⌘T',
+            onSelect: () => props.onRequestAction?.('repository-list'),
+          },
+        ]
+      : []),
+    ...(props.onRequestAction
+      ? [
+          {
+            label: 'Branches list',
+            shortcut: '⌘B',
+            onSelect: () => props.onRequestAction?.('branch-list'),
+          },
+        ]
+      : []),
+    ...(props.onRequestAction
+      ? [
+          {
+            label: 'Worktrees list',
+            shortcut: '⌥⌘W',
+            onSelect: () => props.onRequestAction?.('worktrees-list'),
+          },
+        ]
+      : []),
+    ...(props.onRefresh
+      ? [
+          {
+            label: 'Refresh repository',
+            onSelect: props.onRefresh,
+          },
+        ]
+      : []),
+    ...(props.onToggleChangesFilter
+      ? [
+          {
+            label: `${
+              props.showChangesFilter ? 'Hide' : 'Show'
+            } Changes filters`,
+            onSelect: props.onToggleChangesFilter,
+          },
+        ]
+      : []),
+    ...(props.onToggleStashedChanges
+      ? [
+          {
+            label: `${
+              props.showStashedChanges ? 'Hide' : 'Show'
+            } stashed changes`,
+            onSelect: props.onToggleStashedChanges,
+          },
+        ]
+      : []),
+    ...(props.onZoomIn && props.onZoomOut && props.onResetZoom
+      ? [
+          {
+            label: 'Zoom in',
+            shortcut: '⌘+',
+            onSelect: props.onZoomIn,
+          },
+          {
+            label: 'Zoom out',
+            shortcut: '⌘-',
+            onSelect: props.onZoomOut,
+          },
+          {
+            label: `Reset zoom${
+              props.zoomFactor
+                ? ` (${Math.round(props.zoomFactor * 100)}%)`
+                : ''
+            }`,
+            shortcut: '⌘0',
+            onSelect: props.onResetZoom,
+          },
+        ]
+      : []),
+    ...(props.onToggleFullscreen
+      ? [
+          {
+            label: 'Toggle full screen',
+            onSelect: props.onToggleFullscreen,
+          },
+        ]
+      : []),
+    ...(props.onResize
+      ? [
+          {
+            label: 'Expand active resizable',
+            shortcut: '⌘9',
+            onSelect: () => props.onResize?.('increase'),
+          },
+          {
+            label: 'Contract active resizable',
+            shortcut: '⌘8',
+            onSelect: () => props.onResize?.('decrease'),
+          },
+        ]
+      : []),
+    {
+      label: 'Preferences',
+      shortcut: '⌘,',
+      onSelect: props.onOpenPreferences,
+    },
+  ]
+
+  const groups: ReadonlyArray<WebApplicationMenuGroup> = [
+    {
+      label: 'File',
+      items: [
+        {
+          label: 'New repository',
+          shortcut: '⌘N',
+          onSelect: props.onOpenInitDialog,
         },
-        closeFoldout: () => Promise.resolve(),
-        recordAddExistingRepository: () => undefined,
-        selectRepository: (repository: Repository) =>
-          props.dispatcher.selectRepository(repository.path),
-        showPopup: (popup: { readonly type: PopupType; path?: string }) => {
-          if (popup.type === PopupType.CreateRepository && popup.path)
-            props.onCreateRepository(popup.path)
-          return Promise.resolve()
+        {
+          label: 'Add local repository',
+          shortcut: '⌘O',
+          onSelect: props.onOpenRepositoryDialog,
         },
-      } as unknown as Dispatcher),
-    [props]
+        {
+          label: 'Clone repository',
+          shortcut: '⇧⌘O',
+          onSelect: props.onOpenCloneDialog,
+        },
+      ],
+    },
+    ...(props.onEdit
+      ? [
+          {
+            label: 'Edit',
+            items: [
+              {
+                label: 'Undo',
+                shortcut: '⌘Z',
+                onSelect: () => props.onEdit?.('undo'),
+              },
+              {
+                label: 'Redo',
+                shortcut: '⇧⌘Z',
+                onSelect: () => props.onEdit?.('redo'),
+              },
+              {
+                label: 'Cut',
+                shortcut: '⌘X',
+                onSelect: () => props.onEdit?.('cut'),
+              },
+              {
+                label: 'Copy',
+                shortcut: '⌘C',
+                onSelect: () => props.onEdit?.('copy'),
+              },
+              {
+                label: 'Paste',
+                shortcut: '⌘V',
+                onSelect: () => props.onEdit?.('paste'),
+              },
+              {
+                label: 'Select all',
+                shortcut: '⌘A',
+                onSelect: () => props.onEdit?.('select-all'),
+              },
+              {
+                label: 'Find',
+                shortcut: '⌘F',
+                onSelect: () => props.onEdit?.('find'),
+              },
+            ],
+          },
+        ]
+      : []),
+    {
+      label: 'View',
+      items: viewItems,
+    },
+    ...(props.onCommit
+      ? [
+          {
+            label: 'Repository',
+            items: [
+              {
+                label: 'Commit included changes',
+                onSelect: props.onCommit,
+              },
+              ...(props.onRunOperation
+                ? [
+                    {
+                      label: 'Fetch',
+                      onSelect: () => props.onRunOperation?.('fetch'),
+                    },
+                    {
+                      label: 'Pull',
+                      onSelect: () => props.onRunOperation?.('pull'),
+                    },
+                    {
+                      label: 'Push',
+                      onSelect: () => props.onRunOperation?.('push'),
+                    },
+                  ]
+                : []),
+              ...(props.onRemoveRepository
+                ? [
+                    {
+                      label: 'Remove repository',
+                      onSelect: props.onRemoveRepository,
+                    },
+                  ]
+                : []),
+              ...(props.onOpenShell
+                ? [{ label: 'Open in shell', onSelect: props.onOpenShell }]
+                : []),
+              ...(props.onOpenEditor
+                ? [{ label: 'Open in editor', onSelect: props.onOpenEditor }]
+                : []),
+              ...(props.onRevealRepository
+                ? [
+                    {
+                      label: 'Show in Finder',
+                      onSelect: props.onRevealRepository,
+                    },
+                  ]
+                : []),
+              ...(props.onOpenRepositorySettings
+                ? [
+                    {
+                      label: 'Repository settings',
+                      onSelect: props.onOpenRepositorySettings,
+                    },
+                  ]
+                : []),
+              ...(props.onManageRemotes
+                ? [{ label: 'Manage remotes', onSelect: props.onManageRemotes }]
+                : []),
+            ],
+          },
+        ]
+      : []),
+    ...(props.onRequestAction
+      ? [
+          {
+            label: 'Branch',
+            items: [
+              {
+                label: 'New branch',
+                shortcut: '⇧⌘N',
+                onSelect: () => props.onRequestAction?.('branch-create'),
+              },
+              {
+                label: 'Rename current branch',
+                shortcut: '⇧⌘R',
+                onSelect: () => props.onRequestAction?.('branch-rename'),
+              },
+              {
+                label: 'Delete current branch',
+                shortcut: '⇧⌘D',
+                onSelect: () => props.onRequestAction?.('branch-delete'),
+              },
+              {
+                label: 'Discard all changes',
+                onSelect: () => props.onRequestAction?.('branch-discard'),
+              },
+              {
+                label: 'Stash all changes',
+                shortcut: '⇧⌘S',
+                onSelect: () => props.onRequestAction?.('branch-stash'),
+              },
+              {
+                label: 'Update from default branch',
+                shortcut: '⇧⌘U',
+                onSelect: () => props.onRequestAction?.('branch-update'),
+              },
+              {
+                label: 'Merge into current branch',
+                shortcut: '⇧⌘M',
+                onSelect: () => props.onRequestAction?.('branch-merge'),
+              },
+              {
+                label: 'Squash merge into current branch',
+                shortcut: '⇧⌘H',
+                onSelect: () => props.onRequestAction?.('branch-squash-merge'),
+              },
+              {
+                label: 'Rebase current branch',
+                shortcut: '⇧⌘E',
+                onSelect: () => props.onRequestAction?.('branch-rebase'),
+              },
+            ],
+          },
+        ]
+      : []),
+    ...(props.onOpenExternal
+      ? [
+          {
+            label: 'Help',
+            items: [
+              {
+                label: 'User guides',
+                onSelect: () =>
+                  props.onOpenExternal?.('https://docs.github.com/en/desktop'),
+              },
+              {
+                label: 'Keyboard shortcuts',
+                onSelect: () =>
+                  props.onOpenExternal?.(
+                    'https://docs.github.com/en/desktop/installing-and-configuring-github-desktop/overview/keyboard-shortcuts'
+                  ),
+              },
+              {
+                label: 'Report issue',
+                onSelect: () =>
+                  props.onOpenExternal?.(
+                    'https://github.com/desktop-plus/desktop-plus/issues/new/choose'
+                  ),
+              },
+            ],
+          },
+        ]
+      : []),
+  ]
+
+  React.useEffect(() => {
+    const onDocumentPointerDown = (event: PointerEvent) => {
+      if (
+        openMenu &&
+        menuRef.current &&
+        event.target instanceof Node &&
+        !menuRef.current.contains(event.target)
+      )
+        setOpenMenu(null)
+    }
+    const onDocumentKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setOpenMenu(null)
+        return
+      }
+      if (event.defaultPrevented || (!event.metaKey && !event.ctrlKey)) return
+      const target = event.target
+      if (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement ||
+        (target instanceof HTMLElement && target.isContentEditable)
+      )
+        return
+
+      const key = event.key.toLowerCase()
+      const action =
+        key === 'n'
+          ? props.onOpenInitDialog
+          : key === 'o' && event.shiftKey
+          ? props.onOpenCloneDialog
+          : key === 'o'
+          ? props.onOpenRepositoryDialog
+          : key === '1' && props.onSelectSection
+          ? () => props.onSelectSection?.('changes')
+          : key === '2' && props.onSelectSection
+          ? () => props.onSelectSection?.('history')
+          : key === '3' && props.onSelectSection
+          ? () => props.onSelectSection?.('compare')
+          : key === '4' && props.onSelectSection
+          ? () => props.onSelectSection?.('repository-tools')
+          : key === ','
+          ? props.onOpenPreferences
+          : (key === '=' || key === '+') && props.onZoomIn
+          ? props.onZoomIn
+          : key === '-' && props.onZoomOut
+          ? props.onZoomOut
+          : key === '0' && props.onResetZoom
+          ? props.onResetZoom
+          : key === 'z' && props.onEdit
+          ? () => props.onEdit?.(event.shiftKey ? 'redo' : 'undo')
+          : key === 'x' && props.onEdit
+          ? () => props.onEdit?.('cut')
+          : key === 'c' && props.onEdit
+          ? () => props.onEdit?.('copy')
+          : key === 'v' && props.onEdit
+          ? () => props.onEdit?.('paste')
+          : key === 'a' && props.onEdit
+          ? () => props.onEdit?.('select-all')
+          : key === 'f' && props.onEdit
+          ? () => props.onEdit?.('find')
+          : key === 't' && props.onRequestAction
+          ? () => props.onRequestAction?.('repository-list')
+          : key === 'b' && props.onRequestAction
+          ? () => props.onRequestAction?.('branch-list')
+          : key === '9' && props.onResize
+          ? () => props.onResize?.('increase')
+          : key === '8' && props.onResize
+          ? () => props.onResize?.('decrease')
+          : null
+      if (!action) return
+      event.preventDefault()
+      setOpenMenu(null)
+      action()
+    }
+    document.addEventListener('pointerdown', onDocumentPointerDown)
+    document.addEventListener('keydown', onDocumentKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', onDocumentPointerDown)
+      document.removeEventListener('keydown', onDocumentKeyDown)
+    }
+  }, [openMenu, props])
+
+  return (
+    <nav
+      aria-label="Application menu"
+      className="web-application-menu"
+      ref={menuRef}
+    >
+      {groups.map(group => {
+        if (group.items.length === 0) return null
+        const isOpen = openMenu === group.label
+        return (
+          <div className="web-application-menu-group" key={group.label}>
+            <Button
+              ariaExpanded={isOpen}
+              ariaHaspopup="menu"
+              className="web-application-menu-button"
+              onClick={() => setOpenMenu(isOpen ? null : group.label)}
+            >
+              {group.label}
+            </Button>
+            {isOpen ? (
+              <div className="web-application-menu-popup" role="menu">
+                {group.items.map(item => (
+                  <Button
+                    className="web-application-menu-item"
+                    key={item.label}
+                    onClick={() => {
+                      setOpenMenu(null)
+                      item.onSelect()
+                    }}
+                    role="menuitem"
+                  >
+                    <span>{item.label}</span>
+                    {item.shortcut ? <kbd>{item.shortcut}</kbd> : null}
+                  </Button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        )
+      })}
+    </nav>
   )
+}
+
+function RepositoryPathDialog(props: {
+  readonly open: boolean
+  readonly onDismiss: () => void
+  readonly onSubmit: (path: string) => Promise<void>
+  readonly onChooseDirectory?: () => Promise<string | null>
+  readonly onInspect: (path: string) => Promise<WebRepositoryInspection>
+  readonly onTrust: (path: string) => Promise<void>
+  readonly onCreateRepository?: (path: string) => void
+  readonly description?: string
+  readonly submitLabel?: string
+  readonly title?: string
+}) {
+  const [path, setPath] = React.useState('')
+  const [submitting, setSubmitting] = React.useState(false)
+  const [inspection, setInspection] =
+    React.useState<WebRepositoryInspection | null>(null)
+  const [inspecting, setInspecting] = React.useState(false)
+  const inspectionGeneration = React.useRef(0)
+  const pendingInspection =
+    React.useRef<Promise<WebRepositoryInspection | null> | null>(null)
+
+  React.useEffect(() => {
+    if (props.open) {
+      setPath('')
+      setSubmitting(false)
+      setInspection(null)
+      setInspecting(false)
+    }
+  }, [props.open])
+
+  if (!props.open) return null
+
+  const inspectPath = (value: string) => {
+    const nextPath = value.trim()
+    const generation = ++inspectionGeneration.current
+    if (!nextPath) {
+      setInspection(null)
+      setInspecting(false)
+      pendingInspection.current = Promise.resolve(null)
+      return pendingInspection.current
+    }
+    setInspecting(true)
+    const request = props
+      .onInspect(nextPath)
+      .then(nextInspection => {
+        if (generation === inspectionGeneration.current)
+          setInspection(nextInspection)
+        return nextInspection
+      })
+      .catch(() => {
+        if (generation === inspectionGeneration.current) setInspection(null)
+        return null
+      })
+      .finally(() => {
+        if (generation === inspectionGeneration.current) setInspecting(false)
+      })
+    pendingInspection.current = request
+    return request
+  }
+
+  const submit = async () => {
+    if (!path.trim() || submitting) return
+    setSubmitting(true)
+    try {
+      const nextInspection =
+        inspection ||
+        (pendingInspection.current
+          ? await pendingInspection.current
+          : await inspectPath(path))
+      if (nextInspection?.kind !== 'regular') return
+      await props.onSubmit(path.trim())
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const canInitialize =
+    inspection?.kind === 'missing' &&
+    inspection.exists &&
+    inspection.isDirectory
 
   return (
     <DialogStackContext.Provider value={{ isTopMost: true }}>
-      <AddExistingRepository
-        dispatcher={desktopDispatcher}
+      <Dialog
+        ariaDescribedBy="repository-path-description"
+        disabled={submitting}
+        loading={submitting}
         onDismissed={props.onDismiss}
-      />
+        onSubmit={() => void submit()}
+        title={props.title || 'Add repository'}
+      >
+        <DialogContent>
+          <p id="repository-path-description">
+            {props.description ||
+              'Enter the absolute path to a local Git repository.'}
+          </p>
+          <label htmlFor="repository-path">Local path</label>
+          <div className="web-path-picker">
+            <input
+              autoFocus={true}
+              id="repository-path"
+              onChange={event => {
+                const value = event.target.value
+                setPath(value)
+                setInspection(null)
+                void inspectPath(value)
+              }}
+              type="text"
+              value={path}
+            />
+            {props.onChooseDirectory ? (
+              <Button
+                onClick={async () => {
+                  const selectedPath = await props.onChooseDirectory?.()
+                  if (!selectedPath) return
+                  setPath(selectedPath)
+                  setInspection(null)
+                  void inspectPath(selectedPath)
+                }}
+                type="button"
+              >
+                Choose folder
+              </Button>
+            ) : null}
+          </div>
+          {inspecting ? <p role="status">Checking repository…</p> : null}
+          {!inspecting && inspection?.kind === 'regular' ? (
+            <p role="status">Git repository found.</p>
+          ) : null}
+          {!inspecting && inspection?.kind === 'bare' ? (
+            <p role="alert">
+              This directory is a bare Git repository. Bare repositories are not
+              currently supported.
+            </p>
+          ) : null}
+          {!inspecting && inspection?.kind === 'unsafe' ? (
+            <>
+              <p role="alert">
+                This Git repository appears to be owned by another user on your
+                machine. Adding untrusted repositories may automatically execute
+                files in the repository.
+              </p>
+              <Button
+                disabled={submitting}
+                onClick={async () => {
+                  setSubmitting(true)
+                  try {
+                    await props.onTrust(path.trim())
+                    await inspectPath(path)
+                  } finally {
+                    setSubmitting(false)
+                  }
+                }}
+                type="button"
+              >
+                Trust repository
+              </Button>
+            </>
+          ) : null}
+          {!inspecting && canInitialize ? (
+            <p role="alert">
+              This directory does not appear to be a Git repository.{' '}
+              {props.onCreateRepository ? (
+                <Button
+                  onClick={() => props.onCreateRepository?.(inspection.path)}
+                  type="button"
+                >
+                  Create repository here
+                </Button>
+              ) : null}
+            </p>
+          ) : null}
+          {!inspecting && inspection?.kind === 'missing' && !canInitialize ? (
+            <p role="alert">
+              The selected path does not contain a Git repository.
+            </p>
+          ) : null}
+        </DialogContent>
+        <DialogFooter>
+          <Button onClick={props.onDismiss} type="button">
+            Cancel
+          </Button>
+          <Button
+            disabled={
+              !path.trim() ||
+              submitting ||
+              (inspection !== null && inspection.kind !== 'regular')
+            }
+            onClick={() => void submit()}
+            type="submit"
+          >
+            {props.submitLabel || 'Add repository'}
+          </Button>
+        </DialogFooter>
+      </Dialog>
     </DialogStackContext.Provider>
   )
 }
 
-function DesktopRelocateRepositoryDialog(props: {
-  readonly oldPath: string
+function RepositorySetupDialog(props: {
+  readonly mode: 'clone' | 'init'
+  readonly open: boolean
+  readonly initialURL?: string
+  readonly initialRepositoryPath?: string
+  readonly setupOptions: WebApplicationState['repositorySetupOptions']
   readonly dispatcher: WebDispatcher
+  readonly onChooseDirectory?: () => Promise<string | null>
   readonly onDismiss: () => void
+  readonly onClone: (
+    url: string,
+    path: string,
+    branch?: string
+  ) => Promise<void>
+  readonly onInit: (
+    options: WebRepositoryInitializationOptions
+  ) => Promise<void>
 }) {
-  const desktopDispatcher = React.useMemo(
-    () =>
-      ({
-        addRepositories: async (paths: ReadonlyArray<string>) => {
-          const path = paths[0]
-          if (!path) return []
-          await props.dispatcher.relocateRepository(props.oldPath, path)
-          return [getDesktopRepository(path)]
-        },
-        closeFoldout: () => Promise.resolve(),
-        recordAddExistingRepository: () => undefined,
-        selectRepository: (repository: Repository) =>
-          props.dispatcher.selectRepository(repository.path),
-        showPopup: () => Promise.resolve(),
-      } as unknown as Dispatcher),
-    [props.dispatcher, props.oldPath]
+  const [url, setURL] = React.useState(props.initialURL || '')
+  const [path, setPath] = React.useState('')
+  const [name, setName] = React.useState('')
+  const [description, setDescription] = React.useState('')
+  const [branch, setBranch] = React.useState('')
+  const [createReadme, setCreateReadme] = React.useState(false)
+  const [gitignore, setGitignore] = React.useState<string | null>(null)
+  const [license, setLicense] = React.useState<string | null>(null)
+  const [initialCommit, setInitialCommit] = React.useState(true)
+  const [preview, setPreview] =
+    React.useState<WebRepositorySetupPreview | null>(null)
+  const [clonePreview, setClonePreview] =
+    React.useState<WebCloneSetupPreview | null>(null)
+  const [submitting, setSubmitting] = React.useState(false)
+  const previewRequest = React.useRef(0)
+  const previewTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+  const nameRef = React.useRef(name)
+  const pathRef = React.useRef(path)
+  const createReadmeRef = React.useRef(createReadme)
+
+  React.useEffect(() => {
+    if (props.open) {
+      setURL(props.initialURL || '')
+      const initialPath = isClone
+        ? ''
+        : props.initialRepositoryPath
+        ? pathParent(props.initialRepositoryPath)
+        : localStorage.getItem(webRepositoryParentPathStorageKey) || ''
+      const initialName =
+        !isClone && props.initialRepositoryPath
+          ? pathName(props.initialRepositoryPath)
+          : ''
+      setPath(initialPath)
+      setName(initialName)
+      pathRef.current = initialPath
+      nameRef.current = initialName
+      setDescription('')
+      setBranch('')
+      setCreateReadme(false)
+      createReadmeRef.current = false
+      setGitignore(null)
+      setLicense(null)
+      setInitialCommit(true)
+      setPreview(null)
+      setClonePreview(null)
+      setSubmitting(false)
+    }
+  }, [props.initialRepositoryPath, props.initialURL, props.open])
+
+  React.useEffect(
+    () => () => {
+      if (previewTimer.current) clearTimeout(previewTimer.current)
+    },
+    []
   )
+
+  if (!props.open) return null
+
+  const isClone = props.mode === 'clone'
+  const parentPath =
+    pathRef.current.trim() || props.setupOptions?.defaultParentPath || ''
+  const refreshPreview = async (
+    nextName = nameRef.current,
+    nextParentPath = parentPath,
+    nextCreateReadme = createReadmeRef.current
+  ) => {
+    const requestId = ++previewRequest.current
+    if (previewTimer.current) clearTimeout(previewTimer.current)
+    if (isClone || !nextName.trim() || !nextParentPath.trim()) {
+      setPreview(null)
+      return
+    }
+    await new Promise<void>(resolve => {
+      previewTimer.current = setTimeout(resolve, 100)
+    })
+    if (requestId !== previewRequest.current) return
+    try {
+      const nextPreview =
+        await props.dispatcher.previewRepositoryInitialization({
+          name: nextName.trim(),
+          parentPath: nextParentPath.trim(),
+          createReadme: nextCreateReadme,
+        })
+      if (requestId === previewRequest.current) setPreview(nextPreview)
+    } catch {
+      if (requestId === previewRequest.current) setPreview(null)
+    }
+  }
+  const refreshClonePreview = async (nextURL = url, nextPath = path) => {
+    const requestId = ++previewRequest.current
+    if (!isClone || !nextURL.trim() || !nextPath.trim()) {
+      setClonePreview(null)
+      return
+    }
+    const nextPreview = await props.dispatcher.previewCloneRepository(
+      nextURL.trim(),
+      nextPath.trim()
+    )
+    if (requestId === previewRequest.current) setClonePreview(nextPreview)
+  }
+  const branchError = branch.trim()
+    ? validateGitRefName(branch, 'Initial branch')
+    : null
+  const submit = async () => {
+    if (
+      submitting ||
+      branchError ||
+      (isClone &&
+        (!url.trim() || !path.trim() || clonePreview?.canClone !== true)) ||
+      (!isClone &&
+        (!name.trim() || !parentPath.trim() || preview?.canCreate === false))
+    )
+      return
+    setSubmitting(true)
+    try {
+      if (isClone)
+        await props.onClone(url.trim(), path.trim(), branch.trim() || undefined)
+      else
+        await props.onInit({
+          name: name.trim(),
+          parentPath: parentPath.trim(),
+          description,
+          initialBranch: branch.trim() || undefined,
+          createReadme,
+          gitignore,
+          license,
+          initialCommit,
+        })
+      if (!isClone)
+        localStorage.setItem(
+          webRepositoryParentPathStorageKey,
+          parentPath.trim()
+        )
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   return (
     <DialogStackContext.Provider value={{ isTopMost: true }}>
-      <AddExistingRepository
-        dispatcher={desktopDispatcher}
+      <Dialog
+        ariaDescribedBy="repository-setup-description-copy"
+        disabled={submitting}
+        loading={submitting}
         onDismissed={props.onDismiss}
-      />
-    </DialogStackContext.Provider>
-  )
-}
-
-function DesktopCloneRepositoryDialog(props: {
-  readonly dispatcher: WebDispatcher
-  readonly initialURL: string
-  readonly onDismiss: () => void
-}) {
-  const [selectedTab, setSelectedTab] = React.useState(
-    CloneRepositoryTab.Generic
-  )
-  const desktopDispatcher = React.useMemo(
-    () =>
-      ({
-        clone: async (
-          url: string,
-          path: string,
-          _login: string | null,
-          options?: { readonly defaultBranch?: string }
-        ) => {
-          await props.dispatcher.cloneRepository(
-            url,
-            path,
-            options?.defaultBranch
-          )
-          return getDesktopRepository(path)
-        },
-        closeFoldout: () => Promise.resolve(),
-      } as unknown as Dispatcher),
-    [props.dispatcher]
-  )
-
-  return (
-    <DialogStackContext.Provider value={{ isTopMost: true }}>
-      <CloneRepository
-        accounts={[]}
-        apiRepositories={new Map()}
-        dispatcher={desktopDispatcher}
-        initialURL={props.initialURL || null}
-        isTopMost={true}
-        onDismissed={props.onDismiss}
-        onRefreshRepositories={() => undefined}
-        onTabSelected={setSelectedTab}
-        selectedTab={selectedTab}
-      />
-    </DialogStackContext.Provider>
-  )
-}
-
-function DesktopCreateRepositoryDialog(props: {
-  readonly dispatcher: WebDispatcher
-  readonly initialPath?: string
-  readonly onDismiss: () => void
-  readonly onAddRepository: (path: string) => void
-}) {
-  const desktopDispatcher = React.useMemo(
-    () =>
-      ({
-        addRepositories: async (paths: ReadonlyArray<string>) => {
-          const repositories: Repository[] = []
-          for (const path of paths) {
-            await props.dispatcher.addRepository(path)
-            repositories.push(getDesktopRepository(path))
-          }
-          return repositories
-        },
-        closeFoldout: () => Promise.resolve(),
-        postError: () => Promise.resolve(),
-        recordCreateRepository: () => undefined,
-        selectRepository: (repository: Repository) =>
-          props.dispatcher.selectRepository(repository.path),
-        showPopup: (popup: { readonly type: PopupType; path?: string }) => {
-          if (popup.type === PopupType.AddRepository && popup.path)
-            props.onAddRepository(popup.path)
-          return Promise.resolve()
-        },
-      } as unknown as Dispatcher),
-    [props]
-  )
-
-  return (
-    <DialogStackContext.Provider value={{ isTopMost: true }}>
-      <CreateRepository
-        dispatcher={desktopDispatcher}
-        initialPath={props.initialPath}
-        isTopMost={true}
-        onDismissed={props.onDismiss}
-      />
+        onSubmit={() => void submit()}
+        title={isClone ? 'Clone repository' : 'Create repository'}
+      >
+        <DialogContent>
+          <p id="repository-setup-description-copy">
+            {isClone
+              ? 'Clone a repository into a new local folder.'
+              : 'Initialize an empty Git repository in a new local folder.'}
+          </p>
+          {isClone ? (
+            <>
+              <label htmlFor="repository-setup-url">Repository URL</label>
+              <input
+                autoFocus={true}
+                id="repository-setup-url"
+                onChange={event => {
+                  setURL(event.target.value)
+                  void refreshClonePreview(event.target.value)
+                }}
+                type="text"
+                value={url}
+              />
+            </>
+          ) : null}
+          {isClone ? (
+            <>
+              <label htmlFor="repository-setup-path">Destination path</label>
+              <div className="web-path-picker">
+                <input
+                  autoFocus={false}
+                  id="repository-setup-path"
+                  onChange={event => {
+                    setPath(event.target.value)
+                    void refreshClonePreview(url, event.target.value)
+                  }}
+                  type="text"
+                  value={path}
+                />
+                {props.onChooseDirectory ? (
+                  <Button
+                    onClick={async () => {
+                      const selectedPath = await props.onChooseDirectory?.()
+                      if (!selectedPath) return
+                      setPath(selectedPath)
+                      void refreshClonePreview(url, selectedPath)
+                    }}
+                    type="button"
+                  >
+                    Choose folder
+                  </Button>
+                ) : null}
+              </div>
+            </>
+          ) : (
+            <>
+              <label htmlFor="repository-setup-name">Repository name</label>
+              <input
+                autoFocus={true}
+                id="repository-setup-name"
+                onBlur={() => void refreshPreview()}
+                onChange={event => {
+                  const value = event.target.value
+                  nameRef.current = value
+                  setName(value)
+                  void refreshPreview(value, parentPath)
+                }}
+                type="text"
+                value={name}
+              />
+              <label htmlFor="repository-setup-parent-path">
+                Parent directory
+              </label>
+              <div className="web-path-picker">
+                <input
+                  id="repository-setup-parent-path"
+                  onBlur={() => void refreshPreview()}
+                  onChange={event => {
+                    const value = event.target.value
+                    pathRef.current = value
+                    setPath(value)
+                    void refreshPreview(nameRef.current, value)
+                  }}
+                  type="text"
+                  value={parentPath}
+                />
+                {props.onChooseDirectory ? (
+                  <Button
+                    onClick={async () => {
+                      const selectedPath = await props.onChooseDirectory?.()
+                      if (!selectedPath) return
+                      pathRef.current = selectedPath
+                      setPath(selectedPath)
+                      void refreshPreview(nameRef.current, selectedPath)
+                    }}
+                    type="button"
+                  >
+                    Choose folder
+                  </Button>
+                ) : null}
+              </div>
+              {preview ? (
+                <div id="repository-setup-preview">
+                  <p>
+                    The repository will be created at{' '}
+                    <strong>{preview.repositoryPath}</strong>.
+                  </p>
+                  {preview.warnings.map(warning => (
+                    <p key={warning.code} role="status">
+                      {warning.message}
+                    </p>
+                  ))}
+                </div>
+              ) : null}
+              <label htmlFor="repository-setup-description-input">
+                Description
+              </label>
+              <textarea
+                id="repository-setup-description-input"
+                onChange={event => setDescription(event.target.value)}
+                value={description}
+              />
+              <label htmlFor="repository-setup-create-readme">
+                <input
+                  checked={createReadme}
+                  id="repository-setup-create-readme"
+                  onChange={event => {
+                    const checked = event.target.checked
+                    createReadmeRef.current = checked
+                    setCreateReadme(checked)
+                    void refreshPreview(nameRef.current, parentPath, checked)
+                  }}
+                  type="checkbox"
+                />
+                Initialize with a README
+              </label>
+              <label htmlFor="repository-setup-gitignore">Git ignore</label>
+              <select
+                id="repository-setup-gitignore"
+                onChange={event => setGitignore(event.target.value || null)}
+                value={gitignore || ''}
+              >
+                <option value="">None</option>
+                {(props.setupOptions?.gitignoreNames || []).map(option => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+              <label htmlFor="repository-setup-license">License</label>
+              <select
+                id="repository-setup-license"
+                onChange={event => setLicense(event.target.value || null)}
+                value={license || ''}
+              >
+                <option value="">None</option>
+                {(props.setupOptions?.licenses || []).map(option => (
+                  <option key={option.name} value={option.name}>
+                    {option.name}
+                  </option>
+                ))}
+              </select>
+              <label htmlFor="repository-setup-initial-commit">
+                <input
+                  checked={initialCommit}
+                  id="repository-setup-initial-commit"
+                  onChange={event => setInitialCommit(event.target.checked)}
+                  type="checkbox"
+                />
+                Create an initial commit
+              </label>
+            </>
+          )}
+          {isClone && clonePreview ? (
+            <div id="repository-clone-preview">
+              <p>
+                Clone <strong>{clonePreview.repositoryName}</strong> into{' '}
+                <strong>{clonePreview.destinationPath || path}</strong>.
+              </p>
+              {clonePreview.warnings.map(warning => (
+                <p key={warning.code} role="alert">
+                  {warning.message}
+                </p>
+              ))}
+            </div>
+          ) : null}
+          <label htmlFor="repository-setup-branch">
+            Initial branch (optional)
+          </label>
+          <input
+            id="repository-setup-branch"
+            onChange={event => setBranch(event.target.value)}
+            type="text"
+            value={branch}
+          />
+          {branchError ? <p role="alert">{branchError}</p> : null}
+        </DialogContent>
+        <DialogFooter>
+          <Button onClick={props.onDismiss}>Cancel</Button>
+          <Button
+            disabled={
+              submitting ||
+              (isClone
+                ? !path.trim() ||
+                  !url.trim() ||
+                  clonePreview?.canClone !== true ||
+                  Boolean(branchError)
+                : !name.trim() ||
+                  !parentPath.trim() ||
+                  preview?.canCreate === false ||
+                  Boolean(branchError))
+            }
+            onClick={() => void submit()}
+            type="submit"
+          >
+            {isClone ? 'Clone repository' : 'Create repository'}
+          </Button>
+        </DialogFooter>
+      </Dialog>
     </DialogStackContext.Provider>
   )
 }
@@ -1905,6 +3411,10 @@ function DesktopHome(props: {
   readonly onOpenRepositoryDialog: () => void
   readonly onOpenCloneDialog: (url?: string) => void
   readonly onOpenInitDialog: () => void
+  readonly onOpenPreferences: () => void
+  readonly onCreateTutorialRepository: () => void
+  readonly onResumeTutorialRepository: () => void
+  readonly tutorialPaused: boolean
   readonly diffPreferences: WebDiffPresentationPreferences
 }) {
   return (
@@ -1913,6 +3423,12 @@ function DesktopHome(props: {
       diffFontSize={props.diffPreferences.diffFontSize}
       tabSize={props.diffPreferences.tabSize}
       theme={props.diffPreferences.theme}
+      menu={{
+        onOpenCloneDialog: () => props.onOpenCloneDialog(),
+        onOpenInitDialog: props.onOpenInitDialog,
+        onOpenPreferences: props.onOpenPreferences,
+        onOpenRepositoryDialog: props.onOpenRepositoryDialog,
+      }}
     >
       <NoRepositoriesView
         accounts={[]}
@@ -1920,52 +3436,232 @@ function DesktopHome(props: {
         onAdd={props.onOpenRepositoryDialog}
         onClone={props.onOpenCloneDialog}
         onCreate={props.onOpenInitDialog}
-        onCreateTutorialRepository={() => undefined}
+        onCreateTutorialRepository={props.onCreateTutorialRepository}
         onRefreshRepositories={() => undefined}
-        onResumeTutorialRepository={() => undefined}
-        tutorialPaused={false}
+        onResumeTutorialRepository={props.onResumeTutorialRepository}
+        tutorialPaused={props.tutorialPaused}
+        allowTutorialWithoutAccount={true}
       />
     </DesktopAppChrome>
   )
 }
 
-function DesktopTutorialPanel(props: {
+function WebTutorialStartDialog(props: {
+  readonly open: boolean
+  readonly defaultParentPath: string
+  readonly loading: boolean
+  readonly onChooseDirectory?: () => Promise<string | null>
+  readonly onDismiss: () => void
+  readonly onSubmit: (parentPath: string) => Promise<void>
+}) {
+  const [parentPath, setParentPath] = React.useState(props.defaultParentPath)
+
+  React.useEffect(() => {
+    if (props.open) setParentPath(props.defaultParentPath)
+  }, [props.defaultParentPath, props.open])
+
+  if (!props.open) return null
+
+  const error = validateAbsolutePath(parentPath, 'Parent directory')
+  return (
+    <DialogStackContext.Provider value={{ isTopMost: true }}>
+      <Dialog
+        ariaDescribedBy="web-tutorial-start-description"
+        disabled={props.loading}
+        loading={props.loading}
+        onDismissed={props.onDismiss}
+        onSubmit={() => {
+          if (!error) void props.onSubmit(parentPath.trim())
+        }}
+        title="Start local Git tutorial"
+      >
+        <DialogContent>
+          <p id="web-tutorial-start-description">
+            Create a disposable local repository for the Desktop Plus Git
+            tutorial.
+          </p>
+          <label htmlFor="web-tutorial-parent-path">Parent directory</label>
+          <div className="web-path-picker">
+            <input
+              autoFocus={true}
+              id="web-tutorial-parent-path"
+              onChange={event => setParentPath(event.target.value)}
+              type="text"
+              value={parentPath}
+            />
+            {props.onChooseDirectory ? (
+              <Button
+                onClick={async () => {
+                  const selectedPath = await props.onChooseDirectory?.()
+                  if (selectedPath) setParentPath(selectedPath)
+                }}
+                type="button"
+              >
+                Choose folder
+              </Button>
+            ) : null}
+          </div>
+          {error ? <p role="alert">{error}</p> : null}
+        </DialogContent>
+        <DialogFooter>
+          <Button onClick={props.onDismiss}>Cancel</Button>
+          <Button
+            disabled={Boolean(error) || props.loading}
+            onClick={() => {
+              if (!error) void props.onSubmit(parentPath.trim())
+            }}
+            type="submit"
+          >
+            Create tutorial repository
+          </Button>
+        </DialogFooter>
+      </Dialog>
+    </DialogStackContext.Provider>
+  )
+}
+
+function WebTutorialPanel(props: {
   readonly state: WebApplicationState
   readonly dispatcher: WebDispatcher
-  readonly editorIntegration: WebIntegrationSelection
 }) {
   const path = props.state.tutorialRepositoryPath
-  if (
-    !path ||
-    props.state.currentTutorialStep === TutorialStep.NotApplicable ||
-    props.state.currentTutorialStep === TutorialStep.Paused
-  )
+  if (!path || props.state.currentTutorialStep === TutorialStep.NotApplicable)
     return null
-  const repository = getDesktopRepository(path)
+
   const readmePath = `${path.replace(/[\\/]+$/, '')}/README.md`
-  const resolvedExternalEditor =
-    props.editorIntegration.name || props.editorIntegration.custom?.path || null
-  const desktopDispatcher = {
-    createPullRequest: () => undefined,
-    markPullRequestTutorialStepAsComplete: () => undefined,
-    openInExternalEditor: () =>
-      props.dispatcher.openIntegration(
-        'editor',
-        readmePath,
-        props.editorIntegration
-      ),
-    showPopup: () => Promise.resolve(),
-    skipPickEditorTutorialStep: () => undefined,
-  } as unknown as Dispatcher
+  const steps: ReadonlyArray<{
+    readonly step: TutorialStep
+    readonly label: string
+    readonly description: string
+  }> = [
+    {
+      step: TutorialStep.CreateBranch,
+      label: 'Create a branch',
+      description:
+        'Create and check out a branch so your work is isolated from main.',
+    },
+    {
+      step: TutorialStep.EditFile,
+      label: 'Edit README.md',
+      description:
+        'Open README.md, make a small change, save it, then refresh Changes.',
+    },
+    {
+      step: TutorialStep.MakeCommit,
+      label: 'Make a commit',
+      description:
+        'Commit the README change with a short message describing what you changed.',
+    },
+    {
+      step: TutorialStep.PushBranch,
+      label: 'Publish to GitHub',
+      description:
+        'Publishing is unavailable in the local-only web release. Continue with the local tutorial.',
+    },
+    {
+      step: TutorialStep.OpenPullRequest,
+      label: 'Open a pull request',
+      description:
+        'Pull requests are outside the local-only web release. Your local Git tutorial is complete.',
+    },
+  ]
+  const currentIndex = steps.findIndex(
+    step => step.step === props.state.currentTutorialStep
+  )
+  const completeThrough =
+    props.state.currentTutorialStep === TutorialStep.AllDone
+      ? steps.length
+      : Math.max(0, currentIndex)
 
   return (
-    <TutorialPanel
-      currentTutorialStep={props.state.currentTutorialStep}
-      dispatcher={desktopDispatcher}
-      onExitTutorial={() => void props.dispatcher.pauseTutorial()}
-      repository={repository}
-      resolvedExternalEditor={resolvedExternalEditor}
-    />
+    <aside
+      aria-label="Git tutorial"
+      className="web-tutorial-panel"
+      data-tutorial-step={props.state.currentTutorialStep}
+    >
+      <div className="web-tutorial-heading">
+        <div>
+          <h2>Git tutorial</h2>
+          <p>Learn the local Git basics in this repository.</p>
+        </div>
+        <Button
+          disabled={props.state.loading}
+          onClick={() => void props.dispatcher.pauseTutorial()}
+          type="button"
+        >
+          Pause
+        </Button>
+      </div>
+      <ol>
+        {steps.map((step, index) => {
+          const complete = index < completeThrough
+          const current = index === currentIndex
+          return (
+            <li
+              className={
+                complete ? 'complete' : current ? 'current' : undefined
+              }
+              key={step.step}
+            >
+              <strong>{step.label}</strong>
+              <p>{step.description}</p>
+              {current && step.step === TutorialStep.CreateBranch ? (
+                <Button
+                  disabled={props.state.loading}
+                  onClick={() =>
+                    void props.dispatcher.runOperation('create-branch', {
+                      values: ['tutorial-work'],
+                      checkout: true,
+                    })
+                  }
+                  type="button"
+                >
+                  Create tutorial branch
+                </Button>
+              ) : null}
+              {current && step.step === TutorialStep.EditFile ? (
+                <div className="web-tutorial-actions">
+                  <Button
+                    disabled={props.state.loading}
+                    onClick={() =>
+                      void props.dispatcher.openPath(readmePath, false)
+                    }
+                    type="button"
+                  >
+                    Open README.md
+                  </Button>
+                  <Button
+                    disabled={props.state.loading}
+                    onClick={() => void props.dispatcher.refresh()}
+                    type="button"
+                  >
+                    Refresh changes
+                  </Button>
+                </div>
+              ) : null}
+              {current && step.step === TutorialStep.MakeCommit ? (
+                <Button
+                  disabled={props.state.loading}
+                  onClick={props.dispatcher.requestCommitDialog}
+                  type="button"
+                >
+                  Commit README change
+                </Button>
+              ) : null}
+            </li>
+          )
+        })}
+      </ol>
+      {props.state.currentTutorialStep === TutorialStep.AllDone ? (
+        <div className="web-tutorial-complete" role="status">
+          <strong>You're done!</strong>
+          <p>
+            You created a branch, edited a file, and committed your local
+            changes. Hosted publishing and pull requests are deferred.
+          </p>
+        </div>
+      ) : null}
+    </aside>
   )
 }
 
@@ -1973,420 +3669,552 @@ function DesktopRepositoryPicker(props: {
   readonly repositories: ReadonlyArray<
     WebApplicationState['repositories'][number]
   >
+  readonly pinnedRepositoryPaths: ReadonlyArray<string>
   readonly selectedRepositoryPath: string | null
   readonly onSelect: (path: string) => void
   readonly onAdd: () => void
-  readonly onCreate: () => void
-  readonly onClone: () => void
   readonly onRemove: (path: string) => void
+  readonly onDeleteRepository: (path: string) => void
+  readonly onTogglePinned: (path: string) => void
   readonly onEdit: (
     repository: WebApplicationState['repositories'][number]
   ) => void
   readonly showBranchName: 'never' | 'always' | 'non-default'
   readonly showWorktrees: boolean
+  readonly repositoryIndicatorsEnabled: boolean
   readonly onCopyPath: (path: string) => void
   readonly onOpenPath: (path: string, reveal?: boolean) => void
   readonly onOpenExternal: (url: string) => void
   readonly onOpenNewWindow: (path: string) => void
-  readonly onPullAll: () => void
-  readonly onCreateGroup: (paths: ReadonlyArray<string>) => void
+  readonly onPullGroup: (group: string | null) => void
+  readonly onRenameGroup: (group: string) => void
   readonly showRecentRepositories: boolean
-  readonly branches: ReadonlyArray<WebBranch>
-  readonly confirmWorktreeRemoval: boolean
-  readonly onConfirmWorktreeRemovalChanged: (value: boolean) => void
-  readonly dispatcher: WebDispatcher
+  readonly repositorySortOrder: WebRepositorySortOrder
 }) {
   const [filterText, setFilterText] = React.useState('')
-  const [worktreeToAdd, setWorktreeToAdd] = React.useState<Repository | null>(
-    null
-  )
-  const [worktreeToRename, setWorktreeToRename] = React.useState<{
-    readonly repository: Repository
-    readonly path: string
-  } | null>(null)
-  const [worktreeToDelete, setWorktreeToDelete] = React.useState<{
-    readonly repository: Repository
-    readonly path: string
-  } | null>(null)
-  const integrations = useWebIntegrationSelection('editor')
-  const shellIntegration = useWebIntegrationSelection('shell')
-  const desktopRepositories = React.useMemo(
-    () =>
-      props.repositories.map((repository, index) => {
-        const desktopRepository = new Repository(
-          repository.path,
-          index + 1,
-          null,
-          false,
-          repository.alias || null,
-          repository.group || null,
-          repository.defaultBranch
+  const normalizedFilterText = filterText.trim().toLowerCase()
+  const filteredRepositories = [...props.repositories]
+    .sort((left, right) => {
+      if (props.repositorySortOrder === 'alphabetical')
+        return (left.alias || left.name).localeCompare(
+          right.alias || right.name
         )
-        Object.assign(desktopRepository, { _url: repository.remoteURL || null })
-        return desktopRepository
-      }),
-    [props.repositories]
+      return (
+        (right.lastOpenedAt || 0) - (left.lastOpenedAt || 0) ||
+        (left.alias || left.name).localeCompare(right.alias || right.name)
+      )
+    })
+    .filter(repository => {
+      if (!normalizedFilterText) return true
+      return `${repository.name} ${repository.alias || ''} ${
+        repository.group || ''
+      } ${repository.path}`
+        .toLowerCase()
+        .includes(normalizedFilterText)
+    })
+  const pinned = props.pinnedRepositoryPaths
+    .map(path =>
+      filteredRepositories.find(repository => repository.path === path)
+    )
+    .filter(
+      (repository): repository is WebApplicationState['repositories'][number] =>
+        repository !== undefined
+    )
+  const pinnedPaths = new Set(pinned.map(repository => repository.path))
+  const recentRepositories =
+    props.showRecentRepositories && filteredRepositories.length > 7
+      ? filteredRepositories
+          .filter(repository => !pinnedPaths.has(repository.path))
+          .slice()
+          .sort(
+            (left, right) =>
+              (right.lastOpenedAt || 0) - (left.lastOpenedAt || 0)
+          )
+          .slice(0, 7)
+      : []
+  const groupedRepositories = filteredRepositories.filter(
+    repository =>
+      !pinnedPaths.has(repository.path) &&
+      !recentRepositories.some(
+        recentRepository => recentRepository.path === repository.path
+      )
   )
-  const webRepositoryByPath = React.useMemo(
-    () =>
-      new Map(
-        props.repositories.map(repository => [repository.path, repository])
-      ),
-    [props.repositories]
-  )
-  const localRepositoryStateLookup = React.useMemo(
-    () =>
-      new Map(
-        desktopRepositories.map(repository => {
-          const webRepository = webRepositoryByPath.get(repository.path)
-          return [
-            repository.id,
-            {
-              aheadBehind: webRepository?.aheadBehind || null,
-              changedFilesCount: webRepository?.changedFilesCount || 0,
-              branchName: webRepository?.currentBranch || null,
-              defaultBranchName: webRepository?.defaultBranch || null,
-              worktrees: props.showWorktrees
-                ? webRepository?.worktrees || []
-                : [],
-            },
-          ]
-        })
-      ),
-    [desktopRepositories, props.showWorktrees, webRepositoryByPath]
-  )
-  const recentRepositories = React.useMemo(
-    () =>
-      [...desktopRepositories]
-        .sort(
-          (left, right) =>
-            (webRepositoryByPath.get(right.path)?.lastOpenedAt || 0) -
-            (webRepositoryByPath.get(left.path)?.lastOpenedAt || 0)
-        )
-        .slice(0, 7)
-        .map(repository => repository.id),
-    [desktopRepositories, webRepositoryByPath]
-  )
-  const getWebRepository = React.useCallback(
-    (repository: Repository) =>
-      webRepositoryByPath.get(repository.path) || null,
-    [webRepositoryByPath]
-  )
-  const desktopBranches = React.useMemo(
-    () =>
-      props.branches.flatMap(branch => {
-        const desktopBranch = getDesktopBranch(branch)
-        return desktopBranch ? [desktopBranch] : []
-      }),
-    [props.branches]
-  )
-  const runWorktreeOperation = React.useCallback(
-    async (
-      repository: Repository,
-      operation: 'worktree-move' | 'worktree-remove',
-      values: ReadonlyArray<string>
-    ) => {
-      const worktreePath = values[0]
-      const mainWorktreePath =
-        webRepositoryByPath
-          .get(repository.path)
-          ?.worktrees?.find(worktree => worktree.type === 'main')?.path || null
-      const operationRepositoryPath =
-        repository.path === worktreePath && mainWorktreePath
-          ? mainWorktreePath
-          : repository.path
-      await props.dispatcher.selectRepository(operationRepositoryPath)
-      await props.dispatcher.runOperationOrThrow(operation, { values })
-      if (operation === 'worktree-move' && repository.path === worktreePath) {
-        await props.dispatcher.selectRepository(values[1])
-        props.dispatcher.removeRepository(worktreePath)
-      } else if (operation === 'worktree-remove') {
-        props.dispatcher.removeRepository(worktreePath)
-      }
-    },
-    [props.dispatcher, webRepositoryByPath]
-  )
-  const desktopDispatcher = React.useMemo(
-    () =>
-      ({
-        changeRepositoryAlias: (
-          repository: Repository,
-          alias: string | null
-        ) => {
-          const webRepository = getWebRepository(repository)
-          if (!webRepository) return Promise.resolve()
-          if (alias === null) {
-            void props.dispatcher
-              .selectRepository(webRepository.path)
-              .then(() => {
-                props.dispatcher.setRepositoryAlias('')
-              })
-          } else {
-            props.onEdit(webRepository)
-          }
-          return Promise.resolve()
-        },
-        changeRepositoryGroupName: (
-          repository: Repository,
-          group: string | null
-        ) => {
-          const webRepository = getWebRepository(repository)
-          if (webRepository)
-            void props.dispatcher
-              .selectRepository(webRepository.path)
-              .then(() => {
-                props.dispatcher.setRepositoryGroup(group)
-              })
-          return Promise.resolve()
-        },
-        closeFoldout: () => undefined,
-        copyPathToClipboard: props.onCopyPath,
-        pullAllRepositories: () => Promise.resolve(props.onPullAll()),
-        pullRepositories: (repositories: ReadonlyArray<Repository>) => {
-          const groups = new Set<string | null>()
-          for (const repository of repositories) {
-            const webRepository = getWebRepository(repository)
-            if (webRepository) groups.add(webRepository.group || null)
-          }
-          for (const group of groups)
-            void props.dispatcher.pullRepositoryGroup(group)
-          return Promise.resolve()
-        },
-        recordRepoClicked: () => undefined,
-        incrementMetric: () => undefined,
-        moveWorktree: async (
-          repository: Repository,
-          worktreePath: string,
-          newPath: string
-        ) => {
-          try {
-            await runWorktreeOperation(repository, 'worktree-move', [
-              worktreePath,
-              newPath,
-            ])
-            return true
-          } catch {
-            return false
-          }
-        },
-        postError: () => Promise.resolve(),
-        requestDeleteWorktree: (
-          repository: Repository,
-          worktreePath: string
-        ) => {
-          if (props.confirmWorktreeRemoval)
-            setWorktreeToDelete({ repository, path: worktreePath })
-          else
-            void runWorktreeOperation(repository, 'worktree-remove', [
-              worktreePath,
-            ]).catch(() => undefined)
-        },
-        selectRepository: (repository: Repository) =>
-          Promise.resolve(props.onSelect(repository.path)),
-        switchWorktree: (
-          _repository: Repository,
-          worktree: { readonly path: string }
-        ) => props.dispatcher.selectRepository(worktree.path),
-        showPopup: (popup: {
-          readonly type: PopupType
-          readonly repository?: Repository
-          readonly preselectedRepositoryIds?: ReadonlyArray<number>
-          readonly worktreePath?: string
-        }) => {
-          switch (popup.type) {
-            case PopupType.AddRepository:
-              props.onAdd()
-              break
-            case PopupType.CloneRepository:
-              props.onClone()
-              break
-            case PopupType.CreateRepository:
-              props.onCreate()
-              break
-            case PopupType.ChangeRepositoryAlias: {
-              if (popup.repository) {
-                const webRepository = getWebRepository(popup.repository)
-                if (webRepository) props.onEdit(webRepository)
-              }
-              break
-            }
-            case PopupType.CreateRepositoryGroup:
-              props.onCreateGroup(
-                (popup.preselectedRepositoryIds || [])
-                  .map(id =>
-                    desktopRepositories.find(repository => repository.id === id)
-                  )
-                  .filter(
-                    (repository): repository is Repository =>
-                      repository !== undefined
-                  )
-                  .map(repository => repository.path)
-              )
-              break
-            case PopupType.AddWorktree:
-              if (popup.repository) setWorktreeToAdd(popup.repository)
-              break
-            case PopupType.RenameWorktree:
-              if (popup.repository && popup.worktreePath)
-                setWorktreeToRename({
-                  repository: popup.repository,
-                  path: popup.worktreePath,
-                })
-              break
-          }
-          return Promise.resolve()
-        },
-      } as unknown as Dispatcher),
-    [desktopRepositories, getWebRepository, props, runWorktreeOperation]
-  )
+  const groups = [
+    ...new Set(
+      groupedRepositories.map(repository => repository.group || 'Repositories')
+    ),
+  ].sort((left, right) => {
+    if (left === 'Repositories') return 1
+    if (right === 'Repositories') return -1
+    return left.localeCompare(right)
+  })
+  const renderRepository = (
+    repository: WebApplicationState['repositories'][number]
+  ) => {
+    const isPinned = props.pinnedRepositoryPaths.includes(repository.path)
+    const changedFilesCount = repository.changedFilesCount || 0
+    const aheadBehind = repository.aheadBehind
+    const linkedWorktrees = (repository.worktrees || []).filter(
+      worktree => worktree.type === 'linked'
+    )
+    const renderWorktree = (worktree: WebWorktree) => (
+      <div
+        className="list-item repository-worktree-list-item"
+        key={worktree.path}
+      >
+        <div
+          className="repository-list-item repository-worktree-item"
+          onClick={() => props.onSelect(worktree.path)}
+          role="button"
+          tabIndex={0}
+          title={worktree.path}
+        >
+          <Octicon
+            className="icon-for-repository"
+            symbol={octicons.fileDirectory}
+          />
+          <div className="name">
+            {pathBasename(worktree.path)}
+            {worktree.branch ? (
+              <small> ({worktree.branch.replace(/^refs\/heads\//, '')})</small>
+            ) : null}
+          </div>
+        </div>
+        <Button
+          ariaLabel={`Copy path for ${pathBasename(worktree.path)}`}
+          onClick={event => {
+            event.stopPropagation()
+            props.onCopyPath(worktree.path)
+          }}
+          tooltip="Copy worktree path"
+        >
+          <Octicon symbol={octicons.copy} />
+        </Button>
+        <Button
+          ariaLabel={`Open ${pathBasename(worktree.path)} in a new window`}
+          onClick={event => {
+            event.stopPropagation()
+            props.onOpenNewWindow(worktree.path)
+          }}
+          tooltip="Open worktree in a new window"
+        >
+          <Octicon symbol={octicons.screenNormal} />
+        </Button>
+      </div>
+    )
+    return (
+      <>
+        <div
+          className={`list-item${
+            props.selectedRepositoryPath === repository.path ? ' selected' : ''
+          }`}
+          key={repository.path}
+        >
+          <div
+            className="repository-list-item"
+            onClick={() => props.onSelect(repository.path)}
+            role="button"
+            tabIndex={0}
+            title={repository.path}
+          >
+            <Octicon className="icon-for-repository" symbol={octicons.repo} />
+            <div className="name">
+              {repository.alias || repository.name}
+              {props.showBranchName === 'always' && repository.currentBranch ? (
+                <small> ({repository.currentBranch})</small>
+              ) : props.showBranchName === 'non-default' &&
+                repository.currentBranch &&
+                repository.currentBranch !== repository.defaultBranch ? (
+                <small> ({repository.currentBranch})</small>
+              ) : null}
+            </div>
+            {props.repositoryIndicatorsEnabled ? (
+              <span
+                aria-label={`${changedFilesCount} changed files${
+                  aheadBehind
+                    ? `, ${aheadBehind.ahead} ahead, ${aheadBehind.behind} behind`
+                    : ''
+                }`}
+                className="web-repository-indicators"
+              >
+                {changedFilesCount > 0 ? (
+                  <span className="web-repository-indicator">
+                    {changedFilesCount} changed
+                  </span>
+                ) : null}
+                {aheadBehind &&
+                (aheadBehind.ahead > 0 || aheadBehind.behind > 0) ? (
+                  <span className="web-repository-indicator">
+                    ↑{aheadBehind.ahead} ↓{aheadBehind.behind}
+                  </span>
+                ) : null}
+              </span>
+            ) : null}
+          </div>
+          <Button
+            ariaLabel={`Copy path for ${repository.alias || repository.name}`}
+            onClick={event => {
+              event.stopPropagation()
+              props.onCopyPath(repository.path)
+            }}
+            tooltip="Copy repository path"
+          >
+            <Octicon symbol={octicons.copy} />
+          </Button>
+          <Button
+            ariaLabel={`Reveal ${
+              repository.alias || repository.name
+            } in Finder`}
+            onClick={event => {
+              event.stopPropagation()
+              props.onOpenPath(repository.path, true)
+            }}
+            tooltip="Reveal repository in Finder"
+          >
+            <Octicon symbol={octicons.fileDirectory} />
+          </Button>
+          {repository.remoteWebURL ? (
+            <Button
+              ariaLabel={`Open ${
+                repository.alias || repository.name
+              } remote in browser`}
+              onClick={event => {
+                event.stopPropagation()
+                if (repository.remoteWebURL)
+                  props.onOpenExternal(repository.remoteWebURL)
+              }}
+              tooltip="Open repository remote in browser"
+            >
+              <Octicon symbol={octicons.linkExternal} />
+            </Button>
+          ) : null}
+          <Button
+            ariaLabel={`Open ${
+              repository.alias || repository.name
+            } in a new window`}
+            onClick={event => {
+              event.stopPropagation()
+              props.onOpenNewWindow(repository.path)
+            }}
+            tooltip="Open repository in a new window"
+          >
+            <Octicon symbol={octicons.screenNormal} />
+          </Button>
+          <Button
+            ariaLabel={`Edit ${repository.alias || repository.name}`}
+            className="repository-edit-button"
+            onClick={event => {
+              event.stopPropagation()
+              props.onEdit(repository)
+            }}
+            tooltip={`Edit ${repository.alias || repository.name}`}
+          >
+            <Octicon symbol={octicons.gear} />
+          </Button>
+          <Button
+            ariaLabel={`${isPinned ? 'Unpin' : 'Pin'} ${repository.name}`}
+            className="repository-pin-button"
+            onClick={event => {
+              event.stopPropagation()
+              props.onTogglePinned(repository.path)
+            }}
+            tooltip={`${isPinned ? 'Unpin' : 'Pin'} ${repository.name}`}
+          >
+            <Octicon symbol={isPinned ? octicons.pinSlash : octicons.pin} />
+          </Button>
+          <Button
+            ariaLabel={`Remove ${repository.name}`}
+            className="repository-remove-button"
+            onClick={event => {
+              event.stopPropagation()
+              props.onRemove(repository.path)
+            }}
+            tooltip={`Remove ${repository.name} from Desktop Plus`}
+          >
+            <Octicon symbol={octicons.x} />
+          </Button>
+          <Button
+            ariaLabel={`Delete ${repository.name} from disk`}
+            className="repository-delete-button"
+            onClick={event => {
+              event.stopPropagation()
+              props.onDeleteRepository(repository.path)
+            }}
+            tooltip={`Delete ${repository.name} from disk`}
+          >
+            <Octicon symbol={octicons.trash} />
+          </Button>
+        </div>
+        {props.showWorktrees ? linkedWorktrees.map(renderWorktree) : null}
+      </>
+    )
+  }
 
   return (
-    <>
-      <RepositoriesList
-        askForConfirmationOnRemoveRepository={true}
-        dispatcher={desktopDispatcher}
-        externalEditorLabel={undefined}
-        filterText={filterText}
-        localRepositoryStateLookup={localRepositoryStateLookup}
-        onFilterTextChanged={setFilterText}
-        onOpenInExternalEditor={(repository, path) =>
-          void props.dispatcher.launchIntegration(
-            'editor',
-            integrations.name,
-            integrations.custom,
-            path || repository.path
+    <div className="repository-list">
+      <div className="repository-picker-filter">
+        <label htmlFor="web-repository-filter">Filter repositories</label>
+        <input
+          id="web-repository-filter"
+          onChange={event => setFilterText(event.target.value)}
+          placeholder="Filter"
+          type="search"
+          value={filterText}
+        />
+      </div>
+      <div className="list-focus-container focus-within">
+        {pinned.length > 0 ? (
+          <>
+            <div className="repository-picker-group-heading">Pinned</div>
+            {pinned.map(renderRepository)}
+          </>
+        ) : null}
+        {recentRepositories.length > 0 ? (
+          <>
+            <div className="repository-picker-group-heading">Recent</div>
+            {recentRepositories.map(renderRepository)}
+          </>
+        ) : null}
+        {groups.map(group => {
+          const repositories = groupedRepositories.filter(
+            repository => (repository.group || 'Repositories') === group
           )
-        }
-        onOpenInNewWindow={(repository, path) =>
-          props.onOpenNewWindow(path || repository.path)
-        }
-        onOpenInShell={(repository, path) =>
-          void props.dispatcher.launchIntegration(
-            'shell',
-            shellIntegration.name,
-            shellIntegration.custom,
-            path || repository.path
-          )
-        }
-        onRemoveRepository={repository => props.onRemove(repository.path)}
-        onSelectionChanged={repository => props.onSelect(repository.path)}
-        onShowRepository={(repository, path) =>
-          void props.onOpenPath(path || repository.path, true)
-        }
-        onViewOnGitHub={repository => {
-          const webRepository =
-            repository instanceof Repository
-              ? getWebRepository(repository)
-              : null
-          if (webRepository?.remoteWebURL)
-            props.onOpenExternal(webRepository.remoteWebURL)
-        }}
-        recentRepositories={recentRepositories}
-        repositories={desktopRepositories}
-        selectedRepository={
-          desktopRepositories.find(
-            repository => repository.path === props.selectedRepositoryPath
-          ) || null
-        }
-        shellLabel={undefined}
-        showBranchNameInRepoList={
-          props.showBranchName === 'always'
-            ? ShowBranchNameInRepoListSetting.Always
-            : props.showBranchName === 'non-default'
-            ? ShowBranchNameInRepoListSetting.WhenNotDefault
-            : ShowBranchNameInRepoListSetting.Never
-        }
-        showRecentRepositories={props.showRecentRepositories}
-        showWorktrees={false}
-        showWorktreesInRepoList={props.showWorktrees}
-      />
-      {worktreeToAdd ? (
-        <DialogStackContext.Provider value={{ isTopMost: true }}>
-          <AddWorktreeDialog
-            allBranches={desktopBranches}
-            dispatcher={desktopDispatcher}
-            onDismissed={() => setWorktreeToAdd(null)}
-            repository={worktreeToAdd}
-          />
-        </DialogStackContext.Provider>
-      ) : null}
-      {worktreeToRename ? (
-        <DialogStackContext.Provider value={{ isTopMost: true }}>
-          <RenameWorktreeDialog
-            dispatcher={desktopDispatcher}
-            onDismissed={() => setWorktreeToRename(null)}
-            repository={worktreeToRename.repository}
-            worktreePath={worktreeToRename.path}
-          />
-        </DialogStackContext.Provider>
-      ) : null}
-      {worktreeToDelete ? (
-        <DialogStackContext.Provider value={{ isTopMost: true }}>
-          <DeleteWorktreeDialog
-            askForConfirmationOnWorktreeRemoval={props.confirmWorktreeRemoval}
-            onConfirmWorktreeRemovalChanged={
-              props.onConfirmWorktreeRemovalChanged
-            }
-            onDeleteWorktree={(repository, worktreePath) =>
-              runWorktreeOperation(repository, 'worktree-remove', [
-                worktreePath,
-              ])
-            }
-            onDismissed={() => setWorktreeToDelete(null)}
-            repository={worktreeToDelete.repository}
-            worktreePath={worktreeToDelete.path}
-          />
-        </DialogStackContext.Provider>
-      ) : null}
-    </>
+          return repositories.length ? (
+            <React.Fragment key={group}>
+              <div className="repository-picker-group-heading">
+                <span>{group}</span>
+                <Button
+                  ariaLabel={`Pull ${group}`}
+                  onClick={event => {
+                    event.stopPropagation()
+                    props.onPullGroup(group === 'Repositories' ? null : group)
+                  }}
+                >
+                  Pull
+                </Button>
+                {group !== 'Repositories' ? (
+                  <Button
+                    ariaLabel={`Rename ${group}`}
+                    onClick={event => {
+                      event.stopPropagation()
+                      props.onRenameGroup(group)
+                    }}
+                  >
+                    Rename
+                  </Button>
+                ) : null}
+              </div>
+              {repositories.map(renderRepository)}
+            </React.Fragment>
+          ) : null
+        })}
+        {filteredRepositories.length === 0 ? (
+          <p className="repository-picker-empty">
+            No repositories match the filter.
+          </p>
+        ) : null}
+      </div>
+      <Button
+        className="new-repository-button button-with-icon"
+        onClick={props.onAdd}
+      >
+        Add
+        <Octicon symbol={octicons.triangleDown} />
+      </Button>
+    </div>
   )
 }
 
-function getNetworkProgress(
-  operationTask: WebOperationTask | null,
-  remoteName: string | null,
-  branchName: string | null
-): Progress | null {
-  if (operationTask?.status !== 'running') return null
+function WebRepositorySettingsDialog(props: {
+  readonly open: boolean
+  readonly repository: WebApplicationState['repositories'][number] | null
+  readonly branches: ReadonlyArray<WebBranch>
+  readonly onDismiss: () => void
+  readonly onSave: (
+    alias: string,
+    group: string | null,
+    branch: string | null
+  ) => void
+}) {
+  const [alias, setAlias] = React.useState('')
+  const [group, setGroup] = React.useState('')
+  const [defaultBranch, setDefaultBranch] = React.useState('')
 
-  const remote = remoteName || 'origin'
-  const value = (operationTask.progress || 0) / 100
-  const description = operationTask.phase || 'Contacting remote…'
+  React.useEffect(() => {
+    if (!props.open) return
+    setAlias(props.repository?.alias || '')
+    setGroup(props.repository?.group || '')
+    setDefaultBranch(props.repository?.defaultBranch || '')
+  }, [props.open, props.repository])
 
-  switch (operationTask.operation) {
-    case 'fetch':
-      return {
-        kind: 'fetch',
-        remote,
-        title: `Fetching ${remote}`,
-        description,
-        value,
-      }
-    case 'pull':
-    case 'reset-upstream':
-      return {
-        kind: 'pull',
-        remote,
-        title:
-          operationTask.operation === 'pull'
-            ? `Pulling ${remote}`
-            : `Resetting and pulling ${remote}`,
-        description,
-        value,
-      }
-    case 'push':
-    case 'publish-branch':
-      return {
-        kind: 'push',
-        remote,
-        branch: branchName || 'current branch',
-        title: `Pushing ${remote}`,
-        description,
-        value,
-      }
-    default:
-      return null
+  if (!props.open || !props.repository) return null
+  const localBranches = props.branches.filter(
+    branch => branch.type !== 'Remote'
+  )
+
+  return (
+    <DialogStackContext.Provider value={{ isTopMost: true }}>
+      <Dialog
+        ariaDescribedBy="web-repository-settings-description"
+        onDismissed={props.onDismiss}
+        onSubmit={() =>
+          props.onSave(alias, group || null, defaultBranch || null)
+        }
+        title={`Repository settings: ${props.repository.name}`}
+      >
+        <DialogContent>
+          <p id="web-repository-settings-description">
+            Customize how this repository appears in Desktop Plus.
+          </p>
+          <label htmlFor="web-repository-alias">Alias</label>
+          <input
+            autoFocus={true}
+            id="web-repository-alias"
+            onChange={event => setAlias(event.target.value)}
+            type="text"
+            value={alias}
+          />
+          <label htmlFor="web-repository-group">Group</label>
+          <input
+            id="web-repository-group"
+            onChange={event => setGroup(event.target.value)}
+            type="text"
+            value={group}
+          />
+          <label htmlFor="web-repository-default-branch">Default branch</label>
+          <select
+            id="web-repository-default-branch"
+            onChange={event => setDefaultBranch(event.target.value)}
+            value={defaultBranch}
+          >
+            <option value="">Automatic</option>
+            {localBranches.map(branch => (
+              <option key={branch.name} value={branch.name}>
+                {branch.name}
+              </option>
+            ))}
+          </select>
+        </DialogContent>
+        <DialogFooter>
+          <Button onClick={props.onDismiss}>Cancel</Button>
+          <Button
+            onClick={() =>
+              props.onSave(alias, group || null, defaultBranch || null)
+            }
+            type="submit"
+          >
+            Save repository
+          </Button>
+        </DialogFooter>
+      </Dialog>
+    </DialogStackContext.Provider>
+  )
+}
+
+function WebBranchPicker(props: {
+  readonly branches: ReadonlyArray<WebBranch>
+  readonly currentBranch: string
+  readonly defaultBranch: string | null
+  readonly recentBranches: ReadonlyArray<string>
+  readonly sortOrder: BranchSortOrder
+  readonly onCheckout: (branch: WebBranch) => void
+}) {
+  const [filterText, setFilterText] = React.useState('')
+  const normalizedFilterText = filterText.trim().toLowerCase()
+  const branches = props.branches.filter(
+    branch =>
+      !branch.name.endsWith('/HEAD') &&
+      (!normalizedFilterText ||
+        `${branch.name} ${branch.upstream || ''}`
+          .toLowerCase()
+          .includes(normalizedFilterText))
+  )
+  const localBranches = branches.filter(branch => branch.type !== 'Remote')
+  const remoteBranches = branches.filter(branch => branch.type === 'Remote')
+  const sortBranches = (items: ReadonlyArray<WebBranch>) =>
+    [...items].sort((left, right) => {
+      if (props.sortOrder === BranchSortOrder.Alphabetical)
+        return left.name.localeCompare(right.name)
+      const leftDate = left.tip?.author?.date
+        ? Date.parse(left.tip.author.date)
+        : 0
+      const rightDate = right.tip?.author?.date
+        ? Date.parse(right.tip.author.date)
+        : 0
+      return rightDate - leftDate || left.name.localeCompare(right.name)
+    })
+  const defaultBranches = sortBranches(
+    localBranches.filter(branch => branch.name === props.defaultBranch)
+  )
+  const defaultNames = new Set(defaultBranches.map(branch => branch.name))
+  const recentNames = new Set(props.recentBranches)
+  const recentBranches = sortBranches(
+    localBranches.filter(
+      branch => !defaultNames.has(branch.name) && recentNames.has(branch.name)
+    )
+  )
+  const recentBranchNames = new Set(recentBranches.map(branch => branch.name))
+  const otherLocalBranches = sortBranches(
+    localBranches.filter(
+      branch =>
+        !defaultNames.has(branch.name) && !recentBranchNames.has(branch.name)
+    )
+  )
+  const sortedRemoteBranches = sortBranches(remoteBranches)
+
+  const renderBranch = (branch: WebBranch) => {
+    const isCurrent = branch.name === props.currentBranch
+    const isDefault = branch.name === props.defaultBranch
+    const actionLabel =
+      branch.type === 'Remote' ? 'Checkout remote' : 'Switch to'
+    return (
+      <Button
+        ariaLabel={`${actionLabel} ${branch.name}${
+          isDefault ? ', default branch' : ''
+        }`}
+        className={isCurrent ? 'selected' : undefined}
+        disabled={isCurrent}
+        key={`${branch.type || 'Local'}:${branch.name}`}
+        onClick={() => props.onCheckout(branch)}
+      >
+        {actionLabel} {branch.name}
+        {isDefault ? ' (default)' : ''}
+      </Button>
+    )
   }
+
+  const renderGroup = (label: string, group: ReadonlyArray<WebBranch>) =>
+    group.length ? (
+      <React.Fragment key={label}>
+        <div className="web-branch-group-heading">{label}</div>
+        {group.map(renderBranch)}
+      </React.Fragment>
+    ) : null
+
+  return (
+    <div className="web-branch-picker">
+      <label htmlFor="web-branch-filter">Filter branches</label>
+      <input
+        autoFocus={true}
+        id="web-branch-filter"
+        onChange={event => setFilterText(event.target.value)}
+        placeholder="Filter"
+        type="search"
+        value={filterText}
+      />
+      <div className="web-toolbar-menu web-branch-list">
+        {renderGroup('Default branch', defaultBranches)}
+        {renderGroup('Recent branches', recentBranches)}
+        {renderGroup('Local branches', otherLocalBranches)}
+        {renderGroup('Remote branches', sortedRemoteBranches)}
+        {branches.length === 0 ? (
+          <p className="web-branch-picker-empty">
+            No branches match the filter.
+          </p>
+        ) : null}
+      </div>
+    </div>
+  )
 }
 
 function DesktopToolbar(props: {
@@ -2394,16 +4222,15 @@ function DesktopToolbar(props: {
   readonly dispatcher: WebDispatcher
   readonly sidebarWidth: number
   readonly onOpenRepositoryDialog: () => void
-  readonly onOpenCloneDialog: () => void
-  readonly onOpenInitDialog: () => void
-  readonly onChangeRepositoryAlias: (
+  readonly onOpenPreferences: () => void
+  readonly onOpenRepositorySettings: (
     repository: WebApplicationState['repositories'][number]
   ) => void
   readonly onRemoveRepository: (path: string) => void
+  readonly onDeleteRepository: (path: string) => void
   readonly showBranchName: 'never' | 'always' | 'non-default'
   readonly branchSortOrder: BranchSortOrder
   readonly onBranchSortOrderChanged: (value: BranchSortOrder) => void
-  readonly showWorktrees: boolean
   readonly showWorktreesInRepositoryList: boolean
   readonly repositoryIndicatorsEnabled: boolean
   readonly showRecentRepositories: boolean
@@ -2414,268 +4241,182 @@ function DesktopToolbar(props: {
   readonly onPullAllRepositories: () => void
   readonly onPullRepositoryGroup: (group: string | null) => void
   readonly onRenameRepositoryGroup: (group: string) => void
-  readonly toolbarMenuRequests: {
-    readonly createBranch: number
-    readonly renameBranch: number
-    readonly deleteBranch: number
-    readonly discardAllChanges: number
-    readonly permanentlyDiscardAllChanges: number
-    readonly stashAllChanges: number
-    readonly newWorktree: number
-    readonly openWithEditor: number
-    readonly deleteUnusedLocalBranches: number
-    readonly manageRemotes: number
-    readonly mergeBranch: number
-    readonly squashMergeBranch: number
-    readonly rebaseBranch: number
-  }
+  readonly repositorySortOrder: WebRepositorySortOrder
   readonly uncommittedChangesStrategy: UncommittedChangesStrategy
-  readonly confirmForcePush: boolean
-  readonly confirmWorktreeRemoval: boolean
-  readonly onConfirmWorktreeRemovalChanged: (value: boolean) => void
-  readonly confirmDiscardChanges: boolean
-  readonly onConfirmDiscardChangesChanged: (value: boolean) => void
-  readonly underlineLinks: boolean
-}) {
-  const editorIntegration = useWebIntegrationSelection('editor')
-  const shellIntegration = useWebIntegrationSelection('shell')
-  const [branchDropdownWidth, setBranchDropdownWidth] = React.useState(() =>
-    Math.min(
-      webToolbarButtonWidth.max,
-      Math.max(
-        webToolbarButtonWidth.min,
-        getNumber(
-          webBranchDropdownWidthStorageKey,
-          webToolbarButtonWidth.default
-        )
-      )
-    )
-  )
-  const [pushPullButtonWidth, setPushPullButtonWidth] = React.useState(() =>
-    Math.min(
-      webToolbarButtonWidth.max,
-      Math.max(
-        webToolbarButtonWidth.min,
-        getNumber(
-          webPushPullButtonWidthStorageKey,
-          webToolbarButtonWidth.default
-        )
-      )
-    )
-  )
-  const [worktreeDropdownWidth, setWorktreeDropdownWidth] = React.useState(() =>
-    Math.min(
-      webToolbarButtonWidth.max,
-      Math.max(
-        webToolbarButtonWidth.min,
-        getNumber(
-          webWorktreeDropdownWidthStorageKey,
-          webToolbarButtonWidth.default
-        )
-      )
-    )
-  )
-  const [worktreeToAdd, setWorktreeToAdd] = React.useState(false)
-  const [worktreeToRename, setWorktreeToRename] = React.useState<string | null>(
-    null
-  )
-  const [worktreeToDelete, setWorktreeToDelete] = React.useState<string | null>(
-    null
-  )
-  const [worktreeDeleteFailure, setWorktreeDeleteFailure] = React.useState<{
-    readonly path: string
-    readonly error: Error
-  } | null>(null)
-  const updateBranchDropdownWidth = React.useCallback((width: number) => {
-    setNumber(webBranchDropdownWidthStorageKey, width)
-    setBranchDropdownWidth(width)
-  }, [])
-  const resetBranchDropdownWidth = React.useCallback(() => {
-    localStorage.removeItem(webBranchDropdownWidthStorageKey)
-    setBranchDropdownWidth(webToolbarButtonWidth.default)
-  }, [])
-  const updatePushPullButtonWidth = React.useCallback((width: number) => {
-    setNumber(webPushPullButtonWidthStorageKey, width)
-    setPushPullButtonWidth(width)
-  }, [])
-  const resetPushPullButtonWidth = React.useCallback(() => {
-    localStorage.removeItem(webPushPullButtonWidthStorageKey)
-    setPushPullButtonWidth(webToolbarButtonWidth.default)
-  }, [])
-  const updateWorktreeDropdownWidth = React.useCallback((width: number) => {
-    setNumber(webWorktreeDropdownWidthStorageKey, width)
-    setWorktreeDropdownWidth(width)
-  }, [])
-  const resetWorktreeDropdownWidth = React.useCallback(() => {
-    localStorage.removeItem(webWorktreeDropdownWidthStorageKey)
-    setWorktreeDropdownWidth(webToolbarButtonWidth.default)
-  }, [])
-  const [toolbarDropdown, setToolbarDropdown] = React.useState<
-    | 'repository'
-    | 'worktree'
-    | 'branch'
-    | 'sync'
-    | 'repository-actions'
-    | 'branch-actions'
-    | null
-  >(null)
-  const setToolbarDropdownState = React.useCallback(
-    (
-      dropdown:
-        | 'repository'
-        | 'worktree'
-        | 'branch'
-        | 'sync'
-        | 'repository-actions'
-        | 'branch-actions',
-      state: 'open' | 'closed'
-    ) => {
-      setToolbarDropdown(current =>
-        state === 'open' ? dropdown : current === dropdown ? null : current
-      )
-    },
-    []
-  )
-  const repositoryPickerOpen = toolbarDropdown === 'repository'
-  const worktreeDropdownOpen = toolbarDropdown === 'worktree'
-  const branchMenuOpen = toolbarDropdown === 'branch'
-  const syncMenuOpen = toolbarDropdown === 'sync'
-  const repositoryActionsOpen = toolbarDropdown === 'repository-actions'
-  const branchActionsOpen = toolbarDropdown === 'branch-actions'
-  React.useEffect(() => {
-    if (props.state.selectedRepositoryPath !== null) return
-    const frame = window.requestAnimationFrame(() =>
-      setToolbarDropdownState('repository', 'open')
-    )
-    return () => window.cancelAnimationFrame(frame)
-  }, [props.state.selectedRepositoryPath, setToolbarDropdownState])
-  const closeDropdownOnEscape = (
-    event: React.KeyboardEvent<HTMLDivElement>,
-    close: () => void
-  ) => {
-    if (event.key !== 'Escape') return
-    event.preventDefault()
-    close()
+  readonly menuAction?: {
+    readonly id: number
+    readonly action:
+      | 'repository-list'
+      | 'branch-list'
+      | 'worktrees-list'
+      | 'branch-create'
+      | 'branch-rename'
+      | 'branch-delete'
+      | 'branch-discard'
+      | 'branch-stash'
+      | 'branch-update'
+      | 'branch-merge'
+      | 'branch-squash-merge'
+      | 'branch-rebase'
   }
+  readonly onMenuActionHandled?: () => void
+}) {
+  const [repositoryPickerOpen, setRepositoryPickerOpen] = React.useState(false)
+  const [branchMenuOpen, setBranchMenuOpen] = React.useState(false)
+  const [syncMenuOpen, setSyncMenuOpen] = React.useState(false)
   const [branchDialog, setBranchDialog] = React.useState<
-    'create' | 'rename' | 'worktree' | null
+    'create' | 'rename' | null
   >(null)
-  const [branchInitialName, setBranchInitialName] = React.useState('')
-  const [branchToRename, setBranchToRename] = React.useState<WebBranch | null>(
-    null
-  )
-  const [branchForWorktree, setBranchForWorktree] =
-    React.useState<WebBranch | null>(null)
-  const [branchToDelete, setBranchToDelete] = React.useState<WebBranch | null>(
-    null
-  )
-  const [deleteUnusedLocalBranchesOpen, setDeleteUnusedLocalBranchesOpen] =
-    React.useState(false)
-  const [manageRemotesOpen, setManageRemotesOpen] = React.useState(false)
-  const [addRemoteOpen, setAddRemoteOpen] = React.useState(false)
-  const [openWithEditorOpen, setOpenWithEditorOpen] = React.useState(false)
+  const [branchName, setBranchName] = React.useState('')
+  const [branchSubmitting, setBranchSubmitting] = React.useState(false)
   const [forcePushOpen, setForcePushOpen] = React.useState(false)
-  const [mergeOperation, setMergeOperation] = React.useState<{
-    readonly squash: boolean
-    readonly initialBranch?: Branch
-  } | null>(null)
-  const [rebaseDialog, setRebaseDialog] = React.useState<{
-    readonly initialBranch?: Branch
-  } | null>(null)
-  const lastToolbarMenuRequests = React.useRef(props.toolbarMenuRequests)
+  const [publishBranchOpen, setPublishBranchOpen] = React.useState(false)
+  const [fetchRefspecOpen, setFetchRefspecOpen] = React.useState(false)
+  const [pullStrategyOpen, setPullStrategyOpen] = React.useState(false)
+  const [updateFromDefaultOpen, setUpdateFromDefaultOpen] =
+    React.useState(false)
+  const [updateStrategy, setUpdateStrategy] = React.useState<
+    'merge' | 'rebase'
+  >(() => {
+    return localStorage.getItem(webUpdateStrategyStorageKey) === 'rebase'
+      ? 'rebase'
+      : 'merge'
+  })
+  const [pullStrategy, setPullStrategy] = React.useState<WebPullStrategy>(
+    () => {
+      const value = localStorage.getItem(webPullStrategyStorageKey)
+      return value === 'rebase' || value === 'ff-only' ? value : 'merge'
+    }
+  )
+  const [pruneCandidates, setPruneCandidates] =
+    React.useState<ReadonlyArray<WebBranchPruneCandidate> | null>(null)
+  const [pruneLoading, setPruneLoading] = React.useState(false)
+  const [publishRemote, setPublishRemote] = React.useState('')
   const [checkoutTarget, setCheckoutTarget] = React.useState<{
+    readonly label: string
     readonly options: WebOperationOptions
-    readonly branch: Branch
   } | null>(null)
+  const [deleteCurrentBranchOpen, setDeleteCurrentBranchOpen] =
+    React.useState(false)
+  const [deleteCurrentBranchBlocked, setDeleteCurrentBranchBlocked] =
+    React.useState<string | null>(null)
   const [discardAllChangesOpen, setDiscardAllChangesOpen] =
     React.useState(false)
-  const [discardAllChangesPermanently, setDiscardAllChangesPermanently] =
-    React.useState(false)
+  const [stashAllChangesOpen, setStashAllChangesOpen] = React.useState(false)
+  const branchActionRequest: 'merge' | 'squash-merge' | 'rebase' | undefined =
+    props.menuAction?.action === 'branch-merge'
+      ? 'merge'
+      : props.menuAction?.action === 'branch-squash-merge'
+      ? 'squash-merge'
+      : props.menuAction?.action === 'branch-rebase'
+      ? 'rebase'
+      : undefined
   const repository =
     props.state.repositories.find(
       item => item.path === props.state.selectedRepositoryPath
     ) || null
-  const worktrees = repository?.worktrees || []
-  const desktopWorktreeRepository = getDesktopRepository(
-    props.state.selectedRepositoryPath || ''
-  )
+  const branch = props.state.branches?.branch?.name || 'No branch'
   const defaultBranch =
     repository?.defaultBranch ?? props.state.branches?.defaultBranch ?? null
-  const aheadBehind = props.state.branches?.aheadBehind || null
+  const aheadBehind = props.state.branches?.aheadBehind
   const remotes = props.state.branches?.remotes || []
-  const desktopBranches = React.useMemo(
-    () =>
-      (props.state.branches?.branches || []).flatMap(branch => {
-        const desktopBranch = getDesktopBranch(branch)
-        return desktopBranch ? [desktopBranch] : []
-      }),
-    [props.state.branches?.branches]
-  )
-  const desktopCurrentBranch = React.useMemo(
-    () => getDesktopBranch(props.state.branches?.branch),
-    [props.state.branches?.branch]
-  )
-  const desktopDefaultBranch = React.useMemo(
-    () =>
-      desktopBranches.find(
-        candidate =>
-          candidate.type === BranchType.Local &&
-          candidate.name === defaultBranch
-      ) || null,
-    [defaultBranch, desktopBranches]
-  )
-  const desktopTip: Tip = React.useMemo(
-    () =>
-      desktopCurrentBranch
-        ? { kind: TipState.Valid as const, branch: desktopCurrentBranch }
-        : props.state.branches === null
-        ? { kind: TipState.Unknown as const }
-        : {
-            kind: TipState.Detached as const,
-            currentSha: desktopBranches[0]?.tip.sha || '',
-          },
-    [desktopBranches, desktopCurrentBranch, props.state.branches]
-  )
-  const desktopBranchDialogTip: Exclude<
-    Tip,
-    { readonly kind: TipState.Unknown }
-  > = React.useMemo(
-    () =>
-      desktopTip.kind === TipState.Unknown
-        ? { kind: TipState.Detached as const, currentSha: '' }
-        : desktopTip,
-    [desktopTip]
-  )
-  const desktopBranchDialogDispatcher = React.useMemo(
-    () =>
-      ({
-        getBranchNamePresets: () => Promise.resolve([]),
-        renameBranch: (
-          _repository: Repository,
-          targetBranch: Branch,
-          nextName: string
-        ) =>
-          props.dispatcher.runOperation('rename-branch', {
-            values: [targetBranch.name, nextName],
-          }),
-        postError: () => Promise.resolve(),
-        incrementMetric: () => undefined,
-        switchWorktree: async (
-          _repository: Repository,
-          worktree: { readonly path: string }
-        ) => {
-          await props.dispatcher.addRepository(worktree.path)
-          await props.dispatcher.selectRepository(worktree.path)
-        },
-      } as unknown as Dispatcher),
-    [props.dispatcher]
-  )
+  const canPublish =
+    branch !== 'No branch' &&
+    props.state.branches?.branch?.upstream === null &&
+    remotes.length > 0
 
-  const requestCheckout = (
-    options: WebOperationOptions,
-    branchToCheckout: Branch
-  ) => {
-    setToolbarDropdownState('branch', 'closed')
+  const handledMenuActionId = React.useRef<number | null>(null)
+  React.useEffect(() => {
+    const menuAction = props.menuAction
+    const action = menuAction?.action
+    if (!menuAction || !action || handledMenuActionId.current === menuAction.id)
+      return
+    if (
+      action === 'branch-merge' ||
+      action === 'branch-squash-merge' ||
+      action === 'branch-rebase'
+    ) {
+      setBranchMenuOpen(true)
+      return
+    }
+    if (action === 'repository-list') setRepositoryPickerOpen(true)
+    if (action === 'branch-list') setBranchMenuOpen(true)
+    if (action === 'worktrees-list') {
+      void props.dispatcher.selectSection('repository-tools')
+      setTimeout(() => {
+        document
+          .querySelector('[aria-label="Worktrees"]')
+          ?.scrollIntoView({ block: 'nearest' })
+      }, 0)
+    }
+    if (action === 'branch-create') {
+      setBranchDialog('create')
+      setBranchMenuOpen(false)
+    }
+    if (action === 'branch-rename') {
+      setBranchDialog('rename')
+      setBranchMenuOpen(false)
+    }
+    if (action === 'branch-delete') {
+      const localBranches = props.state.branches?.branches || []
+      if (branch === 'No branch') {
+        setDeleteCurrentBranchBlocked(
+          'There is no current branch to delete in this repository.'
+        )
+      } else if (branch === defaultBranch) {
+        setDeleteCurrentBranchBlocked(
+          `The default branch ${branch} cannot be deleted while it is checked out. Switch to another branch or change the default branch first.`
+        )
+      } else if (
+        !localBranches.some(
+          candidate => candidate.type !== 'Remote' && candidate.name !== branch
+        )
+      ) {
+        setDeleteCurrentBranchBlocked(
+          `The only local branch, ${branch}, cannot be deleted. Create or check out another branch first.`
+        )
+      } else {
+        setDeleteCurrentBranchOpen(true)
+      }
+      setBranchMenuOpen(false)
+    }
+    if (action === 'branch-discard') {
+      setDiscardAllChangesOpen(true)
+      setBranchMenuOpen(false)
+    }
+    if (action === 'branch-stash') {
+      setStashAllChangesOpen(true)
+      setBranchMenuOpen(false)
+    }
+    if (action === 'branch-update') setUpdateFromDefaultOpen(true)
+    handledMenuActionId.current = menuAction.id
+    props.onMenuActionHandled?.()
+  }, [
+    branch,
+    defaultBranch,
+    props.dispatcher,
+    props.menuAction?.action,
+    props.menuAction?.id,
+    props.onMenuActionHandled,
+    props.state.branches?.branches,
+  ])
+
+  React.useEffect(() => {
+    if (canPublish) setPublishRemote(remotes[0]?.name || '')
+  }, [canPublish, remotes])
+
+  const previewPruneBranches = async () => {
+    if (pruneLoading) return
+    setPruneLoading(true)
+    try {
+      setPruneCandidates(await props.dispatcher.previewPruneBranches())
+    } finally {
+      setPruneLoading(false)
+    }
+  }
+
+  const requestCheckout = (options: WebOperationOptions, label: string) => {
+    setBranchMenuOpen(false)
     if ((props.state.status?.workingDirectory.files.length || 0) > 0) {
       if (
         props.uncommittedChangesStrategy ===
@@ -2697,2003 +4438,1971 @@ function DesktopToolbar(props: {
         })
         return
       }
-      setCheckoutTarget({ branch: branchToCheckout, options })
+      setCheckoutTarget({ label, options })
       return
     }
     void props.dispatcher.runOperation('checkout', options)
   }
-  const desktopBranchDropdownDispatcher = React.useMemo(
-    () =>
-      ({
-        changeBranchesTab: () => Promise.resolve(),
-        checkoutBranch: (_repository: Repository, candidate: Branch) => {
-          const webBranch =
-            props.state.branches?.branches?.find(
-              item =>
-                item.ref === candidate.ref ||
-                (item.name === candidate.name &&
-                  item.type ===
-                    (candidate.type === BranchType.Remote ? 'Remote' : 'Local'))
-            ) || null
-          if (!webBranch) return Promise.resolve(getDesktopRepository(''))
 
-          const localBranchName =
-            webBranch.type === 'Remote'
-              ? webBranch.name.split('/').slice(1).join('/')
-              : webBranch.name
-          const localExists = (props.state.branches?.branches || []).some(
-            item => item.type !== 'Remote' && item.name === localBranchName
-          )
-          requestCheckout(
-            {
-              values: [localExists ? localBranchName : webBranch.name],
-              ...(webBranch.type === 'Remote' && !localExists
-                ? { createLocalBranch: localBranchName }
-                : {}),
-            },
-            candidate
-          )
-          return Promise.resolve(getDesktopRepository(''))
-        },
-        closeFoldout: () => setToolbarDropdownState('branch', 'closed'),
-        fastForwardBranch: (_repository: Repository, candidate: Branch) =>
-          props.dispatcher.runOperation('fast-forward', {
-            values: [candidate.name],
-          }),
-        getBranchAheadBehind: () =>
-          Promise.resolve(props.state.branches?.aheadBehind || null),
-        pull: () => props.dispatcher.runOperation('pull'),
-        showPopup: (popup: {
-          readonly type: PopupType
-          readonly branch?: Branch
-          readonly initialName?: string
-          readonly initialBranchName?: string
-        }) => {
-          const webBranch = popup.branch
-            ? props.state.branches?.branches?.find(
-                candidate =>
-                  candidate.ref === popup.branch?.ref ||
-                  (candidate.name === popup.branch?.name &&
-                    candidate.type ===
-                      (popup.branch?.type === BranchType.Remote
-                        ? 'Remote'
-                        : 'Local'))
-              ) || null
-            : popup.initialBranchName
-            ? props.state.branches?.branches?.find(
-                candidate => candidate.name === popup.initialBranchName
-              ) || null
-            : null
+  const recoverCheckout = async (recovery: 'stash' | 'move' | 'discard') => {
+    if (!checkoutTarget) return
+    if (recovery === 'stash') {
+      await props.dispatcher.runOperation('checkout', {
+        ...checkoutTarget.options,
+        stashChanges: true,
+      })
+    } else if (recovery === 'move') {
+      await props.dispatcher.runOperation('checkout', {
+        ...checkoutTarget.options,
+        moveChanges: true,
+      })
+    } else {
+      await props.dispatcher.discardFiles(
+        props.state.status?.workingDirectory.files.map(file => file.path) || [],
+        true
+      )
+      await props.dispatcher.runOperation('checkout', checkoutTarget.options)
+    }
+    setCheckoutTarget(null)
+  }
 
-          switch (popup.type) {
-            case PopupType.CreateBranch:
-              setBranchInitialName(popup.initialName || '')
-              setBranchToRename(null)
-              setBranchDialog('create')
-              break
-            case PopupType.RenameBranch:
-              if (webBranch) {
-                setBranchToRename(webBranch)
-                setBranchDialog('rename')
-              }
-              break
-            case PopupType.DeleteBranch:
-            case PopupType.DeleteRemoteBranch:
-              if (webBranch) setBranchToDelete(webBranch)
-              break
-            case PopupType.DeleteUnusedLocalBranches:
-              setDeleteUnusedLocalBranchesOpen(true)
-              break
-            case PopupType.AddWorktree:
-              if (webBranch) {
-                setBranchForWorktree(webBranch)
-                setBranchDialog('worktree')
-              }
-              break
-            case PopupType.ManageRemotes:
-              setToolbarDropdownState('branch', 'closed')
-              setManageRemotesOpen(true)
-              break
-          }
-          return Promise.resolve()
-        },
-        startCherryPickWithBranch: () => undefined,
-        startMergeBranchOperation: (
-          _repository: Repository,
-          squash = false,
-          initialBranch?: Branch | null
-        ) => {
-          setToolbarDropdownState('branch', 'closed')
-          setMergeOperation({
-            squash,
-            ...(initialBranch ? { initialBranch } : {}),
-          })
-        },
-        updateRepositoryDefaultBranch: (
-          _repository: Repository,
-          nextDefaultBranch: string
-        ) => props.dispatcher.setRepositoryDefaultBranch(nextDefaultBranch),
-        setBranchDropdownWidth: updateBranchDropdownWidth,
-        resetBranchDropdownWidth,
-      } as unknown as Dispatcher),
-    [
-      props.dispatcher,
-      props.state.branches,
-      resetBranchDropdownWidth,
-      setToolbarDropdownState,
-      updateBranchDropdownWidth,
-    ]
-  )
-  const desktopBranchDropdownState = React.useMemo(
-    () =>
-      ({
-        branchesState: {
-          allBranches: desktopBranches,
-          currentPullRequest: null,
-          defaultBranch: desktopDefaultBranch,
-          forcePushBranches: new Map(),
-          isLoadingPullRequests: false,
-          openPullRequests: [],
-          pullWithRebase: props.state.branches?.pullWithRebase,
-          recentBranches: desktopBranches.filter(
-            candidate =>
-              candidate.type === BranchType.Local &&
-              (props.state.branches?.recentBranches || []).includes(
-                candidate.name
-              )
-          ),
-          tip: desktopTip,
-          upstreamDefaultBranch: null,
-        },
-        changesState: { conflictState: null },
-        checkoutProgress: null,
-        worktrees,
-      } as unknown as IRepositoryState),
-    [
-      desktopBranches,
-      desktopDefaultBranch,
-      desktopTip,
-      props.state.branches?.pullWithRebase,
-      props.state.branches?.recentBranches,
-    ]
-  )
-  const remoteName =
-    desktopCurrentBranch?.upstreamRemoteName || remotes[0]?.name || null
-  const lastFetched = props.state.branches?.lastFetched
-    ? new Date(props.state.branches.lastFetched)
-    : null
-  const networkProgress = getNetworkProgress(
-    props.state.operationTask,
-    remoteName,
-    desktopCurrentBranch?.name || null
-  )
-  const forcePushBranchState = getCurrentBranchForcePushState(
-    desktopBranchDropdownState.branchesState,
-    aheadBehind
-  )
-  const pushCurrentBranch = React.useCallback(() => {
-    if (aheadBehind === null && desktopCurrentBranch && remoteName) {
-      return props.dispatcher.runOperation('publish-branch', {
-        values: [remoteName, desktopCurrentBranch.name],
-      })
+  const runBranchDialog = async () => {
+    const name = branchName.trim()
+    const nameError = validateGitRefName(name, 'Branch name')
+    if (!name || nameError || !branchDialog || branchSubmitting) return
+    setBranchSubmitting(true)
+    try {
+      if (branchDialog === 'create')
+        await props.dispatcher.runOperation('create-branch', {
+          values: [name],
+          checkout: true,
+        })
+      else
+        await props.dispatcher.runOperation('rename-branch', {
+          values: [branch, name],
+        })
+      setBranchDialog(null)
+      setBranchName('')
+    } finally {
+      setBranchSubmitting(false)
     }
-    return props.dispatcher.runOperation('push')
-  }, [aheadBehind, desktopCurrentBranch, props.dispatcher, remoteName])
-  const desktopPushPullDispatcher = React.useMemo(
-    () =>
-      ({
-        closeFoldout: () => setToolbarDropdownState('sync', 'closed'),
-        confirmOrForcePush: () => setForcePushOpen(true),
-        fetch: () => props.dispatcher.runOperation('fetch'),
-        pull: () => props.dispatcher.runOperation('pull'),
-        push: pushCurrentBranch,
-        resetAndPull: () =>
-          props.dispatcher.runOperation('reset-upstream', { confirmed: true }),
-        setPushPullButtonWidth: updatePushPullButtonWidth,
-        resetPushPullButtonWidth,
-      } as unknown as Dispatcher),
-    [
-      pushCurrentBranch,
-      resetPushPullButtonWidth,
-      setToolbarDropdownState,
-      updatePushPullButtonWidth,
-    ]
-  )
-  const currentWebBranch = props.state.branches?.branch || null
-  const canUpdateFromDefault =
-    desktopCurrentBranch !== null &&
-    defaultBranch !== null &&
-    desktopCurrentBranch.name !== defaultBranch
-  React.useEffect(() => {
-    const requests = props.toolbarMenuRequests
-    const previous = lastToolbarMenuRequests.current
-    lastToolbarMenuRequests.current = requests
-    if (requests.createBranch !== previous.createBranch) {
-      setBranchInitialName('')
-      setBranchToRename(null)
-      setBranchDialog('create')
-    }
-    if (requests.renameBranch !== previous.renameBranch && currentWebBranch) {
-      setBranchToRename(currentWebBranch)
-      setBranchDialog('rename')
-    }
-    if (requests.deleteBranch !== previous.deleteBranch && currentWebBranch)
-      setBranchToDelete(currentWebBranch)
-    if (requests.discardAllChanges !== previous.discardAllChanges) {
-      setDiscardAllChangesPermanently(false)
-      setDiscardAllChangesOpen(true)
-    }
-    if (
-      requests.permanentlyDiscardAllChanges !==
-      previous.permanentlyDiscardAllChanges
-    ) {
-      setDiscardAllChangesPermanently(true)
-      setDiscardAllChangesOpen(true)
-    }
-    if (
-      requests.stashAllChanges !== previous.stashAllChanges &&
-      currentWebBranch &&
-      (props.state.status?.workingDirectory.files.length || 0) > 0
-    )
-      void props.dispatcher.runOperation('stash', {
-        values: (props.state.status?.workingDirectory.files || []).map(
-          file => file.path
-        ),
-        includeUntracked: true,
-      })
-    if (requests.newWorktree !== previous.newWorktree) setWorktreeToAdd(true)
-    if (requests.openWithEditor !== previous.openWithEditor)
-      setOpenWithEditorOpen(true)
-    if (
-      requests.deleteUnusedLocalBranches !== previous.deleteUnusedLocalBranches
-    )
-      setDeleteUnusedLocalBranchesOpen(true)
-    if (requests.manageRemotes !== previous.manageRemotes)
-      setManageRemotesOpen(true)
-    if (requests.mergeBranch !== previous.mergeBranch)
-      setMergeOperation({ squash: false })
-    if (requests.squashMergeBranch !== previous.squashMergeBranch)
-      setMergeOperation({ squash: true })
-    if (requests.rebaseBranch !== previous.rebaseBranch) setRebaseDialog({})
-  }, [
-    currentWebBranch,
-    props.dispatcher,
-    props.state.status?.workingDirectory.files,
-    props.toolbarMenuRequests,
-  ])
-  const repositoryActionItems = React.useMemo<
-    ReadonlyArray<ToolbarActionMenuItem>
-  >(
-    () => [
-      {
-        id: 'push',
-        type: 'item',
-        label: 'Push',
-        disabled: !desktopCurrentBranch,
-        action: () => void pushCurrentBranch(),
-      },
-      {
-        id: 'pull',
-        type: 'item',
-        label: 'Pull',
-        disabled: !desktopCurrentBranch,
-        action: () => void props.dispatcher.runOperation('pull'),
-      },
-      {
-        id: 'fetch',
-        type: 'item',
-        label: 'Fetch',
-        disabled: !repository,
-        action: () => void props.dispatcher.runOperation('fetch'),
-      },
-      { id: 'repository-changes', type: 'separator' },
-      {
-        id: 'discard-all-changes',
-        type: 'item',
-        label: 'Discard All Changes…',
-        disabled:
-          (props.state.status?.workingDirectory.files.length || 0) === 0,
-        action: () => {
-          setDiscardAllChangesPermanently(false)
-          setDiscardAllChangesOpen(true)
-        },
-      },
-      {
-        id: 'permanently-discard-all-changes',
-        type: 'item',
-        label: 'Permanently Discard All Changes…',
-        disabled:
-          (props.state.status?.workingDirectory.files.length || 0) === 0,
-        action: () => {
-          setDiscardAllChangesPermanently(true)
-          setDiscardAllChangesOpen(true)
-        },
-      },
-      {
-        id: 'stash-all-changes',
-        type: 'item',
-        label: 'Stash All Changes',
-        disabled:
-          (props.state.status?.workingDirectory.files.length || 0) === 0 ||
-          !desktopCurrentBranch,
-        action: () =>
-          void props.dispatcher.runOperation('stash', {
-            values: (props.state.status?.workingDirectory.files || []).map(
-              file => file.path
-            ),
-            includeUntracked: true,
-          }),
-      },
-      { id: 'repository-integrations', type: 'separator' },
-      {
-        id: 'open-in-editor',
-        type: 'item',
-        label: `Open in ${editorIntegration.name || 'Visual Studio Code'}`,
-        disabled: !repository,
-        action: () => {
-          if (!repository) return
-          void props.dispatcher.openIntegration(
-            'editor',
-            repository.path,
-            editorIntegration
-          )
-        },
-      },
-      {
-        id: 'open-with-editor',
-        type: 'item',
-        label: 'Open With…',
-        disabled: !repository,
-        action: () => setOpenWithEditorOpen(true),
-      },
-      {
-        id: 'open-in-terminal',
-        type: 'item',
-        label: 'Open in Terminal',
-        disabled: !repository,
-        action: () => {
-          if (!repository) return
-          void props.dispatcher.openIntegration(
-            'shell',
-            repository.path,
-            shellIntegration
-          )
-        },
-      },
-      {
-        id: 'show-in-file-manager',
-        type: 'item',
-        label: 'Show in File Manager',
-        disabled: !repository,
-        action: () => {
-          if (repository) props.onOpenPath(repository.path, true)
-        },
-      },
-      {
-        id: 'remove-repository',
-        type: 'item',
-        label: 'Remove…',
-        disabled: !repository,
-        action: () => {
-          if (repository) props.onRemoveRepository(repository.path)
-        },
-      },
-      {
-        id: 'new-worktree',
-        type: 'item',
-        label: 'New Worktree…',
-        disabled: !repository || !props.showWorktrees,
-        action: () => setWorktreeToAdd(true),
-      },
-      { id: 'repository-remotes', type: 'separator' },
-      {
-        id: 'manage-remotes',
-        type: 'item',
-        label: 'Manage Remotes…',
-        disabled: !repository,
-        action: () => setManageRemotesOpen(true),
-      },
-    ],
-    [
-      desktopCurrentBranch,
-      props.state.status?.workingDirectory.files,
-      editorIntegration,
-      props.dispatcher,
-      props.onOpenPath,
-      pushCurrentBranch,
-      repository,
-      shellIntegration,
-      props.showWorktrees,
-    ]
-  )
-  const branchActionItems = React.useMemo<ReadonlyArray<ToolbarActionMenuItem>>(
-    () => [
-      {
-        id: 'new-branch',
-        type: 'item',
-        label: 'New Branch…',
-        disabled: !repository,
-        action: () => {
-          setBranchInitialName('')
-          setBranchToRename(null)
-          setBranchDialog('create')
-        },
-      },
-      {
-        id: 'rename-branch',
-        type: 'item',
-        label: 'Rename…',
-        disabled: !currentWebBranch,
-        action: () => setBranchToRename(currentWebBranch),
-      },
-      {
-        id: 'delete-branch',
-        type: 'item',
-        label: 'Delete…',
-        disabled: !currentWebBranch,
-        action: () => setBranchToDelete(currentWebBranch),
-      },
-      { id: 'branch-history', type: 'separator' },
-      {
-        id: 'discard-all-changes',
-        type: 'item',
-        label: 'Discard All Changes…',
-        disabled:
-          (props.state.status?.workingDirectory.files.length || 0) === 0,
-        action: () => {
-          setDiscardAllChangesPermanently(false)
-          setDiscardAllChangesOpen(true)
-        },
-      },
-      {
-        id: 'permanently-discard-all-changes',
-        type: 'item',
-        label: 'Permanently Discard All Changes…',
-        disabled:
-          (props.state.status?.workingDirectory.files.length || 0) === 0,
-        action: () => {
-          setDiscardAllChangesPermanently(true)
-          setDiscardAllChangesOpen(true)
-        },
-      },
-      {
-        id: 'stash-all-changes',
-        type: 'item',
-        label: 'Stash All Changes',
-        disabled:
-          (props.state.status?.workingDirectory.files.length || 0) === 0 ||
-          !desktopCurrentBranch,
-        action: () =>
-          void props.dispatcher.runOperation('stash', {
-            values: (props.state.status?.workingDirectory.files || []).map(
-              file => file.path
-            ),
-            includeUntracked: true,
-          }),
-      },
-      { id: 'branch-history-actions', type: 'separator' },
-      {
-        id: 'update-from-default',
-        type: 'item',
-        label: `Update from ${defaultBranch || 'default branch'}`,
-        disabled: !canUpdateFromDefault,
-        action: () =>
-          void props.dispatcher.runOperation('update-from-default', {
-            defaultBranch: defaultBranch || undefined,
-            updateStrategy: getStoredUpdateBranchStrategy(
-              props.state.selectedRepositoryPath || ''
-            ),
-          }),
-      },
-      {
-        id: 'compare-to-branch',
-        type: 'item',
-        label: 'Compare to Branch',
-        disabled: !desktopCurrentBranch,
-        action: () => void props.dispatcher.selectSection('compare'),
-      },
-      {
-        id: 'merge-into-current',
-        type: 'item',
-        label: 'Merge into Current Branch…',
-        disabled: !desktopCurrentBranch,
-        action: () => setMergeOperation({ squash: false }),
-      },
-      {
-        id: 'squash-merge-into-current',
-        type: 'item',
-        label: 'Squash and Merge into Current Branch…',
-        disabled: !desktopCurrentBranch,
-        action: () => setMergeOperation({ squash: true }),
-      },
-      {
-        id: 'rebase-current',
-        type: 'item',
-        label: 'Rebase Current Branch…',
-        disabled: !desktopCurrentBranch,
-        action: () => setRebaseDialog({}),
-      },
-      {
-        id: 'delete-unused-local-branches',
-        type: 'item',
-        label: 'Delete Unused Local Branches…',
-        disabled: (props.state.branches?.mergedBranches?.length || 0) === 0,
-        action: () => setDeleteUnusedLocalBranchesOpen(true),
-      },
-    ],
-    [
-      canUpdateFromDefault,
-      currentWebBranch,
-      defaultBranch,
-      desktopCurrentBranch,
-      props.dispatcher,
-      props.state.branches?.mergedBranches,
-      props.state.status?.workingDirectory.files,
-      repository,
-    ]
-  )
-  const runWorktreeOperation = React.useCallback(
-    async (worktreePath: string, force = false) => {
-      const mainWorktreePath =
-        worktrees.find(worktree => worktree.type === 'main')?.path ||
-        desktopWorktreeRepository.path
-      const repositoryPath =
-        worktreePath === desktopWorktreeRepository.path
-          ? mainWorktreePath
-          : desktopWorktreeRepository.path
-      await props.dispatcher.selectRepository(repositoryPath)
-      await props.dispatcher.runOperationOrThrow('worktree-remove', {
-        values: [worktreePath],
-        ...(force ? { force: true } : {}),
-      })
-      if (worktreePath !== mainWorktreePath) {
-        props.dispatcher.removeRepository(worktreePath)
-      }
-    },
-    [desktopWorktreeRepository.path, props.dispatcher, worktrees]
-  )
-  const desktopWorktreeDispatcher = React.useMemo(
-    () =>
-      ({
-        closeFoldout: (foldout: FoldoutType) => {
-          if (foldout === FoldoutType.Worktree)
-            setToolbarDropdownState('worktree', 'closed')
-        },
-        incrementMetric: () => undefined,
-        moveWorktree: async (
-          _repository: Repository,
-          worktreePath: string,
-          newPath: string
-        ) => {
-          try {
-            const isCurrentWorktree =
-              worktreePath === desktopWorktreeRepository.path
-            const mainWorktreePath =
-              worktrees.find(worktree => worktree.type === 'main')?.path ||
-              desktopWorktreeRepository.path
-            await props.dispatcher.selectRepository(
-              isCurrentWorktree
-                ? mainWorktreePath
-                : desktopWorktreeRepository.path
-            )
-            await props.dispatcher.runOperationOrThrow('worktree-move', {
-              values: [worktreePath, newPath],
-            })
-            if (isCurrentWorktree) {
-              await props.dispatcher.selectRepository(newPath)
-              props.dispatcher.removeRepository(worktreePath)
-            }
-            return true
-          } catch {
-            return false
-          }
-        },
-        requestDeleteWorktree: (
-          _repository: Repository,
-          worktreePath: string
-        ) => {
-          if (props.confirmWorktreeRemoval) setWorktreeToDelete(worktreePath)
-          else
-            void runWorktreeOperation(worktreePath).catch(error =>
-              setWorktreeDeleteFailure({ path: worktreePath, error })
-            )
-        },
-        selectRepository: (nextRepository: Repository) =>
-          props.dispatcher.selectRepository(nextRepository.path),
-        showPopup: (popup: {
-          readonly type: PopupType
-          readonly worktreePath?: string
-        }) => {
-          if (popup.type === PopupType.AddWorktree) setWorktreeToAdd(true)
-          if (popup.type === PopupType.RenameWorktree)
-            setWorktreeToRename(popup.worktreePath || null)
-          return Promise.resolve()
-        },
-        switchWorktree: (
-          _repository: Repository,
-          worktree: { readonly path: string }
-        ) => props.dispatcher.selectRepository(worktree.path),
-        setWorktreeDropdownWidth: updateWorktreeDropdownWidth,
-        resetWorktreeDropdownWidth,
-      } as unknown as Dispatcher),
-    [
-      desktopWorktreeRepository.path,
-      props.confirmWorktreeRemoval,
-      props.dispatcher,
-      resetWorktreeDropdownWidth,
-      runWorktreeOperation,
-      setToolbarDropdownState,
-      updateWorktreeDropdownWidth,
-      worktrees,
-    ]
-  )
+  }
 
   return (
     <>
-      <ApplicationToolbar
-        branch={
-          <BranchDropdown
-            branchDropdownWidth={{
-              max: webToolbarButtonWidth.max,
-              min: webToolbarButtonWidth.min,
-              value: branchDropdownWidth,
-            }}
-            branchSortOrder={props.branchSortOrder}
-            currentPullRequest={null}
-            dispatcher={desktopBranchDropdownDispatcher}
-            emoji={new Map()}
-            enableFocusTrap={true}
-            isLoadingPullRequests={false}
-            isOpen={branchMenuOpen}
-            onDropDownStateChanged={state =>
-              setToolbarDropdownState('branch', state)
-            }
-            pullRequests={[]}
-            repository={getDesktopRepository(
-              props.state.selectedRepositoryPath || ''
-            )}
-            repositoryState={desktopBranchDropdownState}
-            selectedTab={BranchesTab.Branches}
-            shouldNudge={false}
-            showCIStatusPopover={false}
-            underlineLinks={props.underlineLinks}
-          />
-        }
-        pushPull={
-          <PushPullButton
-            aheadBehind={aheadBehind}
-            askForConfirmationOnForcePush={props.confirmForcePush}
-            dispatcher={desktopPushPullDispatcher}
-            enableFocusTrap={true}
-            forcePushBranchState={forcePushBranchState}
-            isDropdownOpen={syncMenuOpen}
-            lastFetched={lastFetched}
-            networkActionInProgress={props.state.loading}
-            numTagsToPush={props.state.branches?.tagsToPush?.length || 0}
-            onDropdownStateChanged={state =>
-              setToolbarDropdownState('sync', state)
-            }
-            progress={networkProgress}
-            pullWithRebase={props.state.branches?.pullWithRebase}
-            pushPullButtonWidth={{
-              max: webToolbarButtonWidth.max,
-              min: webToolbarButtonWidth.min,
-              value: pushPullButtonWidth,
-            }}
-            rebaseInProgress={false}
-            remoteName={remoteName}
-            repository={getDesktopRepository(
-              props.state.selectedRepositoryPath || ''
-            )}
-            shouldNudge={false}
-            tipState={desktopTip.kind}
-          />
-        }
-        worktree={
-          props.showWorktrees && repository ? (
-            <WorktreeDropdown
-              dispatcher={desktopWorktreeDispatcher}
-              enableFocusTrap={true}
-              isOpen={worktreeDropdownOpen}
-              onDropDownStateChanged={state =>
-                setToolbarDropdownState('worktree', state)
-              }
-              repository={desktopWorktreeRepository}
-              worktreeDropdownWidth={{
-                max: webToolbarButtonWidth.max,
-                min: webToolbarButtonWidth.min,
-                value: worktreeDropdownWidth,
-              }}
-              worktrees={worktrees}
-              onPruneWorktree={path =>
-                void props.dispatcher.runOperationOrThrow('worktree-prune', {
-                  values: [path],
-                })
-              }
-            />
-          ) : null
-        }
-        repository={
-          <RepositoryToolbarDropdown
+      <Toolbar id="desktop-app-toolbar">
+        <div className="sidebar-section" style={{ width: props.sidebarWidth }}>
+          <ToolbarDropdown
             description="Current repository"
             dropdownContentRenderer={() => (
               <DesktopRepositoryPicker
                 onAdd={() => {
                   props.onOpenRepositoryDialog()
-                  setToolbarDropdownState('repository', 'closed')
-                }}
-                onClone={() => {
-                  props.onOpenCloneDialog()
-                  setToolbarDropdownState('repository', 'closed')
-                }}
-                onCreate={() => {
-                  props.onOpenInitDialog()
-                  setToolbarDropdownState('repository', 'closed')
+                  setRepositoryPickerOpen(false)
                 }}
                 onRemove={props.onRemoveRepository}
+                onDeleteRepository={props.onDeleteRepository}
                 onSelect={path => {
                   void props.dispatcher.selectRepository(path)
-                  setToolbarDropdownState('repository', 'closed')
+                  setRepositoryPickerOpen(false)
                 }}
-                onEdit={props.onChangeRepositoryAlias}
+                onTogglePinned={path =>
+                  props.dispatcher.toggleRepositoryPinned(path)
+                }
+                onEdit={props.onOpenRepositorySettings}
+                pinnedRepositoryPaths={props.state.pinnedRepositoryPaths}
                 repositories={props.state.repositories}
                 selectedRepositoryPath={props.state.selectedRepositoryPath}
                 showBranchName={props.showBranchName}
                 showWorktrees={props.showWorktreesInRepositoryList}
+                repositoryIndicatorsEnabled={props.repositoryIndicatorsEnabled}
                 showRecentRepositories={props.showRecentRepositories}
                 onCopyPath={props.onCopyPath}
                 onOpenPath={props.onOpenPath}
                 onOpenExternal={props.onOpenExternal}
                 onOpenNewWindow={props.onOpenNewWindow}
-                onPullAll={props.onPullAllRepositories}
-                onCreateGroup={() => {
-                  props.onRenameRepositoryGroup('')
-                  setToolbarDropdownState('repository', 'closed')
-                }}
-                branches={props.state.branches?.branches || []}
-                confirmWorktreeRemoval={props.confirmWorktreeRemoval}
-                dispatcher={props.dispatcher}
-                onConfirmWorktreeRemovalChanged={
-                  props.onConfirmWorktreeRemovalChanged
-                }
+                onPullGroup={props.onPullRepositoryGroup}
+                onRenameGroup={props.onRenameRepositoryGroup}
+                repositorySortOrder={props.repositorySortOrder}
               />
             )}
             dropdownState={repositoryPickerOpen ? 'open' : 'closed'}
+            foldoutStyle={{
+              position: 'absolute',
+              marginLeft: 0,
+              width: props.sidebarWidth,
+              minWidth: props.sidebarWidth,
+              height: '100%',
+              top: 0,
+            }}
             icon={octicons.repo}
-            onKeyDown={event =>
-              closeDropdownOnEscape(event, () =>
-                setToolbarDropdownState('repository', 'closed')
-              )
-            }
             onDropdownStateChanged={state =>
-              setToolbarDropdownState('repository', state)
+              setRepositoryPickerOpen(state === 'open')
             }
             title={repository?.name || 'Repository'}
             tooltip={repository?.path}
-            width={props.sidebarWidth}
           />
-        }
-        actions={
-          <>
-            <ToolbarActionMenu
-              id="web-repository-actions"
-              isOpen={repositoryActionsOpen}
-              label="Repo"
-              items={repositoryActionItems}
-              onStateChanged={state =>
-                setToolbarDropdownState('repository-actions', state)
-              }
-            />
-            <ToolbarActionMenu
-              id="web-branch-actions"
-              isOpen={branchActionsOpen}
-              label="Branch"
-              items={branchActionItems}
-              onStateChanged={state =>
-                setToolbarDropdownState('branch-actions', state)
-              }
-            />
-          </>
-        }
-        sidebarWidth={props.sidebarWidth}
-      />
-      {worktreeToAdd && repository ? (
-        <DialogStackContext.Provider value={{ isTopMost: true }}>
-          <AddWorktreeDialog
-            allBranches={desktopBranches}
-            dispatcher={desktopWorktreeDispatcher}
-            onDismissed={() => setWorktreeToAdd(false)}
-            repository={desktopWorktreeRepository}
-          />
-        </DialogStackContext.Provider>
-      ) : null}
-      {worktreeToRename && repository ? (
-        <DialogStackContext.Provider value={{ isTopMost: true }}>
-          <RenameWorktreeDialog
-            dispatcher={desktopWorktreeDispatcher}
-            onDismissed={() => setWorktreeToRename(null)}
-            repository={desktopWorktreeRepository}
-            worktreePath={worktreeToRename}
-          />
-        </DialogStackContext.Provider>
-      ) : null}
-      {worktreeToDelete && repository ? (
-        <DialogStackContext.Provider value={{ isTopMost: true }}>
-          <DeleteWorktreeDialog
-            askForConfirmationOnWorktreeRemoval={props.confirmWorktreeRemoval}
-            onConfirmWorktreeRemovalChanged={
-              props.onConfirmWorktreeRemovalChanged
-            }
-            onDeleteWorktree={async (_repository, worktreePath) => {
-              try {
-                await runWorktreeOperation(worktreePath)
-              } catch (error) {
-                setWorktreeDeleteFailure({
-                  path: worktreePath,
-                  error:
-                    error instanceof Error ? error : new Error(String(error)),
-                })
-              }
-            }}
-            onDismissed={() => setWorktreeToDelete(null)}
-            repository={desktopWorktreeRepository}
-            worktreePath={worktreeToDelete}
-          />
-        </DialogStackContext.Provider>
-      ) : null}
-      {worktreeDeleteFailure && repository ? (
-        <DialogStackContext.Provider value={{ isTopMost: true }}>
-          <DeleteWorktreeFailedDialog
-            error={worktreeDeleteFailure.error}
-            onDeleteWorktree={async (_repository, worktreePath, force) => {
-              await runWorktreeOperation(worktreePath, force)
-              setWorktreeDeleteFailure(null)
-            }}
-            onDismissed={() => setWorktreeDeleteFailure(null)}
-            onSwitchToWorktree={(_repository, worktree) =>
-              props.dispatcher.selectRepository(worktree.path)
-            }
-            originalWorktree={
-              worktrees.find(
-                worktree => worktree.path === worktreeDeleteFailure.path
-              ) || null
-            }
-            repository={desktopWorktreeRepository}
-            worktreePath={worktreeDeleteFailure.path}
-          />
-        </DialogStackContext.Provider>
-      ) : null}
-      {openWithEditorOpen && repository ? (
-        <DialogStackContext.Provider value={{ isTopMost: true }}>
-          <OpenWithExternalEditor
-            onDismissed={() => setOpenWithEditorOpen(false)}
-            onOpenWithEditor={async (editor, custom) => {
-              await props.dispatcher.openIntegration(
-                'editor',
-                repository.path,
-                {
-                  name: editor,
-                  custom: custom
-                    ? { path: custom.path, arguments: custom.arguments || '' }
-                    : null,
+        </div>
+        <ToolbarDropdown
+          className="branch-toolbar-button"
+          description="Current Branch"
+          dropdownContentRenderer={() => (
+            <>
+              <BranchActionMenu
+                branches={props.state.branches?.branches || []}
+                currentBranch={branch}
+                currentBranchUpstream={
+                  props.state.branches?.branch?.upstream || null
                 }
-              )
-            }}
-          />
-        </DialogStackContext.Provider>
-      ) : null}
-      {discardAllChangesOpen && props.state.selectedRepositoryPath ? (
-        <DesktopDiscardChangesDialog
-          askForConfirmation={props.confirmDiscardChanges}
-          dispatcher={props.dispatcher}
-          files={props.state.status?.workingDirectory.files || []}
-          onConfirmDiscardChangesChanged={props.onConfirmDiscardChangesChanged}
-          onDismiss={() => setDiscardAllChangesOpen(false)}
-          permanentlyDelete={discardAllChangesPermanently}
-          repositoryPath={props.state.selectedRepositoryPath}
-        />
-      ) : null}
-      {forcePushOpen &&
-      desktopCurrentBranch &&
-      props.state.selectedRepositoryPath ? (
-        <DesktopConfirmForcePushDialog
-          currentBranch={desktopCurrentBranch}
-          dispatcher={props.dispatcher}
-          onDismiss={() => setForcePushOpen(false)}
-          repositoryPath={props.state.selectedRepositoryPath}
-        />
-      ) : null}
-      {checkoutTarget &&
-      desktopCurrentBranch &&
-      props.state.selectedRepositoryPath ? (
-        <DesktopStashAndSwitchBranchDialog
-          branchToCheckout={checkoutTarget.branch}
-          checkoutOptions={checkoutTarget.options}
-          currentBranch={desktopCurrentBranch}
-          dispatcher={props.dispatcher}
-          onDismiss={() => setCheckoutTarget(null)}
-          repositoryPath={props.state.selectedRepositoryPath}
-        />
-      ) : null}
-      {mergeOperation &&
-      desktopCurrentBranch &&
-      props.state.selectedRepositoryPath ? (
-        <DialogStackContext.Provider value={{ isTopMost: true }}>
-          <MergeChooseBranchDialog
-            allBranches={desktopBranches}
-            branchSortOrder={props.branchSortOrder}
-            currentBranch={desktopCurrentBranch}
-            defaultBranch={desktopDefaultBranch}
-            dispatcher={
-              {
-                closePopup: () => setMergeOperation(null),
-                incrementMetric: () => undefined,
-                mergeBranch: (
-                  _repository: Repository,
-                  branch: Branch,
-                  _status: unknown,
-                  squash = false
-                ) => {
-                  setMergeOperation(null)
-                  return props.dispatcher.runOperation(
-                    squash ? 'squash-merge' : 'merge',
-                    { values: [branch.name] }
+                defaultBranch={defaultBranch}
+                dispatcher={props.dispatcher}
+                hasUncommittedChanges={
+                  (props.state.status?.workingDirectory.files.length || 0) > 0
+                }
+                mergedBranches={props.state.branches?.mergedBranches || []}
+                onClose={() => setBranchMenuOpen(false)}
+                onRequestedActionHandled={props.onMenuActionHandled}
+                requestedAction={branchActionRequest}
+                onCheckout={(candidate, options) =>
+                  requestCheckout(
+                    options,
+                    candidate.type === 'Remote'
+                      ? `remote branch ${candidate.name}`
+                      : `branch ${candidate.name}`
                   )
-                },
-                showRebaseDialog: (
-                  _repository: Repository,
-                  initialBranch?: Branch | null
-                ) => {
-                  setMergeOperation(null)
-                  setRebaseDialog(initialBranch ? { initialBranch } : {})
-                  return Promise.resolve()
-                },
-                startMergeBranchOperation: (
-                  _repository: Repository,
-                  squash = false,
-                  initialBranch?: Branch | null
-                ) =>
-                  setMergeOperation({
-                    squash,
-                    ...(initialBranch ? { initialBranch } : {}),
-                  }),
-              } as unknown as Dispatcher
-            }
-            initialBranch={mergeOperation.initialBranch}
-            onDismissed={() => setMergeOperation(null)}
-            operation={
-              mergeOperation.squash
-                ? MultiCommitOperationKind.Squash
-                : MultiCommitOperationKind.Merge
-            }
-            recentBranches={desktopBranches.filter(
-              candidate =>
-                candidate.type === BranchType.Local &&
-                (props.state.branches?.recentBranches || []).includes(
-                  candidate.name
-                )
-            )}
-            repository={getDesktopRepository(
-              props.state.selectedRepositoryPath
-            )}
-          />
-        </DialogStackContext.Provider>
-      ) : null}
-      {rebaseDialog &&
-      desktopCurrentBranch &&
-      props.state.selectedRepositoryPath ? (
-        <DialogStackContext.Provider value={{ isTopMost: true }}>
-          <RebaseChooseBranchDialog
-            allBranches={desktopBranches}
-            branchSortOrder={props.branchSortOrder}
-            currentBranch={desktopCurrentBranch}
-            defaultBranch={desktopDefaultBranch}
-            dispatcher={
-              {
-                startRebase: (_repository: Repository, baseBranch: Branch) => {
-                  setRebaseDialog(null)
-                  return props.dispatcher.runOperation('rebase', {
-                    values: [baseBranch.name],
+                }
+                pullStrategy={pullStrategy}
+              />
+              <WebBranchPicker
+                branches={props.state.branches?.branches || []}
+                currentBranch={branch}
+                defaultBranch={defaultBranch}
+                onCheckout={candidate => {
+                  const localBranchName =
+                    candidate.type === 'Remote'
+                      ? candidate.name.split('/').slice(1).join('/')
+                      : candidate.name
+                  const localExists = (
+                    props.state.branches?.branches || []
+                  ).some(
+                    item =>
+                      item.type !== 'Remote' && item.name === localBranchName
+                  )
+                  requestCheckout(
+                    {
+                      values: [localExists ? localBranchName : candidate.name],
+                      ...(candidate.type === 'Remote' && !localExists
+                        ? {
+                            createLocalBranch: localBranchName,
+                          }
+                        : {}),
+                    },
+                    candidate.type === 'Remote'
+                      ? `remote branch ${candidate.name}`
+                      : `branch ${candidate.name}`
+                  )
+                }}
+                recentBranches={props.state.branches?.recentBranches || []}
+                sortOrder={props.branchSortOrder}
+              />
+              <div className="web-toolbar-menu">
+                <Button
+                  onClick={() => {
+                    setBranchDialog('create')
+                    setBranchMenuOpen(false)
+                  }}
+                >
+                  Create branch
+                </Button>
+                <Button
+                  disabled={branch === 'No branch'}
+                  onClick={() => {
+                    setBranchDialog('rename')
+                    setBranchMenuOpen(false)
+                  }}
+                >
+                  Rename current branch
+                </Button>
+              </div>
+            </>
+          )}
+          dropdownState={branchMenuOpen ? 'open' : 'closed'}
+          icon={octicons.gitBranch}
+          onDropdownStateChanged={state => setBranchMenuOpen(state === 'open')}
+          title={branch}
+          tooltip={`Current branch is ${branch}`}
+        />
+        <ToolbarDropdown
+          className="push-pull-button"
+          description={
+            aheadBehind
+              ? `${aheadBehind.ahead} ahead, ${aheadBehind.behind} behind`
+              : 'Synchronize repository'
+          }
+          dropdownContentRenderer={() => (
+            <div className="web-toolbar-menu">
+              <Button
+                onClick={() => {
+                  void props.dispatcher.runOperation('fetch')
+                  setSyncMenuOpen(false)
+                }}
+              >
+                Fetch
+              </Button>
+              <Button
+                onClick={() => {
+                  void props.onPullAllRepositories()
+                  setSyncMenuOpen(false)
+                }}
+              >
+                Pull all repositories
+              </Button>
+              {defaultBranch &&
+              branch !== 'No branch' &&
+              branch !== defaultBranch ? (
+                <Button
+                  onClick={() => {
+                    setUpdateFromDefaultOpen(true)
+                    setSyncMenuOpen(false)
+                  }}
+                >
+                  Update from {defaultBranch}
+                </Button>
+              ) : null}
+              <Button
+                onClick={() => {
+                  void props.dispatcher.runOperation('pull', {
+                    pullStrategy,
                   })
-                },
-              } as unknown as Dispatcher
-            }
-            initialBranch={rebaseDialog.initialBranch}
-            onDismissed={() => setRebaseDialog(null)}
-            operation={MultiCommitOperationKind.Rebase}
-            recentBranches={desktopBranches.filter(
-              candidate =>
-                candidate.type === BranchType.Local &&
-                (props.state.branches?.recentBranches || []).includes(
-                  candidate.name
+                  setSyncMenuOpen(false)
+                }}
+              >
+                Pull (
+                {pullStrategy === 'ff-only'
+                  ? 'fast-forward only'
+                  : pullStrategy}
                 )
-            )}
-            repository={getDesktopRepository(
-              props.state.selectedRepositoryPath
-            )}
-          />
-        </DialogStackContext.Provider>
-      ) : null}
-      {branchDialog === 'create' ? (
+              </Button>
+              <Button
+                onClick={() => {
+                  setPullStrategyOpen(true)
+                  setSyncMenuOpen(false)
+                }}
+              >
+                Pull strategy
+              </Button>
+              <Button
+                onClick={() => {
+                  setFetchRefspecOpen(true)
+                  setSyncMenuOpen(false)
+                }}
+              >
+                Fetch refspec
+              </Button>
+              <Button
+                onClick={() => {
+                  void previewPruneBranches()
+                  setSyncMenuOpen(false)
+                }}
+              >
+                Prune stale branches
+              </Button>
+              {canPublish ? (
+                <Button
+                  onClick={() => {
+                    setPublishBranchOpen(true)
+                    setSyncMenuOpen(false)
+                  }}
+                >
+                  Publish branch
+                </Button>
+              ) : (
+                <Button
+                  onClick={() => {
+                    void props.dispatcher.runOperation('push')
+                    setSyncMenuOpen(false)
+                  }}
+                >
+                  Push
+                </Button>
+              )}
+              <Button
+                className="destructive"
+                onClick={() => {
+                  setForcePushOpen(true)
+                  setSyncMenuOpen(false)
+                }}
+              >
+                Force-push with lease
+              </Button>
+              <Button
+                onClick={() => {
+                  void props.dispatcher.refresh()
+                  setSyncMenuOpen(false)
+                }}
+              >
+                Refresh status
+              </Button>
+            </div>
+          )}
+          dropdownState={syncMenuOpen ? 'open' : 'closed'}
+          icon={syncClockwise}
+          onDropdownStateChanged={state => setSyncMenuOpen(state === 'open')}
+          style={ToolbarButtonStyle.Subtitle}
+          title="Sync"
+        />
+        <Button
+          ariaLabel="Open preferences"
+          className="web-preferences-button"
+          onClick={props.onOpenPreferences}
+          tooltip="Preferences"
+        >
+          <Octicon symbol={octicons.gear} />
+        </Button>
+      </Toolbar>
+      {updateFromDefaultOpen ? (
         <DialogStackContext.Provider value={{ isTopMost: true }}>
-          <CreateBranch
-            accounts={[]}
-            allBranches={desktopBranches}
-            cachedRepoRulesets={new Map()}
-            createBranch={(name, startPoint, noTrack) => {
+          <Dialog
+            ariaDescribedBy="update-from-default-description"
+            onDismissed={() => setUpdateFromDefaultOpen(false)}
+            onSubmit={() => {
               void props.dispatcher
-                .runOperation('create-branch', {
-                  values: [name, ...(startPoint ? [startPoint] : [])],
-                  checkout: true,
-                  noTrack,
+                .runOperation('update-from-default', {
+                  ...(defaultBranch ? { defaultBranch } : {}),
+                  updateStrategy,
                 })
-                .then(() => {
-                  setBranchDialog(null)
-                  setBranchInitialName('')
-                })
+                .then(() => setUpdateFromDefaultOpen(false))
             }}
-            defaultBranch={desktopDefaultBranch}
-            dispatcher={desktopBranchDialogDispatcher}
-            initialName={branchInitialName}
-            onDismissed={() => {
-              setBranchDialog(null)
-              setBranchInitialName('')
-            }}
-            repository={getDesktopRepository(
-              props.state.selectedRepositoryPath || ''
-            )}
-            tip={desktopBranchDialogTip}
-            upstreamDefaultBranch={null}
-            upstreamGitHubRepository={null}
-          />
+            title={`Update from ${defaultBranch || 'default branch'}`}
+          >
+            <DialogContent>
+              <p id="update-from-default-description">
+                Fetch the latest default branch, then update {branch} by merging
+                or rebasing its commits on top.
+              </p>
+              <fieldset
+                aria-label="Update strategy"
+                className="web-dialog-options"
+              >
+                <label>
+                  <input
+                    checked={updateStrategy === 'merge'}
+                    name="web-update-strategy"
+                    onChange={() => {
+                      setUpdateStrategy('merge')
+                      localStorage.setItem(webUpdateStrategyStorageKey, 'merge')
+                    }}
+                    type="radio"
+                  />
+                  Merge the default branch into {branch}
+                </label>
+                <label>
+                  <input
+                    checked={updateStrategy === 'rebase'}
+                    name="web-update-strategy"
+                    onChange={() => {
+                      setUpdateStrategy('rebase')
+                      localStorage.setItem(
+                        webUpdateStrategyStorageKey,
+                        'rebase'
+                      )
+                    }}
+                    type="radio"
+                  />
+                  Rebase {branch} onto the default branch
+                </label>
+              </fieldset>
+            </DialogContent>
+            <DialogFooter>
+              <Button onClick={() => setUpdateFromDefaultOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit">
+                {updateStrategy === 'merge'
+                  ? 'Merge and update'
+                  : 'Rebase and update'}
+              </Button>
+            </DialogFooter>
+          </Dialog>
         </DialogStackContext.Provider>
       ) : null}
-      {branchDialog === 'rename' && branchToRename ? (
+      <WebConfirmDialog
+        confirmLabel="Delete current branch"
+        message={`Delete the local branch ${branch}? Its unmerged commits will be permanently removed.`}
+        onConfirm={async () => {
+          if (branch !== 'No branch')
+            await props.dispatcher.runOperation('delete-branch', {
+              values: [branch],
+              confirmed: true,
+            })
+          setDeleteCurrentBranchOpen(false)
+        }}
+        onDismiss={() => setDeleteCurrentBranchOpen(false)}
+        open={deleteCurrentBranchOpen}
+        title="Delete current branch?"
+      />
+      <WebNoticeDialog
+        message={deleteCurrentBranchBlocked || ''}
+        onDismiss={() => setDeleteCurrentBranchBlocked(null)}
+        open={deleteCurrentBranchBlocked !== null}
+        title="Cannot delete branch"
+      />
+      <WebConfirmDialog
+        confirmLabel="Discard all changes"
+        message="Move all current changes to Trash when possible? If Trash is unavailable, untracked files will be deleted permanently."
+        onConfirm={async () => {
+          const files = props.state.status?.workingDirectory.files || []
+          await props.dispatcher.discardFiles(
+            files.map(file => file.path),
+            true
+          )
+          setDiscardAllChangesOpen(false)
+        }}
+        onDismiss={() => setDiscardAllChangesOpen(false)}
+        open={discardAllChangesOpen}
+        title="Discard all changes?"
+      />
+      <WebStashDialog
+        onDismiss={() => setStashAllChangesOpen(false)}
+        onSubmit={async (message, options) => {
+          await props.dispatcher.runOperation('stash', {
+            values:
+              props.state.status?.workingDirectory.files.map(
+                file => file.path
+              ) || [],
+            message,
+            ...options,
+            includeUntracked: true,
+          })
+          setStashAllChangesOpen(false)
+        }}
+        open={stashAllChangesOpen}
+      />
+      <WebConfirmDialog
+        confirmLabel="Force-push with lease"
+        message="Force-pushing replaces the remote branch history. Continue only if you intend to rewrite it."
+        onConfirm={async () => {
+          await props.dispatcher.runOperation('push', {
+            force: true,
+            confirmed: true,
+          })
+          setForcePushOpen(false)
+        }}
+        onDismiss={() => setForcePushOpen(false)}
+        open={forcePushOpen}
+        title="Force-push with lease?"
+      />
+      <WebCheckoutRecoveryDialog
+        branchLabel={checkoutTarget?.label || 'the selected branch'}
+        onDismiss={() => setCheckoutTarget(null)}
+        onDiscard={() => recoverCheckout('discard')}
+        onMove={() => recoverCheckout('move')}
+        onStash={() => recoverCheckout('stash')}
+        open={checkoutTarget !== null}
+      />
+      <WebTextDialog
+        description="Fetch a refspec from every configured remote. Use Git refspec syntax, such as refs/heads/release:refs/remotes/origin/release."
+        label="Refspec"
+        onDismiss={() => setFetchRefspecOpen(false)}
+        onSubmit={async value => {
+          await props.dispatcher.runOperation('fetch-refspec', {
+            values: [value],
+          })
+          setFetchRefspecOpen(false)
+        }}
+        open={fetchRefspecOpen}
+        submitLabel="Fetch refspec"
+        title="Fetch refspec"
+      />
+      {pullStrategyOpen ? (
         <DialogStackContext.Provider value={{ isTopMost: true }}>
-          <RenameBranch
-            accounts={[]}
-            branch={getDesktopBranch(branchToRename) as Branch}
-            cachedRepoRulesets={new Map()}
-            dispatcher={desktopBranchDialogDispatcher}
-            onDismissed={() => {
-              setBranchDialog(null)
-              setBranchToRename(null)
-            }}
-            repository={getDesktopRepository(
-              props.state.selectedRepositoryPath || ''
-            )}
-          />
+          <Dialog
+            ariaDescribedBy="pull-strategy-description"
+            onDismissed={() => setPullStrategyOpen(false)}
+            onSubmit={() => setPullStrategyOpen(false)}
+            title="Pull strategy"
+          >
+            <DialogContent>
+              <p id="pull-strategy-description">
+                Choose how Pull reconciles changes from the configured upstream.
+              </p>
+              <fieldset
+                aria-label="Pull strategy"
+                className="web-dialog-options"
+              >
+                {(
+                  [
+                    ['merge', 'Merge'],
+                    ['rebase', 'Rebase'],
+                    ['ff-only', 'Fast-forward only'],
+                  ] as const
+                ).map(([value, label]) => (
+                  <label key={value}>
+                    <input
+                      checked={pullStrategy === value}
+                      name="web-pull-strategy"
+                      onChange={() => {
+                        setPullStrategy(value)
+                        localStorage.setItem(webPullStrategyStorageKey, value)
+                      }}
+                      type="radio"
+                    />
+                    {label}
+                  </label>
+                ))}
+              </fieldset>
+            </DialogContent>
+            <DialogFooter>
+              <Button onClick={() => setPullStrategyOpen(false)}>Close</Button>
+            </DialogFooter>
+          </Dialog>
         </DialogStackContext.Provider>
       ) : null}
-      {branchDialog === 'worktree' && branchForWorktree ? (
-        <DialogStackContext.Provider value={{ isTopMost: true }}>
-          <AddWorktreeDialog
-            allBranches={desktopBranches}
-            dispatcher={desktopBranchDialogDispatcher}
-            initialBranchName={
-              getDesktopBranch(branchForWorktree)?.nameWithoutRemote ||
-              branchForWorktree.name
-            }
-            onDismissed={() => {
-              setBranchDialog(null)
-              setBranchForWorktree(null)
-            }}
-            repository={getDesktopRepository(
-              props.state.selectedRepositoryPath || ''
-            )}
-          />
-        </DialogStackContext.Provider>
-      ) : null}
-      {branchToDelete && props.state.selectedRepositoryPath ? (
-        branchToDelete.type === 'Remote' ? (
-          <DesktopDeleteRemoteBranchDialog
-            branch={branchToDelete}
-            dispatcher={props.dispatcher}
-            onDeleted={() => undefined}
-            onDismiss={() => setBranchToDelete(null)}
-            repositoryPath={props.state.selectedRepositoryPath}
-          />
-        ) : (
-          <DesktopDeleteBranchDialog
-            branch={branchToDelete}
-            branches={props.state.branches?.branches || []}
-            dispatcher={props.dispatcher}
-            onDeleted={() => undefined}
-            onDismiss={() => setBranchToDelete(null)}
-            repositoryPath={props.state.selectedRepositoryPath}
-          />
-        )
-      ) : null}
-      {deleteUnusedLocalBranchesOpen && props.state.selectedRepositoryPath ? (
-        <DesktopDeleteUnusedLocalBranchesDialog
-          branches={props.state.branches?.mergedBranches || []}
-          dispatcher={props.dispatcher}
-          onDeleted={() => undefined}
-          onDismiss={() => setDeleteUnusedLocalBranchesOpen(false)}
-          repositoryPath={props.state.selectedRepositoryPath}
+      {pruneCandidates && pruneCandidates.length > 0 ? (
+        <WebConfirmDialog
+          confirmLabel="Prune branches"
+          message={
+            pruneCandidates.length
+              ? `Delete these merged local branches? ${pruneCandidates
+                  .map(candidate => candidate.name)
+                  .join(
+                    ', '
+                  )}. Branches checked out recently or in another worktree are excluded.`
+              : 'No stale merged local branches are eligible for pruning.'
+          }
+          onConfirm={async () => {
+            if (pruneCandidates.length)
+              await props.dispatcher.runOperation('prune-branches', {
+                confirmed: true,
+                ...(defaultBranch ? { defaultBranch } : {}),
+              })
+            setPruneCandidates(null)
+          }}
+          onDismiss={() => setPruneCandidates(null)}
+          open={true}
+          title="Prune stale branches?"
         />
       ) : null}
-      {manageRemotesOpen && props.state.selectedRepositoryPath ? (
-        <DialogStackContext.Provider value={{ isTopMost: !addRemoteOpen }}>
-          <ManageRemotesDialog
-            dispatcher={
-              {
-                getRemotes: () =>
-                  Promise.resolve(
-                    (props.state.branches?.remotes || []).map(remote => ({
-                      name: remote.name,
-                      url: remote.url,
-                    }))
-                  ),
-                postError: () => Promise.resolve(),
-                removeRemote: (_repository: Repository, name: string) =>
-                  props.dispatcher.runOperationOrThrow('remote-remove', {
-                    values: [name],
-                  }),
-                setRemoteURL: (
-                  _repository: Repository,
-                  name: string,
-                  url: string
-                ) =>
-                  props.dispatcher.runOperationOrThrow('remote-set-url', {
-                    values: [name, url],
-                  }),
-                showPopup: (popup: { readonly type: PopupType }) => {
-                  if (popup.type === PopupType.AddRemote) setAddRemoteOpen(true)
-                  return Promise.resolve()
-                },
-              } as unknown as Dispatcher
-            }
-            isTopMost={!addRemoteOpen}
-            onDismissed={() => setManageRemotesOpen(false)}
-            repository={getDesktopRepository(
-              props.state.selectedRepositoryPath
-            )}
-          />
+      {pruneCandidates && pruneCandidates.length === 0 ? (
+        <DialogStackContext.Provider value={{ isTopMost: true }}>
+          <Dialog
+            ariaDescribedBy="prune-branches-empty-description"
+            onDismissed={() => setPruneCandidates(null)}
+            onSubmit={() => setPruneCandidates(null)}
+            title="Prune stale branches"
+          >
+            <DialogContent>
+              <p id="prune-branches-empty-description">
+                No merged local branches are eligible for pruning. Branches
+                checked out recently or in another worktree are excluded.
+              </p>
+            </DialogContent>
+            <DialogFooter>
+              <Button onClick={() => setPruneCandidates(null)}>Close</Button>
+            </DialogFooter>
+          </Dialog>
         </DialogStackContext.Provider>
       ) : null}
-      {addRemoteOpen && props.state.selectedRepositoryPath ? (
+      {publishBranchOpen ? (
         <DialogStackContext.Provider value={{ isTopMost: true }}>
-          <AddRemoteDialog
-            dispatcher={
-              {
-                addRemote: (
-                  _repository: Repository,
-                  name: string,
-                  url: string
-                ) =>
-                  props.dispatcher.runOperationOrThrow('remote-add', {
-                    values: [name, url],
-                  }),
-                postError: () => Promise.resolve(),
-              } as unknown as Dispatcher
+          <Dialog
+            ariaDescribedBy="publish-branch-description"
+            onDismissed={() => setPublishBranchOpen(false)}
+            onSubmit={() => {
+              if (!publishRemote) return
+              void props.dispatcher
+                .runOperation('publish-branch', {
+                  values: [publishRemote, branch],
+                })
+                .then(() => setPublishBranchOpen(false))
+            }}
+            title="Publish branch"
+          >
+            <DialogContent>
+              <p id="publish-branch-description">
+                Publish {branch} and set its upstream tracking branch.
+              </p>
+              <label htmlFor="publish-branch-remote">Remote</label>
+              <select
+                id="publish-branch-remote"
+                onChange={event => setPublishRemote(event.target.value)}
+                value={publishRemote}
+              >
+                {remotes.map(remote => (
+                  <option key={remote.name} value={remote.name}>
+                    {remote.name}
+                  </option>
+                ))}
+              </select>
+            </DialogContent>
+            <DialogFooter>
+              <Button onClick={() => setPublishBranchOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                disabled={!publishRemote}
+                onClick={() => {
+                  void props.dispatcher
+                    .runOperation('publish-branch', {
+                      values: [publishRemote, branch],
+                    })
+                    .then(() => setPublishBranchOpen(false))
+                }}
+              >
+                Publish branch
+              </Button>
+            </DialogFooter>
+          </Dialog>
+        </DialogStackContext.Provider>
+      ) : null}
+      {branchDialog ? (
+        <DialogStackContext.Provider value={{ isTopMost: true }}>
+          <Dialog
+            ariaDescribedBy="branch-dialog-description"
+            onDismissed={() => {
+              setBranchDialog(null)
+              setBranchName('')
+            }}
+            disabled={branchSubmitting}
+            loading={branchSubmitting}
+            onSubmit={() => void runBranchDialog()}
+            title={
+              branchDialog === 'create' ? 'Create branch' : 'Rename branch'
             }
-            existingRemoteNames={(props.state.branches?.remotes || []).map(
-              remote => remote.name
-            )}
-            onDismissed={() => setAddRemoteOpen(false)}
-            repository={getDesktopRepository(
-              props.state.selectedRepositoryPath
-            )}
-          />
+          >
+            <DialogContent>
+              <p id="branch-dialog-description">
+                {branchDialog === 'create'
+                  ? 'Create a new local branch.'
+                  : `Rename ${branch} to a new local branch name.`}
+              </p>
+              <label htmlFor="web-branch-name">Branch name</label>
+              <input
+                autoFocus={true}
+                id="web-branch-name"
+                onChange={event => setBranchName(event.target.value)}
+                value={branchName}
+              />
+              {validateGitRefName(branchName, 'Branch name') ? (
+                <p role="alert">
+                  {validateGitRefName(branchName, 'Branch name')}
+                </p>
+              ) : null}
+            </DialogContent>
+            <DialogFooter>
+              <Button
+                onClick={() => {
+                  setBranchDialog(null)
+                  setBranchName('')
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                disabled={
+                  !branchName.trim() ||
+                  Boolean(validateGitRefName(branchName, 'Branch name')) ||
+                  branchSubmitting
+                }
+                type="submit"
+              >
+                {branchDialog === 'create' ? 'Create branch' : 'Rename branch'}
+              </Button>
+            </DialogFooter>
+          </Dialog>
         </DialogStackContext.Provider>
       ) : null}
     </>
   )
 }
 
-function DesktopResetWarningDialog(props: {
-  readonly commit: Commit
-  readonly dispatcher: WebDispatcher
+function WebGitIdentityDialog(props: {
+  readonly open: boolean
+  readonly identity: WebGitIdentity | null
   readonly onDismiss: () => void
-  readonly repositoryPath: string
+  readonly onOpenGlobalGitConfig: () => Promise<void>
+  readonly onSubmit: (
+    scope: 'local' | 'global',
+    name: string,
+    email: string
+  ) => Promise<void>
 }) {
-  const desktopDispatcher = React.useMemo(
-    () =>
-      ({
-        resetToCommit: (_repository: Repository, commit: Commit) =>
-          props.dispatcher
-            .runOperation('reset-commit', {
-              values: [commit.sha],
-              mode: 'mixed',
-            })
-            .then(() => undefined),
-      } as unknown as Dispatcher),
-    [props.dispatcher]
-  )
+  const [scope, setScope] = React.useState<'local' | 'global'>('local')
+  const [name, setName] = React.useState('')
+  const [email, setEmail] = React.useState('')
+  const [globalName, setGlobalName] = React.useState('')
+  const [globalEmail, setGlobalEmail] = React.useState('')
+  const [submitting, setSubmitting] = React.useState(false)
+
+  React.useEffect(() => {
+    if (!props.open) return
+    const identity = props.identity
+    setScope('local')
+    setName(identity?.localName || identity?.name || '')
+    setEmail(identity?.localEmail || identity?.email || '')
+    setGlobalName(identity?.globalName || '')
+    setGlobalEmail(identity?.globalEmail || '')
+    setSubmitting(false)
+  }, [props.identity, props.open])
+
+  if (!props.open) return null
+
+  const selectedName = scope === 'global' ? globalName : name
+  const selectedEmail = scope === 'global' ? globalEmail : email
+  const submit = async () => {
+    if (!selectedName.trim() || !selectedEmail.trim() || submitting) return
+    setSubmitting(true)
+    try {
+      await props.onSubmit(scope, selectedName.trim(), selectedEmail.trim())
+      props.onDismiss()
+    } catch {
+      // The shared error dialog owns the failure state; keep this form open so
+      // the user can retry after recovering the underlying Git configuration.
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   return (
     <DialogStackContext.Provider value={{ isTopMost: true }}>
-      <WarnResetToPushedCommit
-        commit={props.commit}
-        dispatcher={desktopDispatcher}
+      <Dialog
+        ariaDescribedBy="web-git-identity-description"
+        disabled={submitting}
+        loading={submitting}
         onDismissed={props.onDismiss}
-        repository={getDesktopRepository(props.repositoryPath)}
-      />
+        onSubmit={() => void submit()}
+        title="Configure Git user"
+      >
+        <DialogContent>
+          <p id="web-git-identity-description">
+            Git uses this name and email address when creating commits.
+          </p>
+          <label htmlFor="web-git-identity-scope">Save to</label>
+          <select
+            id="web-git-identity-scope"
+            onChange={event =>
+              setScope(event.target.value as 'local' | 'global')
+            }
+            value={scope}
+          >
+            <option value="local">This repository</option>
+            <option value="global">Global Git config</option>
+          </select>
+          <label htmlFor="web-git-identity-name">Name</label>
+          <input
+            autoFocus={true}
+            id="web-git-identity-name"
+            onChange={event =>
+              scope === 'global'
+                ? setGlobalName(event.target.value)
+                : setName(event.target.value)
+            }
+            value={selectedName}
+          />
+          <label htmlFor="web-git-identity-email">Email</label>
+          <input
+            id="web-git-identity-email"
+            onChange={event =>
+              scope === 'global'
+                ? setGlobalEmail(event.target.value)
+                : setEmail(event.target.value)
+            }
+            type="email"
+            value={selectedEmail}
+          />
+          {props.identity?.nameOrigin || props.identity?.emailOrigin ? (
+            <div role="status">
+              <strong>Current effective identity</strong>
+              {props.identity.nameOrigin ? (
+                <div>
+                  user.name: {props.identity.name} (
+                  {props.identity.nameOrigin.scope};{' '}
+                  {props.identity.nameOrigin.origin})
+                </div>
+              ) : null}
+              {props.identity.emailOrigin ? (
+                <div>
+                  user.email: {props.identity.email} (
+                  {props.identity.emailOrigin.scope};{' '}
+                  {props.identity.emailOrigin.origin})
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+          <Button
+            onClick={() => void props.onOpenGlobalGitConfig()}
+            type="button"
+          >
+            Open global Git config
+          </Button>
+        </DialogContent>
+        <DialogFooter>
+          <Button onClick={props.onDismiss}>Cancel</Button>
+          <Button
+            disabled={
+              !selectedName.trim() || !selectedEmail.trim() || submitting
+            }
+            type="submit"
+          >
+            Save Git user
+          </Button>
+        </DialogFooter>
+      </Dialog>
     </DialogStackContext.Provider>
   )
 }
 
-function DesktopCreateBranchAtCommitDialog(props: {
-  readonly commit: Commit
-  readonly branches: ReadonlyArray<WebBranch>
-  readonly currentBranch: WebBranch | null | undefined
-  readonly defaultBranch: string | null
-  readonly dispatcher: WebDispatcher
+function WebCommitDialog(props: {
+  readonly open: boolean
+  readonly commitToAmend: WebApplicationState['commitToAmend']
+  readonly commitDialogRequest: number
+  readonly emoji: WebApplicationState['emoji']
   readonly onDismiss: () => void
-  readonly repositoryPath: string
+  readonly onStopAmending: () => void
+  readonly selectedFileCount: number
+  readonly hiddenIncludedFileCount: number
+  readonly identity: WebGitIdentity | null
+  readonly message: string
+  readonly trailerText: string
+  readonly options: WebCommitOptions
+  readonly spellcheckEnabled: boolean
+  readonly showCommitLengthWarning: boolean
+  readonly commitSummaryLengthWarningThreshold: number
+  readonly onMessageChanged: (message: string) => void
+  readonly onTrailerTextChanged: (text: string) => void
+  readonly onOptionChanged: (
+    option: keyof WebCommitOptions,
+    value: boolean
+  ) => void
+  readonly onSpellcheckChanged: (enabled: boolean) => void
+  readonly onConfigureIdentity: () => void
+  readonly onSubmit: (
+    message: string,
+    options: Omit<WebCommitOptions, 'allowEmpty'> & {
+      readonly allowEmpty: boolean
+      readonly amend: boolean
+      readonly trailers: ReadonlyArray<{
+        readonly token: string
+        readonly value: string
+      }>
+    }
+  ) => Promise<void>
 }) {
-  const branches = React.useMemo(
-    () =>
-      props.branches.flatMap(branch => {
-        const desktopBranch = getDesktopBranch(branch)
-        return desktopBranch ? [desktopBranch] : []
-      }),
-    [props.branches]
-  )
-  const currentBranch = getDesktopBranch(props.currentBranch)
-  const defaultBranch =
-    branches.find(
-      branch =>
-        branch.type === BranchType.Local && branch.name === props.defaultBranch
-    ) || null
-  const tip = currentBranch
-    ? { kind: TipState.Valid as const, branch: currentBranch }
-    : {
-        kind: TipState.Detached as const,
-        currentSha: props.commit.sha,
-      }
-  const desktopDispatcher = React.useMemo(
-    () =>
-      ({
-        getBranchNamePresets: () => Promise.resolve([]),
-      } as unknown as Dispatcher),
-    []
-  )
+  const [submitting, setSubmitting] = React.useState(false)
+  const [confirmNoVerify, setConfirmNoVerify] = React.useState(false)
+  const [confirmFilteredCommit, setConfirmFilteredCommit] =
+    React.useState(false)
+  const [trailerError, setTrailerError] = React.useState<string | null>(null)
 
-  return (
-    <DialogStackContext.Provider value={{ isTopMost: true }}>
-      <CreateBranch
-        accounts={[]}
-        allBranches={branches}
-        cachedRepoRulesets={new Map()}
-        createBranch={(name, _startPoint, noTrack) => {
-          void props.dispatcher
-            .runOperation('create-branch', {
-              values: [name, props.commit.sha],
-              checkout: true,
-              noTrack,
-            })
-            .then(props.onDismiss)
-        }}
-        defaultBranch={defaultBranch}
-        dispatcher={desktopDispatcher}
-        initialName=""
-        onDismissed={props.onDismiss}
-        repository={getDesktopRepository(props.repositoryPath)}
-        targetCommit={props.commit}
-        tip={tip}
-        upstreamDefaultBranch={null}
-        upstreamGitHubRepository={null}
-      />
-    </DialogStackContext.Provider>
-  )
-}
+  React.useEffect(() => {
+    if (props.open) {
+      setSubmitting(false)
+      setConfirmNoVerify(false)
+      setConfirmFilteredCommit(false)
+      setTrailerError(null)
+    }
+  }, [props.open])
 
-function DesktopConfirmForcePushDialog(props: {
-  readonly currentBranch: Branch
-  readonly dispatcher: WebDispatcher
-  readonly onDismiss: () => void
-  readonly repositoryPath: string
-}) {
-  const desktopDispatcher = React.useMemo(
-    () =>
-      ({
-        performForcePush: () =>
-          props.dispatcher.runOperation('push', {
-            force: true,
-            confirmed: true,
-          }),
-        setConfirmForcePushSetting: () => undefined,
-      } as unknown as Dispatcher),
-    [props.dispatcher]
-  )
+  if (!props.open) return null
 
-  return (
-    <DialogStackContext.Provider value={{ isTopMost: true }}>
-      <ConfirmForcePush
-        askForConfirmationOnForcePush={true}
-        dispatcher={desktopDispatcher}
-        onDismissed={props.onDismiss}
-        repository={getDesktopRepository(props.repositoryPath)}
-        upstreamBranch={
-          props.currentBranch.upstream || props.currentBranch.name
-        }
-      />
-    </DialogStackContext.Provider>
-  )
-}
+  const performSubmit = async () => {
+    setSubmitting(true)
+    try {
+      await props.onSubmit(props.message.trim(), {
+        ...props.options,
+        trailers: props.trailerText
+          .split(/\r?\n/)
+          .map(value => value.trim())
+          .filter(Boolean)
+          .map(value => ({ token: 'Co-Authored-By', value })),
+      })
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
-function DesktopStashAndSwitchBranchDialog(props: {
-  readonly currentBranch: Branch
-  readonly branchToCheckout: Branch
-  readonly repositoryPath: string
-  readonly dispatcher: WebDispatcher
-  readonly onDismiss: () => void
-  readonly checkoutOptions: WebOperationOptions
-}) {
-  const repository = React.useMemo(
-    () => getDesktopRepository(props.repositoryPath),
-    [props.repositoryPath]
-  )
-  const desktopDispatcher = React.useMemo(
-    () =>
-      ({
-        checkoutBranch: (
-          _repository: Repository,
-          _branch: Branch,
-          strategy: UncommittedChangesStrategy
-        ) =>
-          props.dispatcher
-            .runOperation('checkout', {
-              ...props.checkoutOptions,
-              ...(strategy === UncommittedChangesStrategy.StashOnCurrentBranch
-                ? { stashChanges: true }
-                : strategy === UncommittedChangesStrategy.MoveToNewBranch
-                ? { moveChanges: true }
-                : {}),
-            })
-            .then(() => repository),
-      } as unknown as Dispatcher),
-    [props.checkoutOptions, props.dispatcher, repository]
-  )
-
-  return (
-    <DialogStackContext.Provider value={{ isTopMost: true }}>
-      <StashAndSwitchBranch
-        branchToCheckout={props.branchToCheckout}
-        currentBranch={props.currentBranch}
-        dispatcher={desktopDispatcher}
-        onDismissed={props.onDismiss}
-        repository={repository}
-      />
-    </DialogStackContext.Provider>
-  )
-}
-
-function DesktopCreateTagDialog(props: {
-  readonly repositoryPath: string
-  readonly targetCommitSha: string
-  readonly tags: ReadonlyArray<WebTag>
-  readonly dispatcher: WebDispatcher
-  readonly onDismiss: () => void
-  readonly initialName?: string
-}) {
-  const desktopDispatcher = React.useMemo(
-    () =>
-      ({
-        createTag: (
-          _repository: Repository,
-          name: string,
-          targetCommitSha: string
-        ) =>
-          props.dispatcher
-            .runOperationOrThrow('tag-create', {
-              values: [name, targetCommitSha],
-              message: '',
-            })
-            .then(() => undefined),
-      } as unknown as Dispatcher),
-    [props.dispatcher]
-  )
-  const localTags = React.useMemo(
-    () => new Map(props.tags.map(tag => [tag.name, tag.sha])),
-    [props.tags]
-  )
-
-  return (
-    <DialogStackContext.Provider value={{ isTopMost: true }}>
-      <CreateTag
-        dispatcher={desktopDispatcher}
-        initialName={props.initialName}
-        localTags={localTags}
-        onDismissed={props.onDismiss}
-        repository={getDesktopRepository(props.repositoryPath)}
-        targetCommitSha={props.targetCommitSha}
-      />
-    </DialogStackContext.Provider>
-  )
-}
-
-function DesktopDeleteTagDialog(props: {
-  readonly repositoryPath: string
-  readonly tagName: string
-  readonly dispatcher: WebDispatcher
-  readonly onDismiss: () => void
-  readonly onDeleted: () => void
-}) {
-  const wasDeleted = React.useRef(false)
-  const desktopDispatcher = React.useMemo(
-    () =>
-      ({
-        deleteTag: (_repository: Repository, tagName: string) =>
-          props.dispatcher
-            .runOperationOrThrow('tag-delete', {
-              values: [tagName],
-              confirmed: true,
-            })
-            .then(() => {
-              wasDeleted.current = true
-            }),
-      } as unknown as Dispatcher),
-    [props.dispatcher]
-  )
-  const onDismissed = React.useCallback(() => {
-    if (wasDeleted.current) props.onDeleted()
-    props.onDismiss()
-  }, [props.onDeleted, props.onDismiss])
-
-  return (
-    <DialogStackContext.Provider value={{ isTopMost: true }}>
-      <DeleteTag
-        dispatcher={desktopDispatcher}
-        onDismissed={onDismissed}
-        repository={getDesktopRepository(props.repositoryPath)}
-        tagName={props.tagName}
-      />
-    </DialogStackContext.Provider>
-  )
-}
-
-function DesktopConfirmDeletePushedTagDialog(props: {
-  readonly repositoryPath: string
-  readonly tagName: string
-  readonly dispatcher: WebDispatcher
-  readonly onDismiss: () => void
-  readonly onDeleted: () => void
-}) {
-  const wasDeleted = React.useRef(false)
-  const desktopDispatcher = React.useMemo(
-    () =>
-      ({
-        deleteTag: (_repository: Repository, tagName: string) =>
-          props.dispatcher
-            .runOperationOrThrow('tag-delete', {
-              values: [tagName],
-              confirmed: true,
-            })
-            .then(() => {
-              wasDeleted.current = true
-            }),
-      } as unknown as Dispatcher),
-    [props.dispatcher]
-  )
-  const onDismissed = React.useCallback(() => {
-    if (wasDeleted.current) props.onDeleted()
-    props.onDismiss()
-  }, [props.onDeleted, props.onDismiss])
-
-  return (
-    <DialogStackContext.Provider value={{ isTopMost: true }}>
-      <ConfirmDeletePushedTagDialog
-        dispatcher={desktopDispatcher}
-        onDismissed={onDismissed}
-        repository={getDesktopRepository(props.repositoryPath)}
-        tagName={props.tagName}
-      />
-    </DialogStackContext.Provider>
-  )
-}
-
-function DesktopDeleteBranchDialog(props: {
-  readonly repositoryPath: string
-  readonly branch: WebBranch
-  readonly branches: ReadonlyArray<WebBranch>
-  readonly dispatcher: WebDispatcher
-  readonly onDismiss: () => void
-  readonly onDeleted: () => void
-}) {
-  const branch = getDesktopBranch(props.branch)
-  const desktopDispatcher = React.useMemo(
-    () =>
-      ({
-        deleteLocalBranch: (
-          _repository: Repository,
-          branch: Branch,
-          includeUpstream?: boolean
-        ) =>
-          props.dispatcher
-            .runOperation('delete-branch', {
-              values: [branch.name],
-              confirmed: true,
-            })
-            .then(async () => {
-              if (includeUpstream && branch.upstreamRemoteName) {
-                await props.dispatcher.runOperation('delete-remote-branch', {
-                  values: [
-                    branch.upstreamRemoteName,
-                    branch.upstreamWithoutRemote || branch.name,
-                  ],
-                  confirmed: true,
-                })
-              }
-            }),
-      } as unknown as Dispatcher),
-    [props.dispatcher]
-  )
-  const upstreamBranchExists =
-    branch?.upstream !== null &&
-    props.branches.some(
-      candidate =>
-        candidate.type === 'Remote' && candidate.name === branch?.upstream
+  const submit = async () => {
+    const identityMissing =
+      !props.identity?.name.trim() || !props.identity?.email.trim()
+    const invalidTrailers = invalidCoAuthorLines(props.trailerText)
+    if (invalidTrailers.length > 0) {
+      setTrailerError(
+        `Each co-author must use the format Name <email>. Invalid entry: ${invalidTrailers[0]}`
+      )
+      return
+    }
+    setTrailerError(null)
+    if (
+      !props.message.trim() ||
+      submitting ||
+      identityMissing ||
+      (props.selectedFileCount === 0 && !props.options.allowEmpty)
     )
-
-  if (!branch) return null
+      return
+    if (props.hiddenIncludedFileCount > 0 && !confirmFilteredCommit) {
+      setConfirmFilteredCommit(true)
+      return
+    }
+    if (props.options.noVerify && !confirmNoVerify) {
+      setConfirmNoVerify(true)
+      return
+    }
+    await performSubmit()
+  }
 
   return (
     <DialogStackContext.Provider value={{ isTopMost: true }}>
-      <DeleteBranch
-        branch={branch}
-        dispatcher={desktopDispatcher}
-        existsOnRemote={upstreamBranchExists}
-        onDeleted={props.onDeleted}
+      <Dialog
+        ariaDescribedBy="web-commit-dialog-description"
+        disabled={submitting}
+        loading={submitting}
         onDismissed={props.onDismiss}
-        repository={getDesktopRepository(props.repositoryPath)}
-      />
-    </DialogStackContext.Provider>
-  )
-}
-
-function DesktopDeleteRemoteBranchDialog(props: {
-  readonly repositoryPath: string
-  readonly branch: WebBranch
-  readonly dispatcher: WebDispatcher
-  readonly onDismiss: () => void
-  readonly onDeleted: () => void
-}) {
-  const branch = getDesktopBranch(props.branch)
-  const desktopDispatcher = React.useMemo(
-    () =>
-      ({
-        deleteRemoteBranch: (_repository: Repository, branch: Branch) => {
-          const remote = branch.remoteName
-          if (!remote)
-            return Promise.reject(
-              new Error(`Remote branch '${branch.name}' has no remote name`)
-            )
-          return props.dispatcher.runOperation('delete-remote-branch', {
-            values: [remote, branch.nameWithoutRemote],
-            confirmed: true,
+        onSubmit={() => void submit()}
+        title="Commit changes"
+      >
+        <DialogContent>
+          <p id="web-commit-dialog-description">
+            Commit the included files in the selected repository.
+          </p>
+          {props.hiddenIncludedFileCount > 0 ? (
+            <p>
+              {props.hiddenIncludedFileCount} included{' '}
+              {props.hiddenIncludedFileCount === 1 ? 'file is' : 'files are'}{' '}
+              hidden by the current filter.
+            </p>
+          ) : null}
+          {!props.identity ? (
+            <p role="status">Loading Git user configuration...</p>
+          ) : !props.identity.name.trim() || !props.identity.email.trim() ? (
+            <div role="alert">
+              <p>
+                Configure a Git user name and email before creating a commit.
+              </p>
+              <Button onClick={props.onConfigureIdentity}>
+                Configure Git user
+              </Button>
+            </div>
+          ) : (
+            <p role="status">
+              Committing as {props.identity.name} &lt;{props.identity.email}
+              &gt; ({props.identity.nameOrigin?.scope || 'unknown'} config)
+            </p>
+          )}
+          <label htmlFor="web-commit-message">Commit message</label>
+          {props.commitToAmend ? (
+            <div className="web-amend-notice" role="status">
+              Amending {props.commitToAmend.shortSha}:{' '}
+              {props.commitToAmend.summary || 'Empty commit message'}
+              <Button onClick={props.onStopAmending} type="button">
+                Stop amending
+              </Button>
+            </div>
+          ) : null}
+          <AutocompletingTextArea
+            autocompletionProviders={[
+              new EmojiAutocompletionProvider(props.emoji),
+            ]}
+            autoFocus={true}
+            className="web-commit-message-input"
+            elementId="web-commit-message"
+            onValueChanged={props.onMessageChanged}
+            rows={4}
+            spellcheck={props.spellcheckEnabled}
+            value={props.message}
+          />
+          {props.showCommitLengthWarning &&
+          props.message.split(/\r?\n/, 1)[0].trim().length >
+            props.commitSummaryLengthWarningThreshold ? (
+            <p role="status">
+              Commit summaries are longer than{' '}
+              {props.commitSummaryLengthWarningThreshold} characters. Put extra
+              detail in the description when possible.
+            </p>
+          ) : null}
+          <label htmlFor="web-commit-spellcheck">
+            <input
+              checked={props.spellcheckEnabled}
+              id="web-commit-spellcheck"
+              onChange={event =>
+                props.onSpellcheckChanged(event.target.checked)
+              }
+              type="checkbox"
+            />
+            Enable commit spellcheck
+          </label>
+          <label htmlFor="web-commit-coauthors">Co-authors</label>
+          <textarea
+            id="web-commit-coauthors"
+            onChange={event => {
+              props.onTrailerTextChanged(event.target.value)
+              setTrailerError(null)
+            }}
+            placeholder="Name <email>, one per line"
+            rows={3}
+            value={props.trailerText}
+          />
+          {trailerError ? <p role="alert">{trailerError}</p> : null}
+          <div className="web-dialog-options">
+            <label>
+              <input
+                checked={props.options.amend}
+                onChange={event => {
+                  if (props.commitToAmend && !event.target.checked)
+                    props.onStopAmending()
+                  else props.onOptionChanged('amend', event.target.checked)
+                }}
+                type="checkbox"
+              />
+              {props.commitToAmend
+                ? 'Amend selected commit'
+                : 'Amend the previous commit'}
+            </label>
+            <label>
+              <input
+                checked={props.options.signOff}
+                onChange={event =>
+                  props.onOptionChanged('signOff', event.target.checked)
+                }
+                type="checkbox"
+              />
+              Add Signed-off-by trailer
+            </label>
+            <label>
+              <input
+                checked={props.options.noVerify}
+                onChange={event =>
+                  props.onOptionChanged('noVerify', event.target.checked)
+                }
+                type="checkbox"
+              />
+              Skip commit hooks
+            </label>
+            <label>
+              <input
+                checked={props.options.allowEmpty}
+                onChange={event =>
+                  props.onOptionChanged('allowEmpty', event.target.checked)
+                }
+                type="checkbox"
+              />
+              Allow an empty commit
+            </label>
+          </div>
+        </DialogContent>
+        <DialogFooter>
+          <Button onClick={props.onDismiss}>Cancel</Button>
+          <Button
+            disabled={
+              !props.message.trim() ||
+              submitting ||
+              !props.identity?.name.trim() ||
+              !props.identity?.email.trim() ||
+              (props.selectedFileCount === 0 && !props.options.allowEmpty)
+            }
+            type="submit"
+          >
+            {props.commitToAmend ? 'Amend commit' : 'Commit changes'}
+          </Button>
+        </DialogFooter>
+      </Dialog>
+      <WebConfirmDialog
+        confirmLabel="Skip commit hooks"
+        message="Skipping commit hooks can bypass repository checks. Continue?"
+        onConfirm={async () => {
+          await props.onSubmit(props.message.trim(), {
+            ...props.options,
+            trailers: props.trailerText
+              .split(/\r?\n/)
+              .map(value => value.trim())
+              .filter(Boolean)
+              .map(value => ({ token: 'Co-Authored-By', value })),
           })
-        },
-      } as unknown as Dispatcher),
-    [props.dispatcher]
-  )
-
-  if (!branch) return null
-
-  return (
-    <DialogStackContext.Provider value={{ isTopMost: true }}>
-      <DeleteRemoteBranch
-        branch={branch}
-        dispatcher={desktopDispatcher}
-        onDeleted={props.onDeleted}
-        onDismissed={props.onDismiss}
-        repository={getDesktopRepository(props.repositoryPath)}
-      />
-    </DialogStackContext.Provider>
-  )
-}
-
-function DesktopDeleteUnusedLocalBranchesDialog(props: {
-  readonly repositoryPath: string
-  readonly branches: ReadonlyArray<WebBranch>
-  readonly dispatcher: WebDispatcher
-  readonly onDismiss: () => void
-  readonly onDeleted: () => void
-}) {
-  const branches = React.useMemo(
-    () =>
-      props.branches.flatMap(branch => {
-        const desktopBranch = getDesktopBranch(branch)
-        return desktopBranch ? [desktopBranch] : []
-      }),
-    [props.branches]
-  )
-  const desktopDispatcher = React.useMemo(
-    () =>
-      ({
-        deleteLocalBranches: (
-          _repository: Repository,
-          branches: ReadonlyArray<Branch>
-        ) =>
-          props.dispatcher.runOperation('delete-branches', {
-            values: branches.map(branch => branch.name),
-            confirmed: true,
-          }),
-      } as unknown as Dispatcher),
-    [props.dispatcher]
-  )
-
-  return (
-    <DialogStackContext.Provider value={{ isTopMost: true }}>
-      <DeleteUnusedLocalBranches
-        branches={branches}
-        dispatcher={desktopDispatcher}
-        onDeleted={props.onDeleted}
-        onDismissed={props.onDismiss}
-        repository={getDesktopRepository(props.repositoryPath)}
-      />
-    </DialogStackContext.Provider>
-  )
-}
-
-function DesktopConfirmCheckoutCommitDialog(props: {
-  readonly repositoryPath: string
-  readonly commit: WebApplicationState['history'][number]
-  readonly askForConfirmation: boolean
-  readonly dispatcher: WebDispatcher
-  readonly onConfirmCheckoutCommitChanged: (value: boolean) => void
-  readonly onDismiss: () => void
-}) {
-  const desktopDispatcher = React.useMemo(
-    () =>
-      ({
-        checkoutCommit: (_repository: Repository, commit: Commit) =>
-          props.dispatcher.runOperation('checkout-commit', {
-            values: [commit.sha],
-          }),
-        setConfirmCheckoutCommitSetting: (askForConfirmation: boolean) => {
-          props.onConfirmCheckoutCommitChanged(askForConfirmation)
-          return Promise.resolve()
-        },
-      } as unknown as Dispatcher),
-    [props.dispatcher, props.onConfirmCheckoutCommitChanged]
-  )
-
-  return (
-    <DialogStackContext.Provider value={{ isTopMost: true }}>
-      <ConfirmCheckoutCommitDialog
-        askForConfirmationOnCheckoutCommit={props.askForConfirmation}
-        commit={getDesktopCommit(props.commit)}
-        dispatcher={desktopDispatcher}
-        onDismissed={props.onDismiss}
-        repository={getDesktopRepository(props.repositoryPath)}
-      />
-    </DialogStackContext.Provider>
-  )
-}
-
-function DesktopConfirmRemoveRepositoryDialog(props: {
-  readonly repository: WebApplicationState['repositories'][number]
-  readonly dispatcher: WebDispatcher
-  readonly onDismiss: () => void
-}) {
-  const repository = React.useMemo(
-    () => new Repository(props.repository.path, 0, null, false),
-    [props.repository.path]
-  )
-
-  return (
-    <DialogStackContext.Provider value={{ isTopMost: true }}>
-      <ConfirmRemoveRepository
-        onConfirmation={async (_repository, deleteRepoFromDisk) => {
-          if (deleteRepoFromDisk)
-            await props.dispatcher.deleteRepository(
-              props.repository.path,
-              'trash'
-            )
-          else props.dispatcher.removeRepository(props.repository.path)
+          setConfirmNoVerify(false)
         }}
-        onDismissed={props.onDismiss}
-        repository={repository}
+        onDismiss={() => setConfirmNoVerify(false)}
+        open={confirmNoVerify}
+        title="Skip commit hooks?"
       />
-    </DialogStackContext.Provider>
-  )
-}
-
-function DesktopChooseCherryPickTargetDialog(props: {
-  readonly commits: ReadonlyArray<Commit>
-  readonly branches: ReadonlyArray<WebBranch>
-  readonly currentBranch: WebBranch | null | undefined
-  readonly defaultBranch: string | null
-  readonly dispatcher: WebDispatcher
-  readonly onDismiss: () => void
-  readonly repositoryPath: string
-}) {
-  const branches = React.useMemo(
-    () =>
-      props.branches.flatMap(branch => {
-        const desktopBranch = getDesktopBranch(branch)
-        return desktopBranch ? [desktopBranch] : []
-      }),
-    [props.branches]
-  )
-  const currentBranch = getDesktopBranch(props.currentBranch)
-
-  if (!currentBranch || !props.repositoryPath) return null
-
-  return (
-    <DialogStackContext.Provider value={{ isTopMost: true }}>
-      <ChooseTargetBranchDialog
-        allBranches={branches}
-        branchSortOrder={DEFAULT_BRANCH_SORT_ORDER}
-        commitCount={props.commits.length}
-        currentBranch={currentBranch}
-        defaultBranch={
-          branches.find(branch => branch.name === props.defaultBranch) || null
-        }
-        onCherryPick={targetBranch => {
-          void props.dispatcher
-            .runOperation('checkout', { values: [targetBranch.name] })
-            .then(() =>
-              props.dispatcher.runOperation('cherry-pick', {
-                values: props.commits.map(commit => commit.sha),
-              })
-            )
-            .then(props.onDismiss)
+      <WebConfirmDialog
+        confirmLabel="Commit hidden changes"
+        message={`The current filter hides ${
+          props.hiddenIncludedFileCount
+        } included ${
+          props.hiddenIncludedFileCount === 1 ? 'file' : 'files'
+        }. Those files will also be committed.`}
+        onConfirm={async () => {
+          setConfirmFilteredCommit(false)
+          if (props.options.noVerify) setConfirmNoVerify(true)
+          else await performSubmit()
         }}
-        onCreateNewBranch={name => {
-          void props.dispatcher
-            .runOperation('create-branch', {
-              values: [name],
-              checkout: true,
-            })
-            .then(() =>
-              props.dispatcher.runOperation('cherry-pick', {
-                values: props.commits.map(commit => commit.sha),
-              })
-            )
-            .then(props.onDismiss)
+        onDismiss={() => setConfirmFilteredCommit(false)}
+        open={confirmFilteredCommit}
+        title="Commit filtered changes?"
+      />
+    </DialogStackContext.Provider>
+  )
+}
+
+function WebResetDialog(props: {
+  readonly open: boolean
+  readonly onDismiss: () => void
+  readonly onConfirm: (mode: 'mixed' | 'hard') => Promise<void>
+}) {
+  const [mode, setMode] = React.useState<'mixed' | 'hard'>('mixed')
+  const [submitting, setSubmitting] = React.useState(false)
+
+  React.useEffect(() => {
+    if (props.open) {
+      setMode('mixed')
+      setSubmitting(false)
+    }
+  }, [props.open])
+
+  if (!props.open) return null
+
+  const submit = async () => {
+    if (submitting) return
+    setSubmitting(true)
+    try {
+      await props.onConfirm(mode)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <DialogStackContext.Provider value={{ isTopMost: true }}>
+      <Dialog
+        ariaDescribedBy="web-reset-dialog-description"
+        disabled={submitting}
+        loading={submitting}
+        onDismissed={props.onDismiss}
+        onSubmit={() => void submit()}
+        role="alertdialog"
+        title="Reset selected commit?"
+        type="warning"
+      >
+        <DialogContent>
+          <p id="web-reset-dialog-description">
+            Choose how the current branch should be reset to the selected
+            commit.
+          </p>
+          <fieldset
+            aria-label="Reset mode"
+            className="web-dialog-options"
+            disabled={submitting}
+          >
+            <label>
+              <input
+                checked={mode === 'mixed'}
+                name="web-reset-mode"
+                onChange={() => setMode('mixed')}
+                type="radio"
+                value="mixed"
+              />
+              Mixed reset: keep file changes in the working directory
+            </label>
+            <label>
+              <input
+                checked={mode === 'hard'}
+                name="web-reset-mode"
+                onChange={() => setMode('hard')}
+                type="radio"
+                value="hard"
+              />
+              Hard reset: discard tracked file changes
+            </label>
+          </fieldset>
+          {mode === 'hard' ? (
+            <p>
+              Hard reset permanently discards tracked working-directory changes
+              and rewrites local history.
+            </p>
+          ) : null}
+        </DialogContent>
+        <DialogFooter>
+          <Button onClick={props.onDismiss}>Cancel</Button>
+          <Button
+            className={mode === 'hard' ? 'destructive' : undefined}
+            type="submit"
+          >
+            {mode === 'hard' ? 'Hard reset' : 'Mixed reset'}
+          </Button>
+        </DialogFooter>
+      </Dialog>
+    </DialogStackContext.Provider>
+  )
+}
+
+function WebConfirmDialog(props: {
+  readonly open: boolean
+  readonly title: string
+  readonly message: string
+  readonly confirmLabel: string
+  readonly onDismiss: () => void
+  readonly onConfirm: () => Promise<void>
+  readonly additionalContent?: React.ReactNode
+}) {
+  const [submitting, setSubmitting] = React.useState(false)
+  if (!props.open) return null
+
+  const confirm = async () => {
+    if (submitting) return
+    setSubmitting(true)
+    try {
+      await props.onConfirm()
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <DialogStackContext.Provider value={{ isTopMost: true }}>
+      <Dialog
+        ariaDescribedBy="web-confirm-dialog-message"
+        disabled={submitting}
+        loading={submitting}
+        onDismissed={props.onDismiss}
+        title={props.title}
+        type="warning"
+        role="alertdialog"
+      >
+        <DialogContent>
+          <p id="web-confirm-dialog-message">{props.message}</p>
+          {props.additionalContent}
+        </DialogContent>
+        <DialogFooter>
+          <Button onClick={props.onDismiss}>Cancel</Button>
+          <Button
+            className="destructive"
+            onClick={() => void confirm()}
+            type="submit"
+          >
+            {props.confirmLabel}
+          </Button>
+        </DialogFooter>
+      </Dialog>
+    </DialogStackContext.Provider>
+  )
+}
+
+function WebCheckoutRecoveryDialog(props: {
+  readonly open: boolean
+  readonly branchLabel: string
+  readonly onDismiss: () => void
+  readonly onStash: () => Promise<void>
+  readonly onMove: () => Promise<void>
+  readonly onDiscard: () => Promise<void>
+}) {
+  const [submitting, setSubmitting] = React.useState(false)
+  const [confirmDiscard, setConfirmDiscard] = React.useState(false)
+
+  React.useEffect(() => {
+    if (props.open) {
+      setSubmitting(false)
+      setConfirmDiscard(false)
+    }
+  }, [props.open])
+
+  if (!props.open) return null
+
+  const run = async (action: () => Promise<void>) => {
+    if (submitting) return
+    setSubmitting(true)
+    try {
+      await action()
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <DialogStackContext.Provider value={{ isTopMost: true }}>
+      <Dialog
+        ariaDescribedBy="web-checkout-recovery-message"
+        disabled={submitting}
+        loading={submitting}
+        onDismissed={props.onDismiss}
+        role="alertdialog"
+        title="Changes prevent checkout"
+        type="warning"
+      >
+        <DialogContent>
+          <p id="web-checkout-recovery-message">
+            The working directory has uncommitted changes. Choose how to
+            preserve or discard them before switching to {props.branchLabel}.
+          </p>
+        </DialogContent>
+        <DialogFooter>
+          <Button disabled={submitting} onClick={props.onDismiss}>
+            Cancel
+          </Button>
+          <Button disabled={submitting} onClick={() => void run(props.onStash)}>
+            Leave changes here
+          </Button>
+          <Button disabled={submitting} onClick={() => void run(props.onMove)}>
+            Bring changes to branch
+          </Button>
+          <Button
+            className="destructive"
+            disabled={submitting}
+            onClick={() => setConfirmDiscard(true)}
+          >
+            Discard and switch
+          </Button>
+        </DialogFooter>
+      </Dialog>
+      <WebConfirmDialog
+        confirmLabel="Discard and switch"
+        message={`Discard all uncommitted changes before switching to ${props.branchLabel}? This cannot be undone.`}
+        onConfirm={async () => {
+          await run(props.onDiscard)
+          setConfirmDiscard(false)
         }}
-        onDismissed={props.onDismiss}
-        recentBranches={[]}
-        repository={getDesktopRepository(props.repositoryPath)}
+        onDismiss={() => setConfirmDiscard(false)}
+        open={confirmDiscard}
+        title="Discard changes before switching?"
       />
     </DialogStackContext.Provider>
   )
 }
 
-function DesktopChangeRepositoryAliasDialog(props: {
-  readonly repository: WebApplicationState['repositories'][number]
-  readonly dispatcher: WebDispatcher
+function WebDeleteRepositoryDialog(props: {
+  readonly open: boolean
+  readonly repositoryName: string
+  readonly loading: boolean
   readonly onDismiss: () => void
+  readonly onConfirm: (mode: WebRepositoryDeleteMode) => Promise<boolean>
 }) {
-  const repository = React.useMemo(
-    () =>
-      new Repository(
-        props.repository.path,
-        0,
-        null,
-        false,
-        props.repository.alias || null,
-        props.repository.group || null,
-        props.repository.defaultBranch
-      ),
-    [props.repository]
-  )
-  const desktopDispatcher = React.useMemo(
-    () =>
-      ({
-        changeRepositoryAlias: (
-          _repository: Repository,
-          alias: string | null
-        ) => {
-          props.dispatcher.setRepositoryAlias(alias || '')
-          return Promise.resolve()
-        },
-      } as unknown as Dispatcher),
-    [props.dispatcher]
-  )
+  const [mode, setMode] = React.useState<WebRepositoryDeleteMode>('trash')
+
+  React.useEffect(() => {
+    if (props.open) setMode('trash')
+  }, [props.open])
+
+  if (!props.open) return null
 
   return (
     <DialogStackContext.Provider value={{ isTopMost: true }}>
-      <ChangeRepositoryAlias
-        dispatcher={desktopDispatcher}
+      <Dialog
+        ariaDescribedBy="web-delete-repository-message"
+        disabled={props.loading}
+        loading={props.loading}
         onDismissed={props.onDismiss}
-        repository={repository}
-      />
+        role="alertdialog"
+        title="Delete repository from disk?"
+        type="warning"
+      >
+        <DialogContent>
+          <p id="web-delete-repository-message">
+            Delete {props.repositoryName} and all of its files from this Mac?
+          </p>
+          <fieldset
+            aria-label="Repository deletion mode"
+            className="web-dialog-options"
+            disabled={props.loading}
+          >
+            <legend>Deletion method</legend>
+            <label>
+              <input
+                checked={mode === 'trash'}
+                name="web-repository-delete-mode"
+                onChange={() => setMode('trash')}
+                type="radio"
+              />
+              Move to Trash
+            </label>
+            <label>
+              <input
+                checked={mode === 'permanent'}
+                name="web-repository-delete-mode"
+                onChange={() => setMode('permanent')}
+                type="radio"
+              />
+              Delete permanently
+            </label>
+          </fieldset>
+          <p role="alert">
+            {mode === 'permanent'
+              ? 'Permanent deletion cannot be undone.'
+              : 'Moving to Trash keeps the repository recoverable in Finder.'}
+          </p>
+        </DialogContent>
+        <DialogFooter>
+          <Button onClick={props.onDismiss}>Cancel</Button>
+          <Button
+            className="destructive"
+            disabled={props.loading}
+            onClick={async () => {
+              if (await props.onConfirm(mode)) props.onDismiss()
+            }}
+            type="submit"
+          >
+            {mode === 'permanent' ? 'Delete permanently' : 'Move to Trash'}
+          </Button>
+        </DialogFooter>
+      </Dialog>
     </DialogStackContext.Provider>
   )
 }
 
-function DesktopEditRepositoryGroupDialog(props: {
-  readonly repositories: ReadonlyArray<
-    WebApplicationState['repositories'][number]
-  >
-  readonly groupName: string
-  readonly dispatcher: WebDispatcher
+function WebTextDialog(props: {
+  readonly open: boolean
+  readonly title: string
+  readonly description: string
+  readonly label: string
+  readonly initialValue?: string
+  readonly submitLabel: string
+  readonly validate?: (value: string) => string | null
   readonly onDismiss: () => void
+  readonly onSubmit: (value: string) => Promise<void>
 }) {
-  const desktopRepositories = React.useMemo(
-    () =>
-      props.repositories.map(
-        (repository, index) =>
-          new Repository(
-            repository.path,
-            index + 1,
-            null,
-            false,
-            repository.alias || null,
-            repository.group || null,
-            repository.defaultBranch
-          )
-      ),
-    [props.repositories]
-  )
-  const desktopDispatcher = React.useMemo(
-    () =>
-      ({
-        changeRepositoriesGroupName: async (
-          repositories: ReadonlyArray<Repository>,
-          groupName: string | null
-        ) => {
-          for (const repository of repositories) {
-            await props.dispatcher.selectRepository(repository.path)
-            props.dispatcher.setRepositoryGroup(groupName)
-          }
-        },
-      } as unknown as Dispatcher),
-    [props.dispatcher]
-  )
-  const preselectedRepositoryIds = desktopRepositories
-    .filter(repository => repository.groupName === props.groupName)
-    .map(repository => repository.id)
+  const [value, setValue] = React.useState(props.initialValue || '')
+  const [submitting, setSubmitting] = React.useState(false)
+  const validationError = props.validate?.(value) || null
+
+  React.useEffect(() => {
+    if (props.open) {
+      setValue(props.initialValue || '')
+      setSubmitting(false)
+    }
+  }, [props.initialValue, props.open])
+
+  if (!props.open) return null
+
+  const submit = async () => {
+    if (!value.trim() || validationError || submitting) return
+    setSubmitting(true)
+    try {
+      await props.onSubmit(value.trim())
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   return (
     <DialogStackContext.Provider value={{ isTopMost: true }}>
-      <CreateRepositoryGroup
-        dispatcher={desktopDispatcher}
-        editedGroupName={props.groupName}
+      <Dialog
+        ariaDescribedBy="web-text-dialog-description"
+        disabled={submitting}
+        loading={submitting}
         onDismissed={props.onDismiss}
-        preselectedRepositoryIds={preselectedRepositoryIds}
-        repositories={desktopRepositories}
-      />
+        onSubmit={() => void submit()}
+        title={props.title}
+      >
+        <DialogContent>
+          <p id="web-text-dialog-description">{props.description}</p>
+          <label htmlFor="web-text-dialog-value">{props.label}</label>
+          <input
+            autoFocus={true}
+            id="web-text-dialog-value"
+            onChange={event => setValue(event.target.value)}
+            type="text"
+            value={value}
+          />
+          {validationError ? <p role="alert">{validationError}</p> : null}
+        </DialogContent>
+        <DialogFooter>
+          <Button onClick={props.onDismiss}>Cancel</Button>
+          <Button
+            disabled={!value.trim() || Boolean(validationError) || submitting}
+            onClick={() => void submit()}
+            type="submit"
+          >
+            {props.submitLabel}
+          </Button>
+        </DialogFooter>
+      </Dialog>
     </DialogStackContext.Provider>
   )
 }
 
-function DesktopRenameStashDialog(props: {
-  readonly repositoryPath: string
-  readonly stash: WebStash
-  readonly dispatcher: WebDispatcher
+function WebMessageDialog(props: {
+  readonly open: boolean
+  readonly title: string
+  readonly description: string
+  readonly label: string
+  readonly initialValue?: string
+  readonly submitLabel: string
   readonly onDismiss: () => void
+  readonly onSubmit: (value: string) => Promise<void>
 }) {
-  const desktopStash = React.useMemo(
-    () => ({
-      name: props.stash.name,
-      branchName: props.stash.branchName,
-      customName: props.stash.customName,
-      stashSha: props.stash.stashSha,
-      createdAt: new Date(props.stash.createdAt),
-      files: { kind: StashedChangesLoadStates.NotLoaded as const },
-      tree: props.stash.stashSha,
-      parents: [],
-    }),
-    [props.stash]
-  )
-  const desktopDispatcher = React.useMemo(
-    () =>
-      ({
-        renameStash: (
-          _repository: Repository,
-          _stash: typeof desktopStash,
-          customName: string | null
-        ) =>
-          props.dispatcher.runOperation('stash-rename', {
-            values: [props.stash.name],
-            customName: customName || '',
-          }),
-      } as unknown as Dispatcher),
-    [desktopStash, props.dispatcher, props.stash.name]
-  )
+  const [value, setValue] = React.useState('')
+  const [submitting, setSubmitting] = React.useState(false)
+
+  React.useEffect(() => {
+    if (props.open) {
+      setValue(props.initialValue || '')
+      setSubmitting(false)
+    }
+  }, [props.initialValue, props.open])
+
+  if (!props.open) return null
+
+  const submit = async () => {
+    if (!value.trim() || submitting) return
+    setSubmitting(true)
+    try {
+      await props.onSubmit(value.trim())
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   return (
     <DialogStackContext.Provider value={{ isTopMost: true }}>
-      <RenameStashDialog
-        dispatcher={desktopDispatcher}
+      <Dialog
+        ariaDescribedBy="web-message-dialog-description"
+        disabled={submitting}
+        loading={submitting}
         onDismissed={props.onDismiss}
-        repository={getDesktopRepository(props.repositoryPath)}
-        stash={desktopStash}
-      />
+        onSubmit={() => void submit()}
+        title={props.title}
+      >
+        <DialogContent>
+          <p id="web-message-dialog-description">{props.description}</p>
+          <label htmlFor="web-message-dialog-value">{props.label}</label>
+          <textarea
+            autoFocus={true}
+            id="web-message-dialog-value"
+            onChange={event => setValue(event.target.value)}
+            rows={4}
+            value={value}
+          />
+        </DialogContent>
+        <DialogFooter>
+          <Button onClick={props.onDismiss}>Cancel</Button>
+          <Button
+            disabled={!value.trim() || submitting}
+            onClick={() => void submit()}
+            type="submit"
+          >
+            {props.submitLabel}
+          </Button>
+        </DialogFooter>
+      </Dialog>
     </DialogStackContext.Provider>
   )
 }
 
-function DesktopConfirmDiscardStashDialog(props: {
-  readonly repositoryPath: string
-  readonly stash: WebStash
-  readonly askForConfirmation: boolean
-  readonly dispatcher: WebDispatcher
-  readonly onConfirmStashActionsChanged: (value: boolean) => void
+function WebNoticeDialog(props: {
+  readonly open: boolean
+  readonly title: string
+  readonly message: string
   readonly onDismiss: () => void
 }) {
-  const desktopStash = React.useMemo(
-    () => ({
-      name: props.stash.name,
-      branchName: props.stash.branchName,
-      customName: props.stash.customName,
-      stashSha: props.stash.stashSha,
-      createdAt: new Date(props.stash.createdAt),
-      files: { kind: StashedChangesLoadStates.NotLoaded as const },
-      tree: props.stash.stashSha,
-      parents: [],
-    }),
-    [props.stash]
-  )
-  const desktopDispatcher = React.useMemo(
-    () =>
-      ({
-        dropStash: () =>
-          props.dispatcher.runOperation('stash-drop', {
-            values: [props.stash.name],
-            confirmed: true,
-          }),
-        setConfirmDiscardStashSetting: (value: boolean) => {
-          props.onConfirmStashActionsChanged(value)
-          return Promise.resolve()
-        },
-      } as unknown as Dispatcher),
-    [props.dispatcher, props.onConfirmStashActionsChanged, props.stash.name]
-  )
+  if (!props.open) return null
 
   return (
     <DialogStackContext.Provider value={{ isTopMost: true }}>
-      <ConfirmDiscardStashDialog
-        askForConfirmationOnDiscardStash={props.askForConfirmation}
-        dispatcher={desktopDispatcher}
+      <Dialog
+        ariaDescribedBy="web-notice-dialog-message"
         onDismissed={props.onDismiss}
-        repository={getDesktopRepository(props.repositoryPath)}
-        stash={desktopStash}
-      />
+        onSubmit={props.onDismiss}
+        title={props.title}
+      >
+        <DialogContent>
+          <p id="web-notice-dialog-message">{props.message}</p>
+        </DialogContent>
+        <DialogFooter>
+          <Button onClick={props.onDismiss} type="button">
+            Close
+          </Button>
+        </DialogFooter>
+      </Dialog>
     </DialogStackContext.Provider>
   )
 }
 
-function DesktopDiscardChangesDialog(props: {
-  readonly repositoryPath: string
-  readonly files: ReadonlyArray<WebFile>
-  readonly permanentlyDelete: boolean
-  readonly askForConfirmation: boolean
-  readonly dispatcher: WebDispatcher
-  readonly onConfirmDiscardChangesChanged: (value: boolean) => void
+function WebStashDialog(props: {
+  readonly open: boolean
   readonly onDismiss: () => void
+  readonly onSubmit: (
+    message: string,
+    options: { readonly includeUntracked: boolean; readonly keepIndex: boolean }
+  ) => Promise<void>
 }) {
-  const desktopFiles = React.useMemo(
-    () => props.files.map(file => getDesktopWorkingDirectoryFile(file)),
-    [props.files]
-  )
-  const desktopDispatcher = React.useMemo(
-    () =>
-      ({
-        discardChanges: (
-          _repository: Repository,
-          files: ReadonlyArray<WorkingDirectoryFileChange>,
-          moveToTrash: boolean,
-          cleanUntracked: boolean
-        ) =>
-          props.dispatcher.discardFiles(
-            files.map(file => file.path),
-            moveToTrash,
-            cleanUntracked
-          ),
-      } as unknown as Dispatcher),
-    [props.dispatcher]
-  )
+  const [message, setMessage] = React.useState('')
+  const [includeUntracked, setIncludeUntracked] = React.useState(false)
+  const [keepIndex, setKeepIndex] = React.useState(false)
+  const [submitting, setSubmitting] = React.useState(false)
+
+  React.useEffect(() => {
+    if (!props.open) return
+    setMessage('')
+    setIncludeUntracked(false)
+    setKeepIndex(false)
+    setSubmitting(false)
+  }, [props.open])
+
+  if (!props.open) return null
+
+  const submit = async () => {
+    if (!message.trim() || submitting) return
+    setSubmitting(true)
+    try {
+      await props.onSubmit(message.trim(), { includeUntracked, keepIndex })
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   return (
     <DialogStackContext.Provider value={{ isTopMost: true }}>
-      <DiscardChanges
-        confirmDiscardChanges={props.askForConfirmation}
-        discardingAllChanges={desktopFiles.length > 1}
-        dispatcher={desktopDispatcher}
-        files={desktopFiles}
-        onConfirmDiscardChangesChanged={props.onConfirmDiscardChangesChanged}
+      <Dialog
+        ariaDescribedBy="web-stash-dialog-description"
+        disabled={submitting}
+        loading={submitting}
         onDismissed={props.onDismiss}
-        permanentlyDelete={props.permanentlyDelete}
-        repository={getDesktopRepository(props.repositoryPath)}
-        showDiscardChangesSetting={true}
-      />
+        onSubmit={() => void submit()}
+        title="Create stash"
+      >
+        <DialogContent>
+          <p id="web-stash-dialog-description">
+            Save selected changes so they can be restored later.
+          </p>
+          <label htmlFor="web-stash-message">Message</label>
+          <textarea
+            autoFocus={true}
+            id="web-stash-message"
+            onChange={event => setMessage(event.target.value)}
+            rows={4}
+            value={message}
+          />
+          <label>
+            <input
+              checked={includeUntracked}
+              onChange={event => setIncludeUntracked(event.target.checked)}
+              type="checkbox"
+            />
+            Include untracked files
+          </label>
+          <label>
+            <input
+              checked={keepIndex}
+              onChange={event => setKeepIndex(event.target.checked)}
+              type="checkbox"
+            />
+            Keep staged changes staged
+          </label>
+        </DialogContent>
+        <DialogFooter>
+          <Button onClick={props.onDismiss}>Cancel</Button>
+          <Button
+            disabled={!message.trim() || submitting}
+            onClick={() => void submit()}
+            type="submit"
+          >
+            Create stash
+          </Button>
+        </DialogFooter>
+      </Dialog>
+    </DialogStackContext.Provider>
+  )
+}
+
+function WebRemoteDialog(props: {
+  readonly open: boolean
+  readonly remote: WebRemote | null
+  readonly onDismiss: () => void
+  readonly onSubmit: (name: string, url: string) => Promise<void>
+}) {
+  const [name, setName] = React.useState('')
+  const [url, setURL] = React.useState('')
+  const [submitting, setSubmitting] = React.useState(false)
+
+  React.useEffect(() => {
+    if (!props.open) return
+    setName(props.remote?.name || '')
+    setURL(props.remote?.url || '')
+    setSubmitting(false)
+  }, [props.open, props.remote])
+
+  if (!props.open) return null
+
+  const nameError = validateRemoteName(name)
+  const urlError = validateRemoteURL(url)
+  const submit = async () => {
+    if (nameError || urlError || submitting) return
+    setSubmitting(true)
+    try {
+      await props.onSubmit(name.trim(), url.trim())
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <DialogStackContext.Provider value={{ isTopMost: true }}>
+      <Dialog
+        ariaDescribedBy="web-remote-dialog-description"
+        disabled={submitting}
+        loading={submitting}
+        onDismissed={props.onDismiss}
+        onSubmit={() => void submit()}
+        title={props.remote ? 'Set remote URL' : 'Add remote'}
+      >
+        <DialogContent>
+          <p id="web-remote-dialog-description">
+            Configure the remote name and the HTTPS, SSH, Git, or local path
+            used to reach it.
+          </p>
+          <label htmlFor="web-remote-name">Remote name</label>
+          <input
+            autoFocus={true}
+            id="web-remote-name"
+            onChange={event => setName(event.target.value)}
+            type="text"
+            value={name}
+          />
+          {nameError ? <p role="alert">{nameError}</p> : null}
+          <label htmlFor="web-remote-url">Remote URL</label>
+          <input
+            id="web-remote-url"
+            onChange={event => setURL(event.target.value)}
+            type="text"
+            value={url}
+          />
+          {urlError ? <p role="alert">{urlError}</p> : null}
+        </DialogContent>
+        <DialogFooter>
+          <Button onClick={props.onDismiss}>Cancel</Button>
+          <Button
+            disabled={Boolean(nameError || urlError) || submitting}
+            onClick={() => void submit()}
+            type="submit"
+          >
+            {props.remote ? 'Set URL' : 'Add remote'}
+          </Button>
+        </DialogFooter>
+      </Dialog>
+    </DialogStackContext.Provider>
+  )
+}
+
+function WebTagDialog(props: {
+  readonly open: boolean
+  readonly title?: string
+  readonly initialTarget?: string
+  readonly onDismiss: () => void
+  readonly onSubmit: (
+    name: string,
+    target: string,
+    message: string
+  ) => Promise<void>
+}) {
+  const [name, setName] = React.useState('')
+  const [target, setTarget] = React.useState('')
+  const [message, setMessage] = React.useState('')
+  const [submitting, setSubmitting] = React.useState(false)
+
+  React.useEffect(() => {
+    if (!props.open) return
+    setName('')
+    setTarget(props.initialTarget || '')
+    setMessage('')
+    setSubmitting(false)
+  }, [props.initialTarget, props.open])
+
+  if (!props.open) return null
+
+  const nameError = validateGitRefName(name, 'Tag name')
+  const submit = async () => {
+    if (!name.trim() || nameError || submitting) return
+    setSubmitting(true)
+    try {
+      await props.onSubmit(
+        name.trim(),
+        target.trim(),
+        message.trim() || name.trim()
+      )
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <DialogStackContext.Provider value={{ isTopMost: true }}>
+      <Dialog
+        ariaDescribedBy="web-tag-dialog-description"
+        disabled={submitting}
+        loading={submitting}
+        onDismissed={props.onDismiss}
+        onSubmit={() => void submit()}
+        title={props.title || 'Create tag'}
+      >
+        <DialogContent>
+          <p id="web-tag-dialog-description">
+            Create an annotated tag with a target and message.
+          </p>
+          <label htmlFor="web-tag-name">Tag name</label>
+          <input
+            autoFocus={true}
+            id="web-tag-name"
+            onChange={event => setName(event.target.value)}
+            type="text"
+            value={name}
+          />
+          {nameError ? <p role="alert">{nameError}</p> : null}
+          <label htmlFor="web-tag-target">Target commit or ref</label>
+          <input
+            id="web-tag-target"
+            onChange={event => setTarget(event.target.value)}
+            placeholder="Current branch tip"
+            type="text"
+            value={target}
+          />
+          <label htmlFor="web-tag-message">Tag message</label>
+          <textarea
+            id="web-tag-message"
+            onChange={event => setMessage(event.target.value)}
+            rows={4}
+            value={message}
+          />
+        </DialogContent>
+        <DialogFooter>
+          <Button onClick={props.onDismiss}>Cancel</Button>
+          <Button
+            disabled={!name.trim() || Boolean(nameError) || submitting}
+            onClick={() => void submit()}
+            type="submit"
+          >
+            Create tag
+          </Button>
+        </DialogFooter>
+      </Dialog>
+    </DialogStackContext.Provider>
+  )
+}
+
+function WebWorktreeDialog(props: {
+  readonly open: boolean
+  readonly onDismiss: () => void
+  readonly onChooseDirectory?: () => Promise<string | null>
+  readonly initialBranch?: WebBranch | null
+  readonly worktreeInclude?: {
+    readonly configured: boolean
+    readonly patterns: ReadonlyArray<string>
+  }
+  readonly onSubmit: (path: string, branch: string) => Promise<void>
+}) {
+  const [path, setPath] = React.useState('')
+  const [branch, setBranch] = React.useState('')
+  const [submitting, setSubmitting] = React.useState(false)
+
+  React.useEffect(() => {
+    if (props.open) {
+      setPath('')
+      const initialBranch = props.initialBranch
+      setBranch(
+        initialBranch?.type === 'Remote'
+          ? initialBranch.name.split('/').slice(1).join('/')
+          : initialBranch?.name || ''
+      )
+      setSubmitting(false)
+    }
+  }, [props.initialBranch, props.open])
+
+  if (!props.open) return null
+
+  const pathError = validateAbsolutePath(path, 'Worktree path')
+  const branchError = validateGitRefName(branch, 'Branch name')
+  const submit = async () => {
+    if (
+      !path.trim() ||
+      !branch.trim() ||
+      pathError ||
+      branchError ||
+      submitting
+    )
+      return
+    setSubmitting(true)
+    try {
+      await props.onSubmit(path.trim(), branch.trim())
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <DialogStackContext.Provider value={{ isTopMost: true }}>
+      <Dialog
+        ariaDescribedBy="web-worktree-dialog-description"
+        disabled={submitting}
+        loading={submitting}
+        onDismissed={props.onDismiss}
+        onSubmit={() => void submit()}
+        title="Create a linked worktree"
+      >
+        <DialogContent>
+          <p id="web-worktree-dialog-description">
+            {props.initialBranch
+              ? `Create a linked worktree from ${props.initialBranch.name}.`
+              : 'Create a linked worktree on a new local branch.'}
+          </p>
+          {props.worktreeInclude?.configured ? (
+            <p role="status">
+              This repository has {props.worktreeInclude.patterns.length}{' '}
+              <code>.worktreeinclude</code>{' '}
+              {props.worktreeInclude.patterns.length === 1
+                ? 'pattern'
+                : 'patterns'}
+              . Matching ignored files will be copied into the new worktree.
+            </p>
+          ) : null}
+          <label htmlFor="web-worktree-path">Worktree path</label>
+          <div className="web-path-picker">
+            <input
+              autoFocus={true}
+              id="web-worktree-path"
+              onChange={event => setPath(event.target.value)}
+              type="text"
+              value={path}
+            />
+            {props.onChooseDirectory ? (
+              <Button
+                onClick={async () => {
+                  const selectedPath = await props.onChooseDirectory?.()
+                  if (selectedPath) setPath(selectedPath)
+                }}
+                type="button"
+              >
+                Choose folder
+              </Button>
+            ) : null}
+          </div>
+          {pathError ? <p role="alert">{pathError}</p> : null}
+          <label htmlFor="web-worktree-branch">
+            {props.initialBranch ? 'Branch' : 'New branch'}
+          </label>
+          <input
+            readOnly={
+              props.initialBranch !== null && props.initialBranch !== undefined
+            }
+            id="web-worktree-branch"
+            onChange={event => setBranch(event.target.value)}
+            type="text"
+            value={branch}
+          />
+          {branchError ? <p role="alert">{branchError}</p> : null}
+        </DialogContent>
+        <DialogFooter>
+          <Button onClick={props.onDismiss}>Cancel</Button>
+          <Button
+            disabled={
+              !path.trim() ||
+              !branch.trim() ||
+              Boolean(pathError) ||
+              Boolean(branchError) ||
+              submitting
+            }
+            onClick={() => void submit()}
+            type="submit"
+          >
+            Create worktree
+          </Button>
+        </DialogFooter>
+      </Dialog>
     </DialogStackContext.Provider>
   )
 }
@@ -4708,470 +6417,708 @@ function DesktopChangesView(props: {
   readonly commitSummaryLengthWarningThreshold: number
   readonly showChangesFilter: boolean
   readonly showStashedChanges: boolean
-  readonly showCommitAuthorInfo: boolean
 }) {
-  const isCommitting =
-    props.state.operationTask?.operation === 'commit' &&
-    props.state.operationTask.status === 'running'
-  const desktopFiles = React.useMemo(
-    () =>
-      (props.state.status?.workingDirectory.files || []).map(file =>
-        getDesktopWorkingDirectoryFile(
-          file,
-          props.state.fileSelections.get(file.path)
-        )
-      ),
-    [props.state.fileSelections, props.state.status?.workingDirectory.files]
+  const files = (props.state.status?.workingDirectory.files || []).map(file =>
+    getDesktopWorkingDirectoryFile(
+      file,
+      props.state.fileSelections.get(file.path)
+    )
   )
-  const workingDirectory = React.useMemo(
-    () => WorkingDirectoryStatus.fromFiles(desktopFiles),
-    [desktopFiles]
+  const selectedFiles = files
+    .filter(
+      file => file.selection.getSelectionType() !== DiffSelectionType.None
+    )
+    .map(file => file.path)
+  const changesFilter = props.showChangesFilter
+    ? props.state.changesFilter
+    : {
+        filterText: '',
+        isIncludedInCommit: false,
+        isExcludedFromCommit: false,
+        isNewFile: false,
+        isModifiedFile: false,
+        isDeletedFile: false,
+      }
+  const conflictedFiles = files.filter(
+    file => file.status.kind === AppFileStatusKind.Conflicted
   )
-  const [selectedFileIDs, setSelectedFileIDs] = React.useState<
+  const [commitDialogOpen, setCommitDialogOpen] = React.useState(false)
+  const [gitIdentityDialogOpen, setGitIdentityDialogOpen] =
+    React.useState(false)
+  const [discardDialogOpen, setDiscardDialogOpen] = React.useState(false)
+  const [selectedStashDialogOpen, setSelectedStashDialogOpen] =
+    React.useState(false)
+  const [stashDialogTarget, setStashDialogTarget] =
+    React.useState<WebStash | null>(null)
+  const [selectedChangePaths, setSelectedChangePaths] = React.useState<
     ReadonlyArray<string>
   >([])
-  const [discardRequest, setDiscardRequest] = React.useState<{
-    readonly files: ReadonlyArray<WebFile>
-    readonly permanentlyDelete: boolean
-  } | null>(null)
-  const [commitFilteredRequest, setCommitFilteredRequest] = React.useState<
-    (() => void) | null
-  >(null)
-  const [stashToRename, setStashToRename] = React.useState<WebStash | null>(
-    null
+  const lastCommitDialogRequest = React.useRef(0)
+  const [discardPermanently, setDiscardPermanently] = React.useState(() =>
+    getBoolean(webDiscardPermanentlyStorageKey, false)
   )
-  const sourceFiles = props.state.status?.workingDirectory.files || []
-  const repositoryPath = props.state.selectedRepositoryPath || ''
   const changesScrollStorageKey = repositoryViewStorageKey(
     webChangesScrollStorageKey,
     props.state.selectedRepositoryPath
   )
-  const [changesListScrollTop, setChangesListScrollTop] = React.useState(() =>
+  const [changesScrollTop, setChangesScrollTop] = React.useState(() =>
     Number(localStorage.getItem(changesScrollStorageKey) || 0)
   )
   React.useEffect(() => {
-    setChangesListScrollTop(
-      Number(localStorage.getItem(changesScrollStorageKey) || 0)
-    )
+    const next = Number(localStorage.getItem(changesScrollStorageKey) || 0)
+    setChangesScrollTop(next)
   }, [changesScrollStorageKey])
-  const desktopRepository = React.useMemo(
-    () => getDesktopRepository(repositoryPath),
-    [repositoryPath]
-  )
-  const stashEntries = React.useMemo(
-    () =>
-      props.showStashedChanges
-        ? (props.state.branches?.stashes || []).map(stash => ({
-            name: stash.name,
-            branchName: stash.branchName,
-            customName: stash.customName,
-            stashSha: stash.stashSha,
-            createdAt: new Date(stash.createdAt),
-            files: { kind: StashedChangesLoadStates.NotLoaded as const },
-            tree: stash.stashSha,
-            parents: [],
-          }))
-        : [],
-    [props.showStashedChanges, props.state.branches?.stashes]
-  )
-  const webStashBySha = React.useMemo(
-    () =>
-      new Map(
-        (props.state.branches?.stashes || []).map(stash => [
-          stash.stashSha,
-          stash,
-        ])
-      ),
-    [props.state.branches?.stashes]
-  )
-  const selectedStashEntry =
-    props.state.inspectedStash === null
-      ? null
-      : stashEntries.find(
-          entry => entry.stashSha === props.state.inspectedStash?.stashSha
-        ) || null
-  const selection: IChangesState['selection'] = selectedStashEntry
-    ? {
-        kind: ChangesSelectionKind.Stash,
-        selectedStashEntry,
-        selectedStashedFile: null,
-        selectedStashedFileDiff: null,
-      }
-    : {
-        kind: ChangesSelectionKind.WorkingDirectory,
-        selectedFileIDs,
-        diff: null,
-      }
-  const commitMessage = React.useMemo(
-    () => ({
-      summary: props.state.commitDraft.split(/\r?\n/)[0] || '',
-      description: props.state.commitDraft
-        .split(/\r?\n/)
-        .slice(1)
-        .join('\n')
-        .replace(/^\n/, ''),
-      timestamp: Date.now(),
-    }),
-    [props.state.commitDraft]
-  )
-  const desktopChanges: IChangesState = {
-    workingDirectory,
-    commitMessage,
-    showCoAuthoredBy: false,
-    coAuthors: [],
-    conflictState: null,
-    stashEntries,
-    selection,
-    currentBranchProtected: false,
-    currentRepoRulesInfo: new RepoRulesInfo(),
-    fileListFilter: props.state.changesFilter,
-  }
-  const commitAuthor =
-    props.state.gitIdentity?.name && props.state.gitIdentity.email
-      ? new CommitIdentity(
-          props.state.gitIdentity.name,
-          props.state.gitIdentity.email,
-          new Date()
-        )
+  React.useEffect(() => {
+    if (props.state.selectedFilePath === null) setSelectedChangePaths([])
+  }, [props.state.selectedFilePath])
+  const operation = props.state.status?.operation
+  const operationState = props.state.status?.operationState || null
+  const operationLabel =
+    operation === 'rebase'
+      ? 'Rebase'
+      : operation === 'cherryPick'
+      ? 'Cherry-pick'
+      : operation === 'merge'
+      ? 'Merge'
+      : operation === 'revert'
+      ? 'Revert'
+      : operation === 'squash'
+      ? 'Squash merge'
       : null
-  const mostRecentLocalCommit = React.useMemo(() => {
-    const sha = props.state.branches?.localCommitSHAs?.[0]
-    const commit = sha
-      ? props.state.history.find(candidate => candidate.sha === sha)
-      : null
-    return commit ? getDesktopCommit(commit) : null
-  }, [props.state.branches?.localCommitSHAs, props.state.history])
 
   React.useEffect(() => {
-    const selectedFile = desktopFiles.find(
-      file => file.path === props.state.selectedFilePath
+    if (
+      props.mode === 'sidebar' &&
+      props.state.commitDialogRequest > 0 &&
+      props.state.commitDialogRequest > lastCommitDialogRequest.current
+    ) {
+      lastCommitDialogRequest.current = props.state.commitDialogRequest
+      setCommitDialogOpen(true)
+    }
+  }, [props.mode, props.state.commitDialogRequest])
+  const matchesStatusFilters = (file: WorkingDirectoryFileChange) => {
+    const selectionType = file.selection.getSelectionType()
+    if (
+      changesFilter.isIncludedInCommit &&
+      selectionType === DiffSelectionType.None
     )
-    setSelectedFileIDs(currentSelection => {
-      const availableFileIDs = new Set(desktopFiles.map(file => file.id))
-      const retainedSelection = currentSelection.filter(fileID =>
-        availableFileIDs.has(fileID)
-      )
-
-      // Selecting a file loads its diff through the web store. That store only
-      // tracks one path, but the shared Changes UI owns a multi-file selection.
-      // Keep that richer local selection whenever it already contains the
-      // diff file; otherwise synchronize a selection made outside the list.
-      if (selectedFile && retainedSelection.includes(selectedFile.id)) {
-        return retainedSelection
-      }
-
-      return selectedFile ? [selectedFile.id] : []
+      return false
+    if (
+      changesFilter.isExcludedFromCommit &&
+      selectionType !== DiffSelectionType.None
+    )
+      return false
+    if (
+      changesFilter.isNewFile &&
+      file.status.kind !== AppFileStatusKind.New &&
+      file.status.kind !== AppFileStatusKind.Untracked
+    )
+      return false
+    if (
+      changesFilter.isModifiedFile &&
+      file.status.kind !== AppFileStatusKind.Modified
+    )
+      return false
+    if (
+      changesFilter.isDeletedFile &&
+      file.status.kind !== AppFileStatusKind.Deleted
+    )
+      return false
+    return true
+  }
+  const normalizedFilterText = changesFilter.filterText.trim().toLowerCase()
+  const visibleFiles = files.filter(file => {
+    if (!matchesStatusFilters(file)) return false
+    if (!normalizedFilterText) return true
+    return `${file.path} ${file.status.kind}`
+      .toLowerCase()
+      .includes(normalizedFilterText)
+  })
+  const items: ReadonlyArray<DesktopChangedFileListItem> = visibleFiles.map(
+    file => ({
+      file,
+      id: file.id,
+      text: [file.path, file.status.kind],
     })
-  }, [desktopFiles, props.state.selectedFilePath])
-
-  const desktopDispatcher = React.useMemo(
-    () =>
-      ({
-        appendIgnoreFile: (_repository: Repository, file: string | string[]) =>
-          props.dispatcher.appendIgnoreFile(
-            Array.isArray(file) ? file : [file]
-          ),
-        appendIgnoreRule: (
-          _repository: Repository,
-          pattern: string | string[]
-        ) =>
-          props.dispatcher.appendIgnorePattern(
-            Array.isArray(pattern) ? pattern : [pattern]
-          ),
-        cancelGenerateCommitMessage: () => undefined,
-        changeFileIncluded: (
-          _repository: Repository,
-          file:
-            | WorkingDirectoryFileChange
-            | ReadonlyArray<WorkingDirectoryFileChange>,
-          included: boolean
-        ) => {
-          const files = Array.isArray(file) ? file : [file]
-          for (const selectedFile of files)
-            props.dispatcher.setFileIncluded(selectedFile.path, included)
-          return Promise.resolve()
-        },
-        clearBanner: () => undefined,
-        commitIncludedChanges: async (
-          _repository: Repository,
-          context: ICommitContext
-        ) => {
-          await props.dispatcher.commit(
-            [context.summary, context.description]
-              .filter((part): part is string => Boolean(part))
-              .join('\n\n'),
-            {
-              amend: context.amend === true,
-              allowEmpty: props.state.commitOptions.allowEmpty,
-              noVerify: props.state.commitOptions.noVerify,
-              signOff: props.state.commitOptions.signOff,
-              trailers: context.trailers || [],
-            }
-          )
-          return true
-        },
-        copyPathToClipboard: (path: string) => props.dispatcher.copyText(path),
-        copyPathsToClipboard: (paths: ReadonlyArray<string>) =>
-          props.dispatcher.copyText(paths.join('\n')),
-        createStashForCurrentBranch: () =>
-          props.dispatcher.runOperation('stash', {
-            values: sourceFiles.map(file => file.path),
-            includeUntracked: true,
-          }),
-        discardChanges: (
-          _repository: Repository,
-          files: ReadonlyArray<WorkingDirectoryFileChange>,
-          moveToTrash: boolean
-        ) =>
-          props.dispatcher.discardFiles(
-            files.map(file => file.path),
-            true,
-            !moveToTrash
-          ),
-        generateCommitMessage: () => undefined,
-        incrementMetric: () => undefined,
-        applyStash: (
-          _repository: Repository,
-          entry: { readonly name: string }
-        ) =>
-          props.dispatcher.runOperation('stash-apply', {
-            values: [entry.name],
-          }),
-        popStash: (_repository: Repository, entry: { readonly name: string }) =>
-          props.dispatcher.runOperation('stash-pop', {
-            values: [entry.name],
-          }),
-        promptOverrideWithGeneratedCommitMessage: () => undefined,
-        refreshAuthor: () => undefined,
-        selectStashedFile: (
-          _repository: Repository,
-          entry: { readonly stashSha: string }
-        ) => {
-          const stash = webStashBySha.get(entry.stashSha)
-          return stash
-            ? props.dispatcher.inspectStash(stash)
-            : Promise.resolve()
-        },
-        selectWorkingDirectoryFiles: (
-          _repository: Repository,
-          files?: ReadonlyArray<WorkingDirectoryFileChange>
-        ) => {
-          const selected = files || []
-          setSelectedFileIDs(selected.map(file => file.id))
-          if (selected[0]) return props.dispatcher.selectFile(selected[0].path)
-          props.dispatcher.clearStashInspection()
-          return Promise.resolve()
-        },
-        setChangesListFilterText: (_repository: Repository, text: string) =>
-          props.dispatcher.setChangesFilterText(text),
-        setCoAuthors: () => undefined,
-        setCommitMessage: (_repository: Repository, message: ICommitMessage) =>
-          props.dispatcher.setCommitDraft(
-            [message.summary, message.description]
-              .filter((part): part is string => Boolean(part))
-              .join('\n\n')
-          ),
-        setCommitMessageFocus: () => undefined,
-        setCommitSpellcheckEnabled: props.dispatcher.setCommitSpellcheckEnabled,
-        setFilterDeletedFiles: (_repository: Repository, enabled: boolean) =>
-          props.dispatcher.setChangesFilterOption('isDeletedFile', enabled),
-        setFilterExcludedFiles: (_repository: Repository, enabled: boolean) =>
-          props.dispatcher.setChangesFilterOption(
-            'isExcludedFromCommit',
-            enabled
-          ),
-        setFilterModifiedFiles: (_repository: Repository, enabled: boolean) =>
-          props.dispatcher.setChangesFilterOption('isModifiedFile', enabled),
-        setFilterNewFiles: (_repository: Repository, enabled: boolean) =>
-          props.dispatcher.setChangesFilterOption('isNewFile', enabled),
-        setIncludedChangesInCommitFilter: (
-          _repository: Repository,
-          enabled: boolean
-        ) =>
-          props.dispatcher.setChangesFilterOption(
-            'isIncludedInCommit',
-            enabled
-          ),
-        setShowCoAuthoredBy: () => undefined,
-        showCreateForkDialog: () => undefined,
-        showFoldout: () => undefined,
-        showPopup: (popup: {
-          readonly type: PopupType
-          readonly files?: ReadonlyArray<WorkingDirectoryFileChange>
-          readonly permanentlyDelete?: boolean
-          readonly onCommitAnyway?: () => void
-          readonly stash?: { readonly stashSha: string }
-        }) => {
-          if (popup.type === PopupType.ConfirmDiscardChanges) {
-            const paths = new Set((popup.files || []).map(file => file.path))
-            setDiscardRequest({
-              files: sourceFiles.filter(file => paths.has(file.path)),
-              permanentlyDelete: popup.permanentlyDelete === true,
-            })
-          } else if (
-            popup.type === PopupType.ConfirmCommitFilteredChanges &&
-            popup.onCommitAnyway
-          ) {
-            setCommitFilteredRequest(() => popup.onCommitAnyway!)
-          } else if (
-            popup.type === PopupType.ConfirmDiscardStash &&
-            popup.stash
-          ) {
-            const stash = webStashBySha.get(popup.stash.stashSha)
-            if (stash)
-              props.onStashActionChanged({
-                operation: 'stash-drop',
-                stash,
-              })
-          } else if (popup.type === PopupType.RenameStash && popup.stash) {
-            setStashToRename(webStashBySha.get(popup.stash.stashSha) || null)
-          }
-          return Promise.resolve()
-        },
-        showUnknownAuthorsCommitWarning: (
-          _authors: unknown,
-          onCommitAnyway: () => void
-        ) => onCommitAnyway(),
-        stashChanges: (
-          _repository: Repository,
-          files: ReadonlyArray<WorkingDirectoryFileChange>
-        ) =>
-          props.dispatcher.runOperation('stash', {
-            values: files.map(file => file.path),
-            includeUntracked: true,
-          }),
-        stopAmendingRepository: props.dispatcher.stopAmendingCommit,
-        undoCommit: () => props.dispatcher.runOperation('undo'),
-      } as unknown as Dispatcher),
-    [
-      props.dispatcher,
-      props.onStashActionChanged,
-      props.state.commitOptions,
-      sourceFiles,
-      webStashBySha,
-    ]
   )
+  const selectedItem =
+    items.find(item => item.file.path === props.state.selectedFilePath) || null
+  const visibleFilePaths = visibleFiles.map(file => file.path)
+  const hiddenIncludedFileCount = selectedFiles.filter(
+    file => !visibleFilePaths.includes(file)
+  ).length
+
+  const setFilterOption = (
+    option:
+      | 'isIncludedInCommit'
+      | 'isExcludedFromCommit'
+      | 'isNewFile'
+      | 'isModifiedFile'
+      | 'isDeletedFile'
+  ) => props.dispatcher.setChangesFilterOption(option, !changesFilter[option])
+
+  const selectedChange =
+    files.find(file => file.path === props.state.selectedFilePath) || null
+  const selectedRowFiles = selectedChangePaths
+    .map(path => files.find(file => file.path === path))
+    .filter((file): file is WorkingDirectoryFileChange => file !== undefined)
+  const actionFiles = selectedRowFiles.length
+    ? selectedRowFiles
+    : selectedChange
+    ? [selectedChange]
+    : []
+  const actionFilePaths = actionFiles.map(file => file.path)
+  const activeChange = selectedChange || selectedRowFiles[0] || null
+  const selectedExtension = activeChange ? pathExtension(activeChange.path) : ''
+  const canIgnoreSelectedFile =
+    activeChange !== null && pathBasename(activeChange.path) !== '.gitignore'
 
   if (props.mode === 'sidebar') {
     return (
-      <>
-        <ChangesSidebar
-          accounts={[]}
-          aheadBehind={props.state.branches?.aheadBehind || null}
-          askForConfirmationOnCommitFilteredChanges={true}
-          askForConfirmationOnDiscardChanges={true}
-          askForConfirmationOnDiscardStash={true}
-          availableWidth={props.availableWidth}
-          branch={props.state.branches?.branch?.name || null}
-          changes={desktopChanges}
-          commitAuthor={commitAuthor}
-          commitMessageGenerationDisabled={true}
-          commitSpellcheckEnabled={props.state.commitSpellcheckEnabled}
-          commitToAmend={
-            props.state.commitToAmend
-              ? getDesktopCommit(props.state.commitToAmend)
-              : null
-          }
-          dispatcher={desktopDispatcher}
+      <section className="panel">
+        <div className="changes-list-container">
+          <div className="header">
+            <div className="web-changes-actions">
+              <Button
+                disabled={props.state.loading}
+                onClick={() => setCommitDialogOpen(true)}
+              >
+                Commit
+              </Button>
+              <Button
+                disabled={selectedFiles.length === 0 || props.state.loading}
+                onClick={() => setDiscardDialogOpen(true)}
+              >
+                Discard
+              </Button>
+              <Button
+                disabled={selectedRowFiles.length === 0 || props.state.loading}
+                onClick={() =>
+                  props.dispatcher.setAllVisibleFilesIncluded(
+                    actionFilePaths,
+                    true
+                  )
+                }
+              >
+                Include selected
+              </Button>
+              <Button
+                disabled={selectedRowFiles.length === 0 || props.state.loading}
+                onClick={() =>
+                  props.dispatcher.setAllVisibleFilesIncluded(
+                    actionFilePaths,
+                    false
+                  )
+                }
+              >
+                Exclude selected
+              </Button>
+              <Button
+                disabled={selectedRowFiles.length === 0 || props.state.loading}
+                onClick={() =>
+                  void props.dispatcher.copyPaths(actionFilePaths, false)
+                }
+              >
+                Copy selected paths
+              </Button>
+              <Button
+                disabled={selectedRowFiles.length === 0 || props.state.loading}
+                onClick={() =>
+                  void props.dispatcher.copyPaths(actionFilePaths, true)
+                }
+              >
+                Copy selected relative paths
+              </Button>
+              <Button
+                disabled={selectedRowFiles.length === 0 || props.state.loading}
+                onClick={() => setSelectedStashDialogOpen(true)}
+              >
+                Stash selected
+              </Button>
+              <Button
+                disabled={visibleFiles.length === 0 || props.state.loading}
+                onClick={() =>
+                  props.dispatcher.setAllVisibleFilesIncluded(
+                    visibleFilePaths,
+                    true
+                  )
+                }
+              >
+                Include visible
+              </Button>
+              <Button
+                disabled={visibleFiles.length === 0 || props.state.loading}
+                onClick={() =>
+                  props.dispatcher.setAllVisibleFilesIncluded(
+                    visibleFilePaths,
+                    false
+                  )
+                }
+              >
+                Exclude visible
+              </Button>
+            </div>
+          </div>
+          {props.showChangesFilter ? (
+            <div
+              aria-label="Changes filters"
+              className="web-changes-filter-options"
+              role="group"
+            >
+              {(
+                [
+                  ['isIncludedInCommit', 'Included'],
+                  ['isExcludedFromCommit', 'Excluded'],
+                  ['isNewFile', 'New'],
+                  ['isModifiedFile', 'Modified'],
+                  ['isDeletedFile', 'Deleted'],
+                ] as const
+              ).map(([option, label]) => (
+                <Button
+                  ariaPressed={changesFilter[option]}
+                  className={changesFilter[option] ? 'selected' : undefined}
+                  key={option}
+                  onClick={() => setFilterOption(option)}
+                >
+                  {label}
+                </Button>
+              ))}
+              <Button
+                disabled={
+                  changesFilter.filterText === '' &&
+                  !changesFilter.isIncludedInCommit &&
+                  !changesFilter.isExcludedFromCommit &&
+                  !changesFilter.isNewFile &&
+                  !changesFilter.isModifiedFile &&
+                  !changesFilter.isDeletedFile
+                }
+                onClick={() => {
+                  props.dispatcher.setChangesFilterText('')
+                  ;(
+                    [
+                      'isIncludedInCommit',
+                      'isExcludedFromCommit',
+                      'isNewFile',
+                      'isModifiedFile',
+                      'isDeletedFile',
+                    ] as const
+                  ).forEach(option =>
+                    props.dispatcher.setChangesFilterOption(option, false)
+                  )
+                }}
+              >
+                Clear filters
+              </Button>
+            </div>
+          ) : null}
+          <div className="filter-list changes-list">
+            {props.showChangesFilter ? (
+              <>
+                <label htmlFor="web-changes-filter">Filter changed files</label>
+                <input
+                  id="web-changes-filter"
+                  onChange={event =>
+                    props.dispatcher.setChangesFilterText(event.target.value)
+                  }
+                  placeholder="Filter"
+                  type="search"
+                  value={changesFilter.filterText}
+                />
+              </>
+            ) : null}
+            {items.length ? (
+              <List
+                ariaLabel="Changed files"
+                invalidationProps={{
+                  selectedFilePath: props.state.selectedFilePath,
+                  selectedChangePaths,
+                  includedFiles: props.state.includedFiles,
+                  fileSelections: props.state.fileSelections,
+                  status: props.state.status,
+                }}
+                onRowClick={row => {
+                  const item = items[row]
+                  if (item) void props.dispatcher.selectFile(item.file.path)
+                }}
+                onSelectionChanged={rows => {
+                  const paths = rows
+                    .map(row => items[row]?.file.path)
+                    .filter((path): path is string => path !== undefined)
+                  setSelectedChangePaths(paths)
+                  const first = items[rows[0] || 0]
+                  if (first) void props.dispatcher.selectFile(first.file.path)
+                }}
+                rowCount={items.length}
+                rowHeight={29}
+                rowRenderer={row => {
+                  const item = items[row]
+                  return (
+                    <ChangedFile
+                      availableWidth={props.availableWidth}
+                      checkboxTooltip={undefined}
+                      disableSelection={false}
+                      file={item.file}
+                      focused={item.file.path === props.state.selectedFilePath}
+                      include={
+                        item.file.selection.getSelectionType() ===
+                        DiffSelectionType.All
+                          ? true
+                          : item.file.selection.getSelectionType() ===
+                            DiffSelectionType.None
+                          ? false
+                          : null
+                      }
+                      onIncludeChanged={(file, included) =>
+                        props.dispatcher.setFileIncluded(file.path, included)
+                      }
+                    />
+                  )
+                }}
+                selectedRows={items.flatMap((item, index) =>
+                  selectedChangePaths.includes(item.file.path) ? [index] : []
+                )}
+                onScroll={
+                  props.mode === 'sidebar'
+                    ? scrollTop => {
+                        setChangesScrollTop(scrollTop)
+                        localStorage.setItem(
+                          changesScrollStorageKey,
+                          String(scrollTop)
+                        )
+                      }
+                    : undefined
+                }
+                setScrollTop={props.mode === 'sidebar' ? changesScrollTop : 0}
+                selectionMode="multi"
+              />
+            ) : (
+              <p>No changed files match the filter.</p>
+            )}
+          </div>
+          {activeChange ? (
+            <div
+              aria-label={`${activeChange.path} actions`}
+              className="web-change-context-actions"
+              role="group"
+            >
+              <strong>{activeChange.path}</strong>
+              <Button
+                disabled={!canIgnoreSelectedFile}
+                onClick={() =>
+                  void props.dispatcher.appendIgnoreFile([activeChange.path])
+                }
+              >
+                Ignore file
+              </Button>
+              {selectedExtension ? (
+                <Button
+                  disabled={!canIgnoreSelectedFile}
+                  onClick={() =>
+                    void props.dispatcher.appendIgnorePattern([
+                      `*${selectedExtension}`,
+                    ])
+                  }
+                >
+                  Ignore {selectedExtension} files
+                </Button>
+              ) : null}
+              <Button
+                onClick={() =>
+                  void props.dispatcher.copyPaths([activeChange.path], false)
+                }
+              >
+                Copy path
+              </Button>
+              <Button
+                onClick={() =>
+                  void props.dispatcher.copyPaths([activeChange.path], true)
+                }
+              >
+                Copy relative path
+              </Button>
+              {selectedFiles.length > 1 ? (
+                <>
+                  <Button
+                    onClick={() =>
+                      void props.dispatcher.copyPaths(selectedFiles, false)
+                    }
+                  >
+                    Copy included paths
+                  </Button>
+                  <Button
+                    onClick={() =>
+                      void props.dispatcher.copyPaths(selectedFiles, true)
+                    }
+                  >
+                    Copy included relative paths
+                  </Button>
+                </>
+              ) : null}
+            </div>
+          ) : null}
+          {props.showStashedChanges && props.state.branches?.stashes?.length ? (
+            <section className="web-inline-stashes" aria-label="Stashes">
+              <div className="web-inline-stashes-heading">
+                <strong>Stashes</strong>
+                <span>{props.state.branches.stashes.length}</span>
+              </div>
+              <div className="web-inline-stashes-list">
+                {props.state.branches.stashes.map(stash => (
+                  <div className="web-inline-stash-row" key={stash.stashSha}>
+                    <Button
+                      className={
+                        props.state.inspectedStash?.stashSha === stash.stashSha
+                          ? 'selected'
+                          : undefined
+                      }
+                      onClick={() => void props.dispatcher.inspectStash(stash)}
+                    >
+                      {stash.customName || stash.name} on {stash.branchName}
+                    </Button>
+                    <Button
+                      onClick={() =>
+                        props.onStashActionChanged({
+                          operation: 'stash-apply',
+                          stash,
+                        })
+                      }
+                    >
+                      Apply
+                    </Button>
+                    <Button
+                      onClick={() =>
+                        props.onStashActionChanged({
+                          operation: 'stash-pop',
+                          stash,
+                        })
+                      }
+                    >
+                      Pop
+                    </Button>
+                    <Button onClick={() => setStashDialogTarget(stash)}>
+                      Rename
+                    </Button>
+                    <Button
+                      className="destructive"
+                      onClick={() =>
+                        props.onStashActionChanged({
+                          operation: 'stash-drop',
+                          stash,
+                        })
+                      }
+                    >
+                      Drop
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ) : null}
+          {operation || conflictedFiles.length > 0 ? (
+            <div className="web-conflict-actions" role="group">
+              {operationLabel && operationState?.totalCommitCount ? (
+                <p className="web-operation-progress" role="status">
+                  {operationLabel} progress: {operationState.position || 1} of{' '}
+                  {operationState.totalCommitCount}
+                  {operationState.currentCommit
+                    ? ` (${operationState.currentCommit.slice(0, 8)})`
+                    : ''}
+                </p>
+              ) : null}
+              {conflictedFiles.length > 0 ? (
+                <strong>Resolve conflicts</strong>
+              ) : null}
+              {conflictedFiles.map(file => (
+                <div className="web-conflict-row" key={file.path}>
+                  <span>{file.path}</span>
+                  <Button
+                    disabled={props.state.loading}
+                    onClick={() =>
+                      void props.dispatcher.runOperation('resolve-conflict', {
+                        values: [file.path, 'ours'],
+                      })
+                    }
+                  >
+                    Use ours
+                  </Button>
+                  <Button
+                    disabled={props.state.loading}
+                    onClick={() =>
+                      void props.dispatcher.runOperation('resolve-conflict', {
+                        values: [file.path, 'theirs'],
+                      })
+                    }
+                  >
+                    Use theirs
+                  </Button>
+                </div>
+              ))}
+              {operation === 'rebase' ||
+              operation === 'cherryPick' ||
+              operation === 'merge' ||
+              operation === 'revert' ||
+              operation === 'squash' ? (
+                <Button
+                  disabled={props.state.loading}
+                  onClick={() =>
+                    void props.dispatcher.runOperation(
+                      operation === 'rebase'
+                        ? 'continue-rebase'
+                        : operation === 'cherryPick'
+                        ? 'continue-cherry-pick'
+                        : 'finish-merge',
+                      {}
+                    )
+                  }
+                >
+                  Continue operation
+                </Button>
+              ) : null}
+              {operation === 'rebase' ? (
+                <Button
+                  disabled={props.state.loading}
+                  onClick={() =>
+                    void props.dispatcher.runOperation('skip-rebase')
+                  }
+                >
+                  Skip current commit
+                </Button>
+              ) : null}
+              {operation === 'rebase' ||
+              operation === 'cherryPick' ||
+              operation === 'merge' ||
+              operation === 'revert' ||
+              operation === 'squash' ? (
+                <Button
+                  disabled={props.state.loading}
+                  onClick={() => {
+                    if (operation === 'rebase')
+                      void props.dispatcher.runOperation('abort-rebase')
+                    else if (operation === 'cherryPick')
+                      void props.dispatcher.runOperation('abort-cherry-pick')
+                    else if (operation === 'squash')
+                      void props.dispatcher.runOperation('abort-squash')
+                    else void props.dispatcher.runOperation('abort-merge')
+                  }}
+                >
+                  Abort operation
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+        <WebCommitDialog
+          commitDialogRequest={props.state.commitDialogRequest}
+          commitToAmend={props.state.commitToAmend}
           emoji={props.state.emoji}
-          externalEditorLabel={undefined}
-          focusCommitMessage={false}
-          gitHubUserStore={{} as never}
-          hookProgress={null}
-          isCommitting={isCommitting}
-          isGeneratingCommitMessage={false}
-          isPushPullFetchInProgress={props.state.loading}
-          isShowingFoldout={false}
-          isShowingModal={false}
-          issuesStore={{} as never}
-          mostRecentLocalCommit={mostRecentLocalCommit}
-          onChangesListScrolled={scrollTop => {
-            localStorage.setItem(changesScrollStorageKey, String(scrollTop))
-            setChangesListScrollTop(scrollTop)
+          identity={props.state.gitIdentity}
+          message={props.state.commitDraft}
+          onMessageChanged={props.dispatcher.setCommitDraft}
+          onOptionChanged={props.dispatcher.setCommitOption}
+          onSpellcheckChanged={props.dispatcher.setCommitSpellcheckEnabled}
+          onTrailerTextChanged={props.dispatcher.setCommitTrailerText}
+          onDismiss={() => {
+            setCommitDialogOpen(false)
+            if (props.state.commitToAmend) props.dispatcher.stopAmendingCommit()
           }}
-          changesListScrollTop={changesListScrollTop}
-          onOpenInExternalEditor={path =>
-            void props.dispatcher.openIntegration(
-              'editor',
-              `${repositoryPath.replace(/[\\/]+$/, '')}/${path.replace(
-                /^[\\/]+/,
-                ''
-              )}`
-            )
-          }
-          onShowCommitProgress={undefined}
-          onUpdateCommitOptions={(_repository, options) => {
-            if (options.skipCommitHooks !== undefined)
-              props.dispatcher.setCommitOption(
-                'noVerify',
-                options.skipCommitHooks
-              )
-            if (options.signOffCommits !== undefined)
-              props.dispatcher.setCommitOption(
-                'signOff',
-                options.signOffCommits
-              )
-            if (options.allowEmptyCommit !== undefined)
-              props.dispatcher.setCommitOption(
-                'allowEmpty',
-                options.allowEmptyCommit
-              )
+          onStopAmending={props.dispatcher.stopAmendingCommit}
+          onConfigureIdentity={() => {
+            setCommitDialogOpen(false)
+            setGitIdentityDialogOpen(true)
           }}
-          repository={desktopRepository}
-          shouldNudgeToCommit={false}
-          shouldShowGenerateCommitMessageCallOut={false}
-          showChangesFilter={props.showChangesFilter}
-          showCommitAuthorInfo={props.showCommitAuthorInfo}
+          onSubmit={async (message, options) => {
+            setCommitDialogOpen(false)
+            await props.dispatcher.commit(message, options)
+          }}
+          open={commitDialogOpen}
+          hiddenIncludedFileCount={hiddenIncludedFileCount}
+          options={props.state.commitOptions}
+          selectedFileCount={selectedFiles.length}
+          spellcheckEnabled={props.state.commitSpellcheckEnabled}
           showCommitLengthWarning={props.showCommitLengthWarning}
-          signOffCommits={props.state.commitOptions.signOff}
-          skipCommitHooks={props.state.commitOptions.noVerify}
-          allowEmptyCommit={props.state.commitOptions.allowEmpty}
+          commitSummaryLengthWarningThreshold={
+            props.commitSummaryLengthWarningThreshold
+          }
+          trailerText={props.state.commitTrailerText}
         />
-        {discardRequest ? (
-          <DesktopDiscardChangesDialog
-            askForConfirmation={true}
-            dispatcher={props.dispatcher}
-            files={discardRequest.files}
-            onConfirmDiscardChangesChanged={value =>
-              setBoolean(webConfirmDiscardChangesStorageKey, value)
-            }
-            onDismiss={() => setDiscardRequest(null)}
-            permanentlyDelete={discardRequest.permanentlyDelete}
-            repositoryPath={repositoryPath}
-          />
-        ) : null}
-        {commitFilteredRequest ? (
-          <DialogStackContext.Provider value={{ isTopMost: true }}>
-            <ConfirmCommitFilteredChanges
-              onCommitAnyway={commitFilteredRequest}
-              onDismissed={() => setCommitFilteredRequest(null)}
-              setConfirmCommitFilteredChanges={() => undefined}
-              showFilesToBeCommitted={() => {
-                props.dispatcher.setChangesFilterText('')
-                props.dispatcher.setChangesFilterOption(
-                  'isIncludedInCommit',
-                  true
-                )
-                props.dispatcher.setChangesFilterOption(
-                  'isExcludedFromCommit',
-                  false
-                )
-                props.dispatcher.setChangesFilterOption('isNewFile', false)
-                props.dispatcher.setChangesFilterOption('isModifiedFile', false)
-                props.dispatcher.setChangesFilterOption('isDeletedFile', false)
-              }}
-            />
-          </DialogStackContext.Provider>
-        ) : null}
-        {stashToRename ? (
-          <DesktopRenameStashDialog
-            dispatcher={props.dispatcher}
-            onDismiss={() => setStashToRename(null)}
-            repositoryPath={repositoryPath}
-            stash={stashToRename}
-          />
-        ) : null}
-      </>
+        <WebGitIdentityDialog
+          identity={props.state.gitIdentity}
+          onDismiss={() => setGitIdentityDialogOpen(false)}
+          onOpenGlobalGitConfig={props.dispatcher.openGlobalGitConfig}
+          onSubmit={async (scope, name, email) => {
+            await props.dispatcher.configureGitIdentity(scope, name, email)
+            setGitIdentityDialogOpen(false)
+            setCommitDialogOpen(true)
+          }}
+          open={gitIdentityDialogOpen}
+        />
+        <WebConfirmDialog
+          confirmLabel={
+            discardPermanently ? 'Delete permanently' : 'Discard changes'
+          }
+          message={
+            discardPermanently
+              ? 'Permanently delete the selected changes? This cannot be undone.'
+              : 'Move the selected changes to Trash when possible. If Trash is unavailable, untracked files will be deleted permanently.'
+          }
+          onConfirm={async () => {
+            await props.dispatcher.discardFiles(
+              selectedFiles,
+              true,
+              discardPermanently
+            )
+            setDiscardDialogOpen(false)
+            setSelectedChangePaths([])
+          }}
+          onDismiss={() => setDiscardDialogOpen(false)}
+          additionalContent={
+            <label>
+              <input
+                checked={discardPermanently}
+                onChange={event => {
+                  const value = event.target.checked
+                  setDiscardPermanently(value)
+                  setBoolean(webDiscardPermanentlyStorageKey, value)
+                }}
+                type="checkbox"
+              />
+              Permanently delete selected changes by default
+            </label>
+          }
+          open={discardDialogOpen}
+          title="Discard changes?"
+        />
+        <WebStashDialog
+          onDismiss={() => setSelectedStashDialogOpen(false)}
+          onSubmit={async (message, options) => {
+            await props.dispatcher.runOperation('stash', {
+              values: actionFilePaths,
+              message,
+              ...options,
+            })
+            setSelectedStashDialogOpen(false)
+            setSelectedChangePaths([])
+          }}
+          open={selectedStashDialogOpen}
+        />
+        <WebTextDialog
+          description="Rename the selected stash without changing its contents."
+          initialValue={stashDialogTarget?.customName || ''}
+          label="Stash name"
+          onDismiss={() => setStashDialogTarget(null)}
+          onSubmit={async value => {
+            if (!stashDialogTarget) return
+            await props.dispatcher.runOperation('stash-rename', {
+              values: [stashDialogTarget.name],
+              customName: value,
+            })
+            setStashDialogTarget(null)
+          }}
+          open={stashDialogTarget !== null}
+          submitLabel="Rename stash"
+          title="Rename stash"
+        />
+      </section>
     )
   }
 
@@ -5194,12 +7141,9 @@ function DesktopDiffView(props: {
   readonly state: WebApplicationState
   readonly dispatcher: WebDispatcher
 }) {
-  const isCommitting =
-    props.state.operationTask?.operation === 'commit' &&
-    props.state.operationTask.status === 'running'
   const preferences = useWebDiffPresentationPreferences()
+  const [canExpandWholeFile, setCanExpandWholeFile] = React.useState(false)
   const [pendingDiscard, setPendingDiscard] = React.useState<{
-    readonly file: WorkingDirectoryFileChange
     readonly diff: ITextDiff
     readonly selection: DiffSelection
   } | null>(null)
@@ -5220,15 +7164,6 @@ function DesktopDiffView(props: {
     file && sourceFile?.status.submoduleStatus
       ? getDesktopSubmoduleDiff(sourceFile, props.state.diff)
       : getDesktopDiff(props.state.diff)
-  const externalFileContents =
-    file && props.state.diff?.fileContents
-      ? {
-          file,
-          oldContents: props.state.diff.fileContents.oldContents,
-          newContents: props.state.diff.fileContents.newContents,
-          canBeExpanded: props.state.diff.fileContents.canBeExpanded,
-        }
-      : null
   const getSelectableLines = (textDiff: ITextDiff) =>
     new Set(
       textDiff.hunks.flatMap(hunk =>
@@ -5250,141 +7185,110 @@ function DesktopDiffView(props: {
     props.dispatcher.setFileSelection(file.path, normalizedSelection, patch)
   }
 
-  if (!props.state.selectedRepositoryPath) return null
-
-  if (!file) {
-    return (
-      <NoChanges
-        appMenu={webSuggestedActionsMenu}
-        dispatcher={
-          { incrementMetric: () => undefined } as unknown as Dispatcher
-        }
-        isExternalEditorAvailable={false}
-        repository={getDesktopRepository(props.state.selectedRepositoryPath)}
-        repositoryState={
-          {
-            aheadBehind: props.state.branches?.aheadBehind || null,
-            branchesState: {
-              currentPullRequest: null,
-              defaultBranch: null,
-              tip: getDesktopBranch(props.state.branches?.branch)
-                ? {
-                    kind: TipState.Valid,
-                    branch: getDesktopBranch(props.state.branches?.branch)!,
-                  }
-                : {
-                    kind: TipState.Detached,
-                    currentSha: '',
-                  },
-            },
-            changesState: { stashEntries: [] },
-            remote: null,
-            tagsToPush: null,
-          } as unknown as IRepositoryState
-        }
-      />
-    )
-  }
+  if (!file || !props.state.selectedRepositoryPath) return null
 
   return (
-    <>
-      <Changes
-        askForConfirmationOnDiscardChanges={true}
+    <div className="diff-container">
+      <DiffHeader
+        canExpandWholeFile={canExpandWholeFile}
         diff={diff}
-        externalFileContents={externalFileContents}
-        key={file.id}
-        dispatcher={
-          {
-            changeFileLineSelection: (
-              _repository: Repository,
-              _file: WorkingDirectoryFileChange,
-              selection: DiffSelection
-            ) => updateSelection(selection),
-            changeImageDiffType: preferences.onImageDiffTypeChanged,
-            onHideWhitespaceInChangesDiffChanged: (
-              value: boolean,
-              _repository: Repository
-            ) => {
-              preferences.onHideWhitespaceInDiffChanged(value)
-              return Promise.resolve()
-            },
-            onShowDiffMinimapChanged: preferences.onShowDiffMinimapChanged,
-            onShowSideBySideDiffChanged:
-              preferences.onShowSideBySideDiffChanged,
-            onWrapDiffLinesChanged: preferences.onWrapDiffLinesChanged,
-            showPopup: (popup: {
-              readonly type: PopupType
-              readonly diff?: ITextDiff
-              readonly selection?: DiffSelection
-            }) => {
-              if (
-                popup.type === PopupType.ConfirmDiscardSelection &&
-                popup.diff &&
-                popup.selection
-              )
-                setPendingDiscard({
-                  file,
-                  diff: popup.diff,
-                  selection: popup.selection.withSelectableLines(
-                    getSelectableLines(popup.diff)
-                  ),
-                })
-            },
-          } as unknown as Dispatcher
-        }
-        file={file}
         hideWhitespaceInDiff={preferences.hideWhitespaceInDiff}
-        imageDiffType={preferences.imageDiffType}
-        isCommitting={isCommitting}
-        onChangeImageDiffType={preferences.onImageDiffTypeChanged}
-        onDiffOptionsOpened={() => undefined}
-        onOpenBinaryFile={fullPath => void props.dispatcher.openPath(fullPath)}
-        onOpenSubmodule={fullPath =>
-          void props.dispatcher.selectRepository(fullPath)
+        onHideWhitespaceInDiffChanged={async checked =>
+          preferences.onHideWhitespaceInDiffChanged(checked)
         }
-        repository={getDesktopRepository(props.state.selectedRepositoryPath)}
-        showDiffCheckMarks={preferences.showDiffCheckMarks}
+        onShowDiffMinimapChanged={preferences.onShowDiffMinimapChanged}
+        onShowSideBySideDiffChanged={preferences.onShowSideBySideDiffChanged}
+        onShowWholeFileChanged={preferences.onShowWholeFileChanged}
+        onWrapDiffLinesChanged={preferences.onWrapDiffLinesChanged}
+        path={file.path}
         showDiffMinimap={preferences.showDiffMinimap}
         showSideBySideDiff={preferences.showSideBySideDiff}
+        showWholeFile={preferences.showWholeFile}
+        status={file.status}
         wrapDiffLines={preferences.wrapDiffLines}
       />
-      {pendingDiscard ? (
-        <DialogStackContext.Provider value={{ isTopMost: true }}>
-          <DiscardSelection
-            diff={pendingDiscard.diff}
-            dispatcher={
-              {
-                discardChangesFromSelection: (
-                  _repository: Repository,
-                  path: string,
-                  textDiff: ITextDiff,
-                  selection: DiffSelection
-                ) => {
-                  const patch = formatPatchToDiscardChanges(
-                    path,
-                    textDiff,
-                    selection
-                  )
-                  return patch
-                    ? props.dispatcher.runOperation('discard-patch', { patch })
-                    : Promise.resolve()
-                },
-                setConfirmDiscardChangesSetting: (value: boolean) => {
-                  setBoolean(webConfirmDiscardChangesStorageKey, value)
-                  return Promise.resolve()
-                },
-              } as unknown as Dispatcher
-            }
-            file={pendingDiscard.file}
-            onDismissed={() => setPendingDiscard(null)}
-            repository={getDesktopRepository(
-              props.state.selectedRepositoryPath
-            )}
-            selection={pendingDiscard.selection}
-          />
-        </DialogStackContext.Provider>
+      {sourceFile?.status.submoduleStatus ? (
+        <WebSubmoduleActions
+          disabled={props.state.loading}
+          dispatcher={props.dispatcher}
+          filePath={sourceFile.path}
+          fullPath={props.state.diff?.fullPath}
+          status={sourceFile.status.submoduleStatus}
+        />
       ) : null}
-    </>
+      {diff ? (
+        <SeamlessDiffSwitcher
+          askForConfirmationOnDiscardChanges={true}
+          diff={diff}
+          file={file}
+          externalFileContents={getDesktopFileContents(file, props.state.diff)}
+          hideWhitespaceInDiff={preferences.hideWhitespaceInDiff}
+          imageDiffType={preferences.imageDiffType}
+          onChangeImageDiffType={preferences.onImageDiffTypeChanged}
+          onHideWhitespaceInDiffChanged={async checked =>
+            preferences.onHideWhitespaceInDiffChanged(checked)
+          }
+          onOpenBinaryFile={fullPath =>
+            void props.dispatcher.openPath(fullPath)
+          }
+          onOpenSubmodule={fullPath =>
+            void props.dispatcher.addRepository(fullPath)
+          }
+          onDiscardChanges={(discardDiff, selection) => {
+            setPendingDiscard({
+              diff: discardDiff,
+              selection: selection.withSelectableLines(
+                getSelectableLines(discardDiff)
+              ),
+            })
+          }}
+          onIncludeChanged={
+            diff.kind === DiffType.Text ? updateSelection : undefined
+          }
+          readOnly={diff.kind !== DiffType.Text}
+          repository={getDesktopRepository(props.state.selectedRepositoryPath)}
+          showDiffCheckMarks={
+            preferences.showDiffCheckMarks && diff.kind === DiffType.Text
+          }
+          showDiffMinimap={preferences.showDiffMinimap}
+          showSideBySideDiff={preferences.showSideBySideDiff}
+          showWholeFile={preferences.showWholeFile}
+          onShowWholeFileChanged={preferences.onShowWholeFileChanged}
+          onWholeFileExpansionAvailabilityChanged={canExpandWholeFile =>
+            setCanExpandWholeFile(canExpandWholeFile)
+          }
+          wrapDiffLines={preferences.wrapDiffLines}
+        />
+      ) : null}
+      <WebFileActions
+        dispatcher={props.dispatcher}
+        fullPath={repositoryFilePath(
+          props.state.selectedRepositoryPath,
+          file.path
+        )}
+        openDisabled={file.status.kind === AppFileStatusKind.Deleted}
+        path={file.path}
+      />
+      <WebConfirmDialog
+        confirmLabel="Discard selected lines"
+        message="Discard the selected lines? This cannot be undone."
+        onConfirm={async () => {
+          if (!file || !pendingDiscard) return
+          const patch = formatPatchToDiscardChanges(
+            file.path,
+            pendingDiscard.diff,
+            pendingDiscard.selection
+          )
+          if (patch) {
+            await props.dispatcher.runOperation('discard-patch', { patch })
+          }
+          setPendingDiscard(null)
+        }}
+        onDismiss={() => setPendingDiscard(null)}
+        open={pendingDiscard !== null}
+        title="Discard selected lines?"
+      />
+    </div>
   )
 }
 
@@ -5397,305 +7301,2101 @@ function StashDiffView(props: {
   readonly loading: boolean
   readonly dispatcher: WebDispatcher
 }) {
-  const preferences = useWebDiffPresentationPreferences()
-  const [fileListWidth, setFileListWidth] = React.useState(() =>
-    Math.min(600, Math.max(100, getNumber('stashed-files-width', 250)))
-  )
-  const [popup, setPopup] = React.useState<'discard' | 'rename' | null>(null)
-  const desktopFiles = React.useMemo(
-    () =>
-      props.files.map(
-        file =>
-          new CommittedFileChange(
-            file.path,
-            getDesktopFileStatus(file),
-            props.stash.stashSha,
-            `${props.stash.stashSha}^`
-          )
-      ),
-    [props.files, props.stash.stashSha]
-  )
-  const selectedStashedFile =
-    desktopFiles.find(file => file.path === props.selectedFilePath) || null
-  const externalFileContents =
-    selectedStashedFile && props.diff?.fileContents
-      ? {
-          file: selectedStashedFile,
-          oldContents: props.diff.fileContents.oldContents,
-          newContents: props.diff.fileContents.newContents,
-          canBeExpanded: props.diff.fileContents.canBeExpanded,
-        }
+  const selectedFile =
+    props.files.find(file => file.path === props.selectedFilePath) || null
+  const file = selectedFile
+    ? getDesktopWorkingDirectoryFile(selectedFile)
+    : null
+  const parsedDiff =
+    file && selectedFile?.status.submoduleStatus
+      ? getDesktopSubmoduleDiff(selectedFile, props.diff)
+      : file
+      ? getDesktopDiff(props.diff)
       : null
-  const desktopStash = React.useMemo(
-    () => ({
-      name: props.stash.name,
-      branchName: props.stash.branchName,
-      customName: props.stash.customName,
-      stashSha: props.stash.stashSha,
-      createdAt: new Date(props.stash.createdAt),
-      files: {
-        kind: StashedChangesLoadStates.Loaded,
-        files: desktopFiles,
-      },
-      tree: props.stash.stashSha,
-      parents: [],
-    }),
-    [desktopFiles, props.stash]
+  const preferences = useWebDiffPresentationPreferences()
+  const [canExpandWholeFile, setCanExpandWholeFile] = React.useState(false)
+
+  return (
+    <section className="web-stash-inspection" aria-label="Stash inspection">
+      <div className="web-tools-section-heading">
+        <h3>Inspect stash: {props.stash.customName || props.stash.name}</h3>
+        <Button onClick={props.dispatcher.clearStashInspection}>Close</Button>
+      </div>
+      <div className="web-stash-inspection-grid">
+        <div
+          className="web-stash-file-list"
+          aria-label="Stashed files"
+          role="listbox"
+        >
+          {props.files.length ? (
+            props.files.map(stashFile => (
+              <Button
+                aria-selected={stashFile.path === props.selectedFilePath}
+                className={
+                  stashFile.path === props.selectedFilePath
+                    ? 'selected'
+                    : undefined
+                }
+                key={stashFile.path}
+                onClick={() =>
+                  void props.dispatcher.selectStashFile(stashFile.path)
+                }
+                role="option"
+              >
+                {stashFile.path}
+              </Button>
+            ))
+          ) : (
+            <p>
+              {props.loading ? 'Loading stashed files…' : 'No stashed files'}
+            </p>
+          )}
+        </div>
+        <div className="web-stash-diff">
+          {file && parsedDiff ? (
+            <>
+              {selectedFile?.status.submoduleStatus ? (
+                <WebSubmoduleActions
+                  disabled={props.loading}
+                  dispatcher={props.dispatcher}
+                  filePath={selectedFile.path}
+                  fullPath={props.diff?.fullPath}
+                  status={selectedFile.status.submoduleStatus}
+                />
+              ) : null}
+              <DiffHeader
+                canExpandWholeFile={canExpandWholeFile}
+                diff={parsedDiff}
+                hideWhitespaceInDiff={preferences.hideWhitespaceInDiff}
+                onHideWhitespaceInDiffChanged={async checked =>
+                  preferences.onHideWhitespaceInDiffChanged(checked)
+                }
+                onShowDiffMinimapChanged={preferences.onShowDiffMinimapChanged}
+                onShowSideBySideDiffChanged={
+                  preferences.onShowSideBySideDiffChanged
+                }
+                onShowWholeFileChanged={preferences.onShowWholeFileChanged}
+                onWrapDiffLinesChanged={preferences.onWrapDiffLinesChanged}
+                path={file.path}
+                showDiffMinimap={preferences.showDiffMinimap}
+                showSideBySideDiff={preferences.showSideBySideDiff}
+                showWholeFile={preferences.showWholeFile}
+                status={file.status}
+                wrapDiffLines={preferences.wrapDiffLines}
+              />
+              <SeamlessDiffSwitcher
+                diff={parsedDiff}
+                file={file}
+                externalFileContents={getDesktopFileContents(file, props.diff)}
+                hideWhitespaceInDiff={preferences.hideWhitespaceInDiff}
+                imageDiffType={preferences.imageDiffType}
+                onChangeImageDiffType={preferences.onImageDiffTypeChanged}
+                onHideWhitespaceInDiffChanged={async checked =>
+                  preferences.onHideWhitespaceInDiffChanged(checked)
+                }
+                onOpenBinaryFile={fullPath =>
+                  void props.dispatcher.openPath(fullPath)
+                }
+                onOpenSubmodule={fullPath =>
+                  void props.dispatcher.addRepository(fullPath)
+                }
+                readOnly={true}
+                repository={getDesktopRepository(props.repositoryPath)}
+                showDiffCheckMarks={false}
+                showDiffMinimap={preferences.showDiffMinimap}
+                showSideBySideDiff={preferences.showSideBySideDiff}
+                showWholeFile={preferences.showWholeFile}
+                onShowWholeFileChanged={preferences.onShowWholeFileChanged}
+                onWholeFileExpansionAvailabilityChanged={setCanExpandWholeFile}
+                wrapDiffLines={preferences.wrapDiffLines}
+              />
+              <WebFileActions
+                dispatcher={props.dispatcher}
+                fullPath={repositoryFilePath(props.repositoryPath, file.path)}
+                openDisabled={file.status.kind === AppFileStatusKind.Deleted}
+                path={file.path}
+              />
+            </>
+          ) : (
+            <p>Select a stashed file to inspect its diff.</p>
+          )}
+        </div>
+      </div>
+    </section>
   )
-  const desktopDispatcher = React.useMemo(
-    () =>
-      ({
-        applyStash: () =>
-          props.dispatcher.runOperation('stash-apply', {
-            values: [props.stash.name],
-          }),
-        dropStash: () =>
-          props.dispatcher.runOperation('stash-drop', {
-            values: [props.stash.name],
-            confirmed: true,
-          }),
-        popStash: () =>
-          props.dispatcher.runOperation('stash-pop', {
-            values: [props.stash.name],
-          }),
-        renameStash: (
-          _repository: Repository,
-          _stash: typeof desktopStash,
-          customName: string | null
-        ) =>
-          props.dispatcher.runOperation('stash-rename', {
-            values: [props.stash.name],
-            customName: customName || '',
-          }),
-        resetStashedFilesWidth: () => {
-          setNumber('stashed-files-width', 250)
-          setFileListWidth(250)
-          return Promise.resolve()
-        },
-        selectStashedFile: (
-          _repository: Repository,
-          _stash: typeof desktopStash,
-          file?: CommittedFileChange | null
-        ) =>
-          file
-            ? props.dispatcher.selectStashFile(file.path)
-            : props.dispatcher.clearStashInspection(),
-        selectWorkingDirectoryFiles: () =>
-          props.dispatcher.clearStashInspection(),
-        setConfirmDiscardStashSetting: () => undefined,
-        setStashedFilesWidth: (width: number) => {
-          setNumber('stashed-files-width', width)
-          setFileListWidth(width)
-          return Promise.resolve()
-        },
-        showPopup: (nextPopup: { readonly type: PopupType }) => {
-          if (nextPopup.type === PopupType.ConfirmDiscardStash)
-            setPopup('discard')
-          if (nextPopup.type === PopupType.RenameStash) setPopup('rename')
-        },
-      } as unknown as Dispatcher),
-    [desktopStash, props.dispatcher, props.stash.name]
+}
+
+function WebWorktreeList(props: {
+  readonly worktrees: ReadonlyArray<WebWorktree>
+  readonly selectedRepositoryPath: string
+  readonly onOpen: (path: string) => void
+  readonly onMove: (worktree: WebWorktree) => void
+  readonly onRemove: (worktree: WebWorktree) => void
+  readonly onPrune: (worktree: WebWorktree) => void
+  readonly onCopyPath: (path: string) => void
+  readonly onRevealPath: (path: string) => void
+  readonly onOpenInNewWindow: (path: string) => void
+}) {
+  const [filterText, setFilterText] = React.useState('')
+  const normalizedFilterText = filterText.trim().toLowerCase()
+  const filtered = props.worktrees.filter(worktree =>
+    `${worktree.path} ${worktree.branch || ''} ${worktree.head}`
+      .toLowerCase()
+      .includes(normalizedFilterText)
   )
+  const main = filtered.filter(worktree => worktree.type === 'main')
+  const linked = filtered.filter(worktree => worktree.type === 'linked')
+  const renderWorktree = (worktree: WebWorktree) => {
+    const isMain = worktree.type === 'main'
+    const canForceRemove = worktree.isLocked || worktree.isDirty !== false
+    const showWorktreeContextMenu = () => {
+      const items: IMenuItem[] = [
+        {
+          label: 'Open worktree in new window',
+          action: () => props.onOpenInNewWindow(worktree.path),
+        },
+        { type: 'separator' },
+        {
+          label: 'Copy worktree name',
+          action: () => props.onCopyPath(pathName(worktree.path)),
+        },
+        {
+          label: 'Copy worktree path',
+          action: () => props.onCopyPath(worktree.path),
+        },
+      ]
+      if (!isMain) {
+        items.push(
+          { type: 'separator' },
+          {
+            label: 'Rename worktree',
+            action: () => props.onMove(worktree),
+            enabled: !worktree.isLocked,
+          },
+          {
+            label: canForceRemove ? 'Force remove worktree' : 'Remove worktree',
+            action: () => props.onRemove(worktree),
+          }
+        )
+      }
+      void showContextualMenu(items)
+    }
+    return (
+      <div
+        className="web-tool-row"
+        key={worktree.path}
+        onContextMenu={event => {
+          event.preventDefault()
+          showWorktreeContextMenu()
+        }}
+      >
+        <span title={worktree.path}>
+          {worktree.branch?.replace(/^refs\/heads\//, '') ||
+            worktree.head.slice(0, 8)}
+          : {worktree.path}
+          {worktree.isLocked ? ' (locked)' : ''}
+          {worktree.isPrunable ? ' (prunable)' : ''}
+          {worktree.isDirty ? ' (has changes)' : ''}
+        </span>
+        <Button
+          disabled={worktree.path === props.selectedRepositoryPath}
+          onClick={() => props.onOpen(worktree.path)}
+        >
+          Open
+        </Button>
+        <Button onClick={() => props.onCopyPath(worktree.path)}>
+          Copy path
+        </Button>
+        <Button onClick={() => props.onRevealPath(worktree.path)}>
+          Reveal in Finder
+        </Button>
+        {!isMain ? (
+          <>
+            <Button
+              disabled={worktree.isLocked}
+              onClick={() => props.onMove(worktree)}
+            >
+              Rename
+            </Button>
+            {worktree.isPrunable ? (
+              <Button
+                className="destructive"
+                onClick={() => props.onPrune(worktree)}
+              >
+                Prune
+              </Button>
+            ) : (
+              <Button
+                className="destructive"
+                onClick={() => props.onRemove(worktree)}
+              >
+                {canForceRemove ? 'Force remove' : 'Remove'}
+              </Button>
+            )}
+          </>
+        ) : null}
+      </div>
+    )
+  }
+  const renderGroup = (label: string, worktrees: ReadonlyArray<WebWorktree>) =>
+    worktrees.length ? (
+      <React.Fragment key={label}>
+        <div className="web-tools-section-heading">
+          <strong>{label}</strong>
+          <span>{worktrees.length}</span>
+        </div>
+        {worktrees.map(renderWorktree)}
+      </React.Fragment>
+    ) : null
 
   return (
     <>
-      <StashDiffViewer
-        askForConfirmationOnDiscardStash={true}
-        dispatcher={desktopDispatcher}
-        fileListWidth={{
-          value: fileListWidth,
-          min: 100,
-          max: Math.max(100, window.innerWidth - 150),
-        }}
-        imageDiffType={preferences.imageDiffType}
-        onChangeImageDiffType={preferences.onImageDiffTypeChanged}
-        onHideWhitespaceInDiffChanged={
-          preferences.onHideWhitespaceInDiffChanged
-        }
-        onOpenBinaryFile={fullPath => void props.dispatcher.openPath(fullPath)}
-        onOpenInExternalEditor={path =>
-          void props.dispatcher.openIntegration(
-            'editor',
-            `${props.repositoryPath.replace(/[\\/]+$/, '')}/${path.replace(
-              /^[\\/]+/,
-              ''
-            )}`
-          )
-        }
-        onOpenSubmodule={fullPath =>
-          void props.dispatcher.selectRepository(fullPath)
-        }
-        repository={getDesktopRepository(props.repositoryPath)}
-        selectedStashedFile={selectedStashedFile}
-        externalFileContents={externalFileContents}
-        showDiffMinimap={preferences.showDiffMinimap}
-        showSideBySideDiff={preferences.showSideBySideDiff}
-        stashedFileDiff={getDesktopDiff(props.diff)}
-        stashEntry={desktopStash}
-        wrapDiffLines={preferences.wrapDiffLines}
+      <label htmlFor="web-worktree-filter">Filter worktrees</label>
+      <input
+        id="web-worktree-filter"
+        onChange={event => setFilterText(event.target.value)}
+        placeholder="Filter"
+        type="search"
+        value={filterText}
       />
-      {popup === 'discard' ? (
-        <DialogStackContext.Provider value={{ isTopMost: true }}>
-          <ConfirmDiscardStashDialog
-            askForConfirmationOnDiscardStash={true}
-            dispatcher={desktopDispatcher}
-            onDismissed={() => setPopup(null)}
-            repository={getDesktopRepository(props.repositoryPath)}
-            stash={desktopStash}
-          />
-        </DialogStackContext.Provider>
-      ) : null}
-      {popup === 'rename' ? (
-        <DialogStackContext.Provider value={{ isTopMost: true }}>
-          <RenameStashDialog
-            dispatcher={desktopDispatcher}
-            onDismissed={() => setPopup(null)}
-            repository={getDesktopRepository(props.repositoryPath)}
-            stash={desktopStash}
-          />
-        </DialogStackContext.Provider>
-      ) : null}
+      {renderGroup('Main worktree', main)}
+      {renderGroup('Linked worktrees', linked)}
+      {!filtered.length ? <p>No worktrees match the filter.</p> : null}
     </>
   )
 }
 
-function DesktopSelectedCommits(props: {
-  readonly state: WebApplicationState
+function BranchActionMenu(props: {
+  readonly branches: ReadonlyArray<WebBranch>
+  readonly currentBranch: string
+  readonly currentBranchUpstream: string | null
+  readonly defaultBranch: string | null
   readonly dispatcher: WebDispatcher
-  readonly selectedCommits: ReadonlyArray<Commit>
-  readonly selectedCommitsWeb: ReadonlyArray<
-    WebApplicationState['history'][number]
-  >
-  readonly shasInDiff: ReadonlyArray<string>
-  readonly isContiguous: boolean
+  readonly hasUncommittedChanges: boolean
+  readonly mergedBranches: ReadonlyArray<WebBranch>
+  readonly onClose: () => void
+  readonly onRequestedActionHandled?: () => void
+  readonly onCheckout: (branch: WebBranch, options: WebOperationOptions) => void
+  readonly pullStrategy: WebPullStrategy
+  readonly requestedAction?: 'merge' | 'squash-merge' | 'rebase'
 }) {
-  const preferences = useWebDiffPresentationPreferences()
-  const [commitSummaryWidth, setCommitSummaryWidth] = React.useState(() =>
-    Math.min(600, Math.max(100, getNumber('commit-summary-width', 250)))
+  const [dialog, setDialog] = React.useState<
+    'merge' | 'squash-merge' | 'rebase' | 'cherry-pick' | null
+  >(null)
+  const [value, setValue] = React.useState('')
+  const [branchToDelete, setBranchToDelete] = React.useState<string | null>(
+    null
   )
-  const repositoryPath = props.state.selectedRepositoryPath
-  const selectedCommit =
-    props.selectedCommits.length === 1 ? props.selectedCommits[0] : null
-  const selectedCommitWeb =
-    props.selectedCommitsWeb.length === 1 ? props.selectedCommitsWeb[0] : null
-  const details =
-    selectedCommitWeb &&
-    props.state.selectedHistoryCommitSHA === selectedCommit?.sha
-      ? props.state.historyCommitDetails
-      : null
-  const files =
-    selectedCommitWeb && details
-      ? details.files.map(file =>
-          getDesktopCommittedFile(file, selectedCommitWeb)
-        )
-      : []
-  const selectedFile =
-    selectedCommitWeb && details && props.state.selectedHistoryFilePath
-      ? files.find(file => file.path === props.state.selectedHistoryFilePath) ||
-        null
-      : null
-  const webSelectedFile =
-    details?.files.find(file => file.path === selectedFile?.path) || null
-  const currentDiff =
-    selectedFile && webSelectedFile?.status.submoduleStatus
-      ? getDesktopSubmoduleDiff(webSelectedFile, props.state.historyDiff)
-      : getDesktopDiff(props.state.historyDiff)
-  const externalFileContents =
-    selectedFile && props.state.historyDiff?.fileContents
-      ? {
-          file: selectedFile,
-          oldContents: props.state.historyDiff.fileContents.oldContents,
-          newContents: props.state.historyDiff.fileContents.newContents,
-          canBeExpanded: props.state.historyDiff.fileContents.canBeExpanded,
-        }
-      : null
-  const desktopDispatcher = React.useMemo(
-    () =>
-      ({
-        changeFileSelection: (
-          _repository: Repository,
-          file: CommittedFileChange
-        ) => props.dispatcher.selectHistoryFile(file.path),
-        changeImageDiffType: preferences.onImageDiffTypeChanged,
-        copyPathToClipboard: (path: string) => props.dispatcher.copyText(path),
-        copyPathsToClipboard: (paths: ReadonlyArray<string>) =>
-          props.dispatcher.copyText(paths.join('\n')),
-        onHideWhitespaceInHistoryDiffChanged: (
-          value: boolean,
-          _repository: Repository,
-          _file: CommittedFileChange
-        ) => {
-          preferences.onHideWhitespaceInDiffChanged(value)
-          return Promise.resolve()
-        },
-        onShowDiffMinimapChanged: preferences.onShowDiffMinimapChanged,
-        onShowSideBySideDiffChanged: preferences.onShowSideBySideDiffChanged,
-        onWrapDiffLinesChanged: preferences.onWrapDiffLinesChanged,
-        resetCommitSummaryWidth: () => {
-          setNumber('commit-summary-width', 250)
-          setCommitSummaryWidth(250)
-          return Promise.resolve()
-        },
-        setCommitSummaryWidth: (width: number) => {
-          setNumber('commit-summary-width', width)
-          setCommitSummaryWidth(width)
-          return Promise.resolve()
-        },
-        showUnreachableCommits: () => undefined,
-        updateShasToHighlight: () => undefined,
-      } as unknown as Dispatcher),
-    [preferences, props.dispatcher]
+  const [deleteMergedBranchesOpen, setDeleteMergedBranchesOpen] =
+    React.useState(false)
+  const [resetUpstreamOpen, setResetUpstreamOpen] = React.useState(false)
+  const [resetUpstreamStrategy, setResetUpstreamStrategy] =
+    React.useState<WebResetUpstreamStrategy>(() =>
+      localStorage.getItem(webResetUpstreamStrategyStorageKey) === 'cancel'
+        ? 'cancel'
+        : 'stash'
+    )
+  const localBranches = props.branches.filter(
+    branch => branch.type !== 'Remote' && branch.name !== props.currentBranch
   )
+  const remoteBranches = props.branches.filter(
+    branch => branch.type === 'Remote' && !branch.name.endsWith('/HEAD')
+  )
+  const selectedBranch = localBranches.find(branch => branch.name === value)
+  const [remoteBranchToDelete, setRemoteBranchToDelete] = React.useState<{
+    readonly remote: string
+    readonly branch: string
+    readonly label: string
+  } | null>(null)
+  const [remoteBranchToCheckout, setRemoteBranchToCheckout] = React.useState<{
+    readonly branch: WebBranch
+    readonly remoteBranch: string
+    readonly branchName: string
+  } | null>(null)
+  const [worktreeBranch, setWorktreeBranch] = React.useState<WebBranch | null>(
+    null
+  )
+  const remoteBranchNameError = remoteBranchToCheckout
+    ? validateGitRefName(remoteBranchToCheckout.branchName, 'Local branch name')
+    : null
+  const handledRequestedAction = React.useRef<
+    'merge' | 'squash-merge' | 'rebase' | null
+  >(null)
+  React.useEffect(() => {
+    if (!props.requestedAction) {
+      handledRequestedAction.current = null
+      return
+    }
+    if (handledRequestedAction.current === props.requestedAction) return
+    if (!localBranches.length) {
+      handledRequestedAction.current = props.requestedAction
+      props.onRequestedActionHandled?.()
+      return
+    }
+    handledRequestedAction.current = props.requestedAction
+    setDialog(props.requestedAction)
+    setValue(localBranches[0]?.name || '')
+    props.onRequestedActionHandled?.()
+  }, [
+    props.onRequestedActionHandled,
+    props.requestedAction,
+    localBranches.length,
+    localBranches[0]?.name,
+  ])
 
-  if (!repositoryPath) return null
+  const showBranchContextMenu = (branch: WebBranch) => {
+    const isRemote = branch.type === 'Remote'
+    const remoteSeparator = branch.name.indexOf('/')
+    const remote =
+      isRemote && remoteSeparator > 0
+        ? branch.name.slice(0, remoteSeparator)
+        : null
+    const remoteBranch =
+      isRemote && remoteSeparator > 0
+        ? branch.name.slice(remoteSeparator + 1)
+        : branch.name
+    const localBranch = isRemote
+      ? props.branches.find(
+          candidate =>
+            candidate.type !== 'Remote' && candidate.name === remoteBranch
+        )
+      : branch
+    void showContextualMenu([
+      {
+        label: 'Copy branch name',
+        action: () => void props.dispatcher.copyText(branch.name),
+      },
+      {
+        label: isRemote ? 'Checkout remote branch' : 'Switch to branch',
+        action: () =>
+          props.onCheckout(
+            branch,
+            isRemote && !localBranch
+              ? { values: [branch.name], createLocalBranch: remoteBranch }
+              : { values: [isRemote ? remoteBranch : branch.name] }
+          ),
+        enabled: branch.name !== props.currentBranch,
+      },
+      {
+        label: 'Checkout in new worktree',
+        action: () => setWorktreeBranch(branch),
+      },
+      {
+        label: 'Pull branch',
+        action: () =>
+          void props.dispatcher.runOperation(
+            isRemote ? 'fetch' : 'fast-forward',
+            isRemote
+              ? { values: remote ? [remote] : [] }
+              : { values: [branch.name] }
+          ),
+        enabled: isRemote
+          ? Boolean(remote)
+          : Boolean(branch.upstream) && !branch.isGone,
+      },
+      {
+        label: 'Set as default branch',
+        action: () =>
+          void props.dispatcher
+            .setRepositoryDefaultBranch(isRemote ? remoteBranch : branch.name)
+            .then(() => undefined),
+        enabled: !isRemote && branch.name !== props.defaultBranch,
+      },
+      {
+        type: 'separator',
+      },
+      {
+        label: isRemote ? 'Delete remote branch' : 'Delete branch',
+        action: () => {
+          if (isRemote && remote) {
+            setRemoteBranchToDelete({
+              remote,
+              branch: remoteBranch,
+              label: branch.name,
+            })
+          } else if (!isRemote) {
+            setBranchToDelete(branch.name)
+          }
+        },
+        enabled: isRemote
+          ? Boolean(remote)
+          : branch.name !== props.currentBranch,
+      },
+    ])
+  }
+
+  const submit = async () => {
+    if (!selectedBranch) return
+    const operation =
+      dialog === 'merge'
+        ? 'merge'
+        : dialog === 'squash-merge'
+        ? 'squash-merge'
+        : dialog === 'rebase'
+        ? 'rebase'
+        : 'cherry-pick'
+    await props.dispatcher.runOperation(operation, {
+      values: [selectedBranch.tip?.sha || selectedBranch.name],
+    })
+    props.onClose()
+    setDialog(null)
+    setValue('')
+  }
+
+  const operationDescription =
+    dialog === 'merge'
+      ? `Merge ${selectedBranch?.name || 'the selected branch'} into ${
+          props.currentBranch
+        }. Git may create a merge commit and conflicts remain available in Changes.`
+      : dialog === 'squash-merge'
+      ? `Squash ${selectedBranch?.name || 'the selected branch'} into ${
+          props.currentBranch
+        } as one commit. Conflicts remain available in Changes for explicit resolution or abort.`
+      : dialog === 'rebase'
+      ? `Rebase ${props.currentBranch} onto ${
+          selectedBranch?.name || 'the selected branch'
+        }. This rewrites the current branch commits; conflicts remain available in Changes.`
+      : `Cherry-pick the tip of ${
+          selectedBranch?.name || 'the selected branch'
+        } onto ${
+          props.currentBranch
+        }. Conflicts remain available in Changes for explicit resolution or abort.`
 
   return (
-    <SelectedCommits
-      accounts={[]}
-      changesetData={{
-        files,
-        linesAdded: details?.linesAdded || 0,
-        linesDeleted: details?.linesDeleted || 0,
-      }}
-      commitSummaryWidth={{
-        value: commitSummaryWidth,
-        min: 100,
-        max: Math.max(100, window.innerWidth - 150),
-      }}
-      currentDiff={currentDiff}
-      externalFileContents={externalFileContents}
-      dispatcher={desktopDispatcher}
-      emoji={props.state.emoji}
-      externalEditorLabel={undefined}
-      hideWhitespaceInDiff={preferences.hideWhitespaceInDiff}
-      isContiguous={props.isContiguous}
-      localCommitSHAs={props.state.branches?.localCommitSHAs || []}
-      onChangeImageDiffType={preferences.onImageDiffTypeChanged}
-      onDiffOptionsOpened={() => undefined}
-      onOpenBinaryFile={fullPath => void props.dispatcher.openPath(fullPath)}
-      onOpenInExternalEditor={path =>
-        void props.dispatcher.openIntegration(
-          'editor',
-          `${repositoryPath.replace(/[\\/]+$/, '')}/${path.replace(
-            /^[\\/]+/,
-            ''
-          )}`
+    <>
+      <div className="web-toolbar-menu">
+        <Button
+          disabled={
+            props.currentBranch === 'No branch' ||
+            props.currentBranchUpstream === null
+          }
+          onClick={() => {
+            props.onClose()
+            void props.dispatcher.runOperation('pull', {
+              pullStrategy: props.pullStrategy,
+            })
+          }}
+        >
+          Pull {props.currentBranch}
+        </Button>
+        <Button
+          disabled={
+            props.currentBranch === 'No branch' ||
+            props.currentBranchUpstream === null
+          }
+          onClick={() => {
+            setResetUpstreamOpen(true)
+          }}
+        >
+          Reset and pull
+        </Button>
+        <Button
+          disabled={
+            props.currentBranch === 'No branch' ||
+            props.currentBranch === props.defaultBranch
+          }
+          onClick={() => {
+            void props.dispatcher
+              .setRepositoryDefaultBranch(props.currentBranch)
+              .then(props.onClose)
+          }}
+        >
+          Set {props.currentBranch} as default branch
+        </Button>
+        <Button
+          disabled={!localBranches.length}
+          onClick={() => {
+            setDialog('merge')
+            setValue(localBranches[0]?.name || '')
+          }}
+        >
+          Merge branch
+        </Button>
+        <Button
+          disabled={!localBranches.length}
+          onClick={() => {
+            setDialog('squash-merge')
+            setValue(localBranches[0]?.name || '')
+          }}
+        >
+          Squash merge branch
+        </Button>
+        <Button
+          disabled={!localBranches.length}
+          onClick={() => {
+            setDialog('rebase')
+            setValue(localBranches[0]?.name || '')
+          }}
+        >
+          Rebase onto branch
+        </Button>
+        <Button
+          disabled={!localBranches.length}
+          onClick={() => {
+            setDialog('cherry-pick')
+            setValue(localBranches[0]?.name || '')
+          }}
+        >
+          Cherry-pick branch tip
+        </Button>
+        <Button
+          disabled={!props.mergedBranches.length}
+          onClick={() => setDeleteMergedBranchesOpen(true)}
+        >
+          Delete unused local branches
+        </Button>
+        {localBranches.map(branch => (
+          <React.Fragment key={branch.name}>
+            <Button
+              onContextMenu={event => {
+                event.preventDefault()
+                showBranchContextMenu(branch)
+              }}
+              onClick={() => {
+                props.onCheckout(branch, { values: [branch.name] })
+              }}
+            >
+              Switch to {branch.name}
+            </Button>
+            <Button
+              disabled={!branch.upstream || branch.isGone}
+              onClick={() => {
+                props.onClose()
+                void props.dispatcher.runOperation('fast-forward', {
+                  values: [branch.name],
+                })
+              }}
+            >
+              Pull {branch.name}
+            </Button>
+            <Button
+              disabled={branch.name === props.defaultBranch}
+              onClick={() => {
+                props.onClose()
+                void props.dispatcher
+                  .setRepositoryDefaultBranch(branch.name)
+                  .then(() => undefined)
+              }}
+            >
+              Set {branch.name} as default branch
+            </Button>
+            <Button
+              onClick={() => {
+                setWorktreeBranch(branch)
+              }}
+            >
+              Checkout {branch.name} in new worktree
+            </Button>
+            <Button
+              className="destructive"
+              onClick={() => {
+                setBranchToDelete(branch.name)
+              }}
+            >
+              Delete {branch.name}
+            </Button>
+          </React.Fragment>
+        ))}
+        {remoteBranches.map(branch => {
+          const separator = branch.name.indexOf('/')
+          const remote = separator > 0 ? branch.name.slice(0, separator) : ''
+          const remoteBranch =
+            separator > 0 ? branch.name.slice(separator + 1) : branch.name
+          const localExists = props.branches.some(
+            candidate =>
+              candidate.type !== 'Remote' && candidate.name === remoteBranch
+          )
+          return (
+            <React.Fragment key={branch.name}>
+              {!localExists ? (
+                <Button
+                  onContextMenu={event => {
+                    event.preventDefault()
+                    showBranchContextMenu(branch)
+                  }}
+                  onClick={() => {
+                    setRemoteBranchToCheckout({
+                      branch,
+                      remoteBranch: branch.name,
+                      branchName: remoteBranch,
+                    })
+                  }}
+                >
+                  Checkout {branch.name}
+                </Button>
+              ) : null}
+              <Button
+                onContextMenu={event => {
+                  event.preventDefault()
+                  showBranchContextMenu(branch)
+                }}
+                className="destructive"
+                onClick={() => {
+                  setRemoteBranchToDelete({
+                    remote,
+                    branch: remoteBranch,
+                    label: branch.name,
+                  })
+                }}
+              >
+                Delete remote {branch.name}
+              </Button>
+              <Button
+                onContextMenu={event => {
+                  event.preventDefault()
+                  showBranchContextMenu(branch)
+                }}
+                onClick={() => {
+                  setWorktreeBranch(branch)
+                }}
+              >
+                Checkout {branch.name} in new worktree
+              </Button>
+            </React.Fragment>
+          )
+        })}
+      </div>
+      {dialog ? (
+        <DialogStackContext.Provider value={{ isTopMost: true }}>
+          <Dialog
+            ariaDescribedBy="branch-action-description"
+            onDismissed={() => {
+              setDialog(null)
+              setValue('')
+            }}
+            onSubmit={() => void submit()}
+            title={
+              dialog === 'merge'
+                ? 'Merge branch'
+                : dialog === 'squash-merge'
+                ? 'Squash merge branch'
+                : dialog === 'rebase'
+                ? 'Rebase onto branch'
+                : 'Cherry-pick branch tip'
+            }
+          >
+            <DialogContent>
+              <p id="branch-action-description">Choose a local branch.</p>
+              <label htmlFor="web-branch-action">Branch</label>
+              <select
+                id="web-branch-action"
+                onChange={event => setValue(event.target.value)}
+                value={value}
+              >
+                {localBranches.map(branch => (
+                  <option key={branch.name} value={branch.name}>
+                    {branch.name}
+                  </option>
+                ))}
+              </select>
+              <p aria-label="Branch operation preflight" role="status">
+                {operationDescription}
+              </p>
+            </DialogContent>
+            <DialogFooter>
+              <Button onClick={() => setDialog(null)}>Cancel</Button>
+              <Button disabled={!selectedBranch} onClick={() => void submit()}>
+                Continue
+              </Button>
+            </DialogFooter>
+          </Dialog>
+        </DialogStackContext.Provider>
+      ) : null}
+      {remoteBranchToCheckout ? (
+        <DialogStackContext.Provider value={{ isTopMost: true }}>
+          <Dialog
+            ariaDescribedBy="remote-branch-checkout-description"
+            onDismissed={() => setRemoteBranchToCheckout(null)}
+            onSubmit={() => {
+              const target = remoteBranchToCheckout
+              if (remoteBranchNameError) return
+              props.onCheckout(target.branch, {
+                values: [target.remoteBranch],
+                createLocalBranch: target.branchName.trim(),
+              })
+              setRemoteBranchToCheckout(null)
+            }}
+            title="Checkout remote branch"
+          >
+            <DialogContent>
+              <p id="remote-branch-checkout-description">
+                Create a local branch that tracks{' '}
+                {remoteBranchToCheckout.remoteBranch}.
+              </p>
+              <label htmlFor="remote-branch-name">Local branch name</label>
+              <input
+                autoFocus={true}
+                id="remote-branch-name"
+                onChange={event =>
+                  setRemoteBranchToCheckout({
+                    ...remoteBranchToCheckout,
+                    branchName: event.target.value,
+                  })
+                }
+                type="text"
+                value={remoteBranchToCheckout.branchName}
+              />
+              {remoteBranchNameError ? (
+                <p role="alert">{remoteBranchNameError}</p>
+              ) : null}
+            </DialogContent>
+            <DialogFooter>
+              <Button onClick={() => setRemoteBranchToCheckout(null)}>
+                Cancel
+              </Button>
+              <Button
+                disabled={Boolean(remoteBranchNameError)}
+                onClick={() => {
+                  const target = remoteBranchToCheckout
+                  if (remoteBranchNameError) return
+                  props.onCheckout(target.branch, {
+                    values: [target.remoteBranch],
+                    createLocalBranch: target.branchName.trim(),
+                  })
+                  setRemoteBranchToCheckout(null)
+                }}
+              >
+                Checkout branch
+              </Button>
+            </DialogFooter>
+          </Dialog>
+        </DialogStackContext.Provider>
+      ) : null}
+      <WebWorktreeDialog
+        initialBranch={worktreeBranch}
+        onChooseDirectory={() => props.dispatcher.chooseDirectory()}
+        onDismiss={() => setWorktreeBranch(null)}
+        onSubmit={async (path, branch) => {
+          if (!worktreeBranch) return
+          const localBranchName =
+            worktreeBranch.type === 'Remote'
+              ? worktreeBranch.name.split('/').slice(1).join('/')
+              : worktreeBranch.name
+          const localBranchExists = props.branches.some(
+            candidate =>
+              candidate.type !== 'Remote' && candidate.name === localBranchName
+          )
+          await props.dispatcher.runOperation('worktree-add', {
+            values: [path],
+            worktreePath: path,
+            ...(worktreeBranch.type === 'Remote' && !localBranchExists
+              ? {
+                  createBranch: branch,
+                  commitish: worktreeBranch.name,
+                }
+              : {
+                  commitish:
+                    worktreeBranch.type === 'Remote'
+                      ? localBranchName
+                      : worktreeBranch.name,
+                }),
+          })
+          await props.dispatcher.addRepository(path)
+          setWorktreeBranch(null)
+        }}
+        open={worktreeBranch !== null}
+      />
+      <WebConfirmDialog
+        confirmLabel={
+          props.hasUncommittedChanges && resetUpstreamStrategy === 'stash'
+            ? 'Stash changes and reset'
+            : props.hasUncommittedChanges
+            ? 'Cancel reset'
+            : 'Reset and pull'
+        }
+        message={
+          props.hasUncommittedChanges && resetUpstreamStrategy === 'stash'
+            ? `Your uncommitted changes will be stashed before ${props.currentBranch} is reset to ${props.currentBranchUpstream}. Local commits that are not on the upstream branch will be discarded.`
+            : props.hasUncommittedChanges
+            ? `Reset and pull will not run while ${props.currentBranch} has uncommitted changes. Leave the changes untouched and cancel this operation, or choose the stash option.`
+            : `Reset ${props.currentBranch} to ${props.currentBranchUpstream}? Local commits that are not on the upstream branch will be discarded.`
+        }
+        additionalContent={
+          props.hasUncommittedChanges ? (
+            <fieldset
+              aria-label="Reset and pull change strategy"
+              className="web-dialog-options"
+            >
+              <legend>When uncommitted changes exist</legend>
+              <label>
+                <input
+                  checked={resetUpstreamStrategy === 'stash'}
+                  name="web-reset-upstream-strategy"
+                  onChange={() => {
+                    setResetUpstreamStrategy('stash')
+                    localStorage.setItem(
+                      webResetUpstreamStrategyStorageKey,
+                      'stash'
+                    )
+                  }}
+                  type="radio"
+                />
+                Stash changes before resetting
+              </label>
+              <label>
+                <input
+                  checked={resetUpstreamStrategy === 'cancel'}
+                  name="web-reset-upstream-strategy"
+                  onChange={() => {
+                    setResetUpstreamStrategy('cancel')
+                    localStorage.setItem(
+                      webResetUpstreamStrategyStorageKey,
+                      'cancel'
+                    )
+                  }}
+                  type="radio"
+                />
+                Leave changes untouched and cancel
+              </label>
+            </fieldset>
+          ) : null
+        }
+        onConfirm={async () => {
+          if (
+            props.hasUncommittedChanges &&
+            resetUpstreamStrategy === 'cancel'
+          ) {
+            setResetUpstreamOpen(false)
+            props.onClose()
+            return
+          }
+          if (props.hasUncommittedChanges)
+            await props.dispatcher.runOperation('stash', {
+              message: 'Changes before reset and pull',
+            })
+          await props.dispatcher.runOperation('reset-upstream', {
+            confirmed: true,
+          })
+          setResetUpstreamOpen(false)
+          props.onClose()
+        }}
+        onDismiss={() => {
+          setResetUpstreamOpen(false)
+          props.onClose()
+        }}
+        open={resetUpstreamOpen}
+        title="Reset and pull?"
+      />
+      <WebConfirmDialog
+        confirmLabel="Delete branches"
+        message={`Delete ${props.mergedBranches.length} merged local ${
+          props.mergedBranches.length === 1 ? 'branch' : 'branches'
+        }? Only branches that are already merged into ${
+          props.currentBranch
+        } and are not checked out in another worktree are included: ${props.mergedBranches
+          .map(branch => branch.name)
+          .join(', ')}. This cannot be undone.`}
+        onConfirm={async () => {
+          await props.dispatcher.runOperation('delete-branches', {
+            confirmed: true,
+            values: props.mergedBranches.map(branch => branch.name),
+          })
+          setDeleteMergedBranchesOpen(false)
+          props.onClose()
+        }}
+        onDismiss={() => setDeleteMergedBranchesOpen(false)}
+        open={deleteMergedBranchesOpen}
+        title="Delete unused local branches?"
+      />
+      <WebConfirmDialog
+        confirmLabel="Delete branch"
+        message={`Delete the local branch ${branchToDelete}? Its unmerged commits will be permanently removed.`}
+        onConfirm={async () => {
+          if (!branchToDelete) return
+          await props.dispatcher.runOperation('delete-branch', {
+            values: [branchToDelete],
+            confirmed: true,
+          })
+          setBranchToDelete(null)
+          props.onClose()
+        }}
+        onDismiss={() => setBranchToDelete(null)}
+        open={branchToDelete !== null}
+        title="Delete branch?"
+      />
+      <WebConfirmDialog
+        confirmLabel="Delete remote branch"
+        message={`Delete ${
+          remoteBranchToDelete?.label || 'this remote branch'
+        } from the remote repository?`}
+        onConfirm={async () => {
+          if (!remoteBranchToDelete) return
+          await props.dispatcher.runOperation('delete-remote-branch', {
+            values: [remoteBranchToDelete.remote, remoteBranchToDelete.branch],
+            confirmed: true,
+          })
+          setRemoteBranchToDelete(null)
+          props.onClose()
+        }}
+        onDismiss={() => setRemoteBranchToDelete(null)}
+        open={remoteBranchToDelete !== null}
+        title="Delete remote branch?"
+      />
+    </>
+  )
+}
+
+function formatWebBytes(value: number) {
+  if (!Number.isFinite(value) || value < 1024) return `${Math.max(0, value)} B`
+  if (value < 1024 * 1024)
+    return `${(value / 1024).toFixed(1).replace(/\.0$/, '')} KB`
+  return `${(value / (1024 * 1024)).toFixed(1).replace(/\.0$/, '')} MB`
+}
+
+function WebIntegrationsSection(props: {
+  readonly state: WebApplicationState
+  readonly dispatcher: WebDispatcher
+  readonly editorIntegration: WebIntegrationSelection
+  readonly shellIntegration: WebIntegrationSelection
+}) {
+  React.useEffect(() => {
+    if (!props.state.integrations) void props.dispatcher.loadIntegrations()
+  }, [props.dispatcher, props.state.integrations])
+
+  const integrations = props.state.integrations
+  const editorIntegrationError = validateWebCustomIntegration(
+    props.editorIntegration,
+    'Custom editor'
+  )
+  const shellIntegrationError = validateWebCustomIntegration(
+    props.shellIntegration,
+    'Custom shell'
+  )
+  return (
+    <section className="web-tools-section" aria-label="Platform integrations">
+      <div className="web-tools-section-heading">
+        <h3>Platform integrations</h3>
+        <Button
+          ariaLabel="Refresh platform integrations"
+          onClick={() => void props.dispatcher.loadIntegrations()}
+        >
+          Refresh
+        </Button>
+      </div>
+      {integrations?.guidance ? (
+        <p role="status">{integrations.guidance}</p>
+      ) : null}
+      <div className="web-integration-group">
+        <strong>Editors</strong>
+        {integrations?.editors.length ? (
+          integrations.editors.map(editor => (
+            <div className="web-tool-row" key={`editor:${editor.name}`}>
+              <span title={editor.path}>{editor.name}</span>
+              <Button
+                disabled={props.state.loading}
+                onClick={() =>
+                  void props.dispatcher.launchIntegration('editor', editor.name)
+                }
+              >
+                Open repository
+              </Button>
+            </div>
+          ))
+        ) : (
+          <p>
+            {integrations ? 'No editors detected.' : 'Discovering editors…'}
+          </p>
+        )}
+        <div className="web-tool-row">
+          <span>
+            Selected:{' '}
+            {props.editorIntegration.custom
+              ? props.editorIntegration.custom.path || 'Custom editor'
+              : props.editorIntegration.name || 'Automatic'}
+          </span>
+          <Button
+            disabled={props.state.loading || Boolean(editorIntegrationError)}
+            onClick={() =>
+              void props.dispatcher.launchIntegration(
+                'editor',
+                props.editorIntegration.name,
+                props.editorIntegration.custom
+              )
+            }
+          >
+            Open selected editor
+          </Button>
+        </div>
+        {editorIntegrationError ? (
+          <p role="alert">{editorIntegrationError}</p>
+        ) : null}
+      </div>
+      <div className="web-integration-group">
+        <strong>Shells</strong>
+        {integrations?.shells.length ? (
+          integrations.shells.map(shell => (
+            <div className="web-tool-row" key={`shell:${shell.name}`}>
+              <span title={shell.path}>{shell.name}</span>
+              <Button
+                disabled={props.state.loading}
+                onClick={() =>
+                  void props.dispatcher.launchIntegration('shell', shell.name)
+                }
+              >
+                Open repository
+              </Button>
+            </div>
+          ))
+        ) : (
+          <p>{integrations ? 'No shells detected.' : 'Discovering shells…'}</p>
+        )}
+        <div className="web-tool-row">
+          <span>
+            Selected:{' '}
+            {props.shellIntegration.custom
+              ? props.shellIntegration.custom.path || 'Custom shell'
+              : props.shellIntegration.name || 'Automatic'}
+          </span>
+          <Button
+            disabled={props.state.loading || Boolean(shellIntegrationError)}
+            onClick={() =>
+              void props.dispatcher.launchIntegration(
+                'shell',
+                props.shellIntegration.name,
+                props.shellIntegration.custom
+              )
+            }
+          >
+            Open selected shell
+          </Button>
+        </div>
+        {shellIntegrationError ? (
+          <p role="alert">{shellIntegrationError}</p>
+        ) : null}
+      </div>
+    </section>
+  )
+}
+
+function WebUpdateSection(props: {
+  readonly state: WebApplicationState
+  readonly dispatcher: WebDispatcher
+}) {
+  const [openConfirmation, setOpenConfirmation] = React.useState(false)
+  const status = props.state.updateStatus
+  const operation = props.state.updateOperation
+  const canDownload =
+    status?.status === 'available' &&
+    (!operation ||
+      operation.status === 'cancelled' ||
+      operation.status === 'failed' ||
+      operation.status === 'opened')
+  const canOpen = operation?.status === 'downloaded'
+  const progress =
+    operation && operation.totalBytes > 0
+      ? Math.min(
+          100,
+          Math.round((operation.downloadedBytes / operation.totalBytes) * 100)
         )
-      }
-      onOpenSubmodule={fullPath =>
-        void props.dispatcher.selectRepository(fullPath)
-      }
-      onViewCommitOnGitHub={() => undefined}
-      repository={getDesktopRepository(repositoryPath)}
-      selectedCommits={props.selectedCommits}
-      selectedDiffType={preferences.imageDiffType}
-      selectedFile={selectedFile}
-      shasInDiff={props.shasInDiff}
-      showDiffMinimap={preferences.showDiffMinimap}
-      showDragOverlay={false}
-      showSideBySideDiff={preferences.showSideBySideDiff}
-      wrapDiffLines={preferences.wrapDiffLines}
-    />
+      : operation?.status === 'downloaded'
+      ? 100
+      : null
+
+  return (
+    <>
+      <section className="web-tools-section" aria-label="Application updates">
+        <div className="web-tools-section-heading">
+          <h3>Application updates</h3>
+          <Button
+            disabled={
+              props.state.loading || operation?.status === 'downloading'
+            }
+            onClick={() => void props.dispatcher.checkForUpdates()}
+          >
+            Check for updates
+          </Button>
+        </div>
+        {status ? (
+          <p role="status">
+            {status.message}
+            {status.availableVersion
+              ? ` Available version: ${status.availableVersion}.`
+              : ''}
+          </p>
+        ) : (
+          <p>Updates are checked only when requested.</p>
+        )}
+        {status?.releaseNotes ? (
+          <details>
+            <summary>Release notes</summary>
+            <p>{status.releaseNotes}</p>
+          </details>
+        ) : null}
+        {canDownload ? (
+          <Button onClick={() => void props.dispatcher.downloadUpdate()}>
+            Download and verify update
+          </Button>
+        ) : null}
+        {operation ? (
+          <div className="web-update-operation" aria-live="polite">
+            <p>
+              {operation.status === 'downloading'
+                ? `Downloading ${operation.artifactName}: ${formatWebBytes(
+                    operation.downloadedBytes
+                  )} of ${formatWebBytes(operation.totalBytes)}.`
+                : operation.status === 'downloaded'
+                ? `Verified ${operation.artifactName}.`
+                : operation.status === 'cancelled'
+                ? 'Update download cancelled.'
+                : operation.status === 'opened'
+                ? 'Verified update handoff completed.'
+                : operation.error || 'Update download failed.'}
+            </p>
+            {progress !== null ? (
+              <progress
+                aria-label="Update download progress"
+                max={100}
+                value={progress}
+              />
+            ) : null}
+            {operation.status === 'downloading' ? (
+              <Button
+                className="destructive"
+                onClick={() => void props.dispatcher.cancelUpdateDownload()}
+              >
+                Cancel download
+              </Button>
+            ) : null}
+            {canOpen ? (
+              <Button onClick={() => setOpenConfirmation(true)}>
+                Open verified installer
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+      </section>
+      <WebConfirmDialog
+        confirmLabel="Open verified installer"
+        message="Open the verified update artifact with the macOS installer? Desktop Plus will not install or restart itself."
+        onConfirm={async () => {
+          await props.dispatcher.openDownloadedUpdate(true)
+          setOpenConfirmation(false)
+        }}
+        onDismiss={() => setOpenConfirmation(false)}
+        open={openConfirmation}
+        title="Open verified update?"
+      />
+    </>
+  )
+}
+
+function WebLfsSection(props: {
+  readonly state: WebApplicationState
+  readonly dispatcher: WebDispatcher
+}) {
+  const [confirmation, setConfirmation] = React.useState<
+    'local' | 'global' | 'repair' | null
+  >(null)
+  const status = props.state.lfsStatus
+  const operation = props.state.lfsOperation
+
+  React.useEffect(() => {
+    if (props.state.selectedRepositoryPath && !status)
+      void props.dispatcher.loadLfsStatus()
+  }, [props.dispatcher, props.state.selectedRepositoryPath, status])
+
+  const confirmLfsAction = async () => {
+    if (!confirmation) return
+    if (confirmation === 'repair') await props.dispatcher.repairLfs(true)
+    else await props.dispatcher.installLfs(confirmation, true)
+    setConfirmation(null)
+  }
+
+  return (
+    <>
+      <section className="web-tools-section" aria-label="Git LFS">
+        <div className="web-tools-section-heading">
+          <h3>Git LFS</h3>
+          <Button
+            ariaLabel="Refresh Git LFS status"
+            onClick={() => void props.dispatcher.loadLfsStatus()}
+          >
+            Refresh
+          </Button>
+        </div>
+        {status ? (
+          <>
+            <p role="status">
+              {status.available
+                ? `Git LFS ${status.version || ''} is available.`
+                : 'Git LFS is not installed on this computer.'}
+            </p>
+            {status.trackedPatterns.length ? (
+              <p>Tracked patterns: {status.trackedPatterns.join(', ')}</p>
+            ) : (
+              <p>No LFS patterns are tracked in this repository.</p>
+            )}
+            {status.mismatches.map(mismatch => (
+              <p key={`${mismatch.kind}:${mismatch.message}`} role="alert">
+                {mismatch.message}
+              </p>
+            ))}
+            <div className="web-tools-actions">
+              <Button
+                disabled={!status.available}
+                onClick={() => setConfirmation('local')}
+              >
+                Install repository filters
+              </Button>
+              <Button
+                disabled={!status.available}
+                onClick={() => setConfirmation('global')}
+              >
+                Install global filters
+              </Button>
+              <Button
+                disabled={!status.available}
+                onClick={() => setConfirmation('repair')}
+              >
+                Repair repository hooks
+              </Button>
+            </div>
+            <div className="web-tools-actions">
+              {(['fetch', 'pull', 'push'] as const).map(command => (
+                <Button
+                  disabled={
+                    !status.available || operation?.status === 'running'
+                  }
+                  key={command}
+                  onClick={() =>
+                    void props.dispatcher.startLfsTransfer(command)
+                  }
+                >
+                  LFS {command}
+                </Button>
+              ))}
+            </div>
+          </>
+        ) : (
+          <p>Checking Git LFS status…</p>
+        )}
+        {operation ? (
+          <div className="web-lfs-operation" aria-live="polite">
+            <p>
+              LFS {operation.command} {operation.status}.
+              {operation.progress !== null ? ` ${operation.progress}%` : ''}
+            </p>
+            {operation.progress !== null ? (
+              <progress
+                aria-label="Git LFS transfer progress"
+                max={100}
+                value={operation.progress}
+              />
+            ) : null}
+            {operation.output ? (
+              <details>
+                <summary>Git LFS output</summary>
+                <pre className="web-error-output">{operation.output}</pre>
+              </details>
+            ) : null}
+            {operation.status === 'running' ? (
+              <Button
+                className="destructive"
+                onClick={() => void props.dispatcher.cancelLfsTransfer()}
+              >
+                Cancel LFS transfer
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+      </section>
+      <WebConfirmDialog
+        confirmLabel={
+          confirmation === 'repair'
+            ? 'Repair hooks'
+            : confirmation === 'global'
+            ? 'Install globally'
+            : 'Install for repository'
+        }
+        message={
+          confirmation === 'repair'
+            ? 'Repair Git LFS filters and the repository pre-push hook? This changes Git configuration for the selected repository.'
+            : confirmation === 'global'
+            ? 'Install Git LFS filters globally for this user? This changes your global Git configuration.'
+            : 'Install Git LFS filters for this repository? This changes its local Git configuration.'
+        }
+        onConfirm={confirmLfsAction}
+        onDismiss={() => setConfirmation(null)}
+        open={confirmation !== null}
+        title="Change Git LFS configuration?"
+      />
+    </>
+  )
+}
+
+function WebRepositoryToolsView(props: {
+  readonly state: WebApplicationState
+  readonly dispatcher: WebDispatcher
+  readonly onStashActionChanged: (action: WebStashAction | null) => void
+  readonly confirmWorktreeRemoval: boolean
+}) {
+  const editorIntegration = useWebIntegrationSelection('editor')
+  const shellIntegration = useWebIntegrationSelection('shell')
+  const branches = props.state.branches
+  const stashes = branches?.stashes || []
+  const worktrees = branches?.worktrees || []
+  const remotes = branches?.remotes || []
+  const tags = branches?.tags || []
+  const [dialog, setDialog] = React.useState<
+    'stash' | 'remote' | 'tag' | 'worktree' | 'worktree-move' | null
+  >(null)
+  const [target, setTarget] = React.useState<
+    WebStash | WebRemote | WebWorktree | null
+  >(null)
+  const [tagToDelete, setTagToDelete] = React.useState<WebTag | null>(null)
+  const [remoteTagToDelete, setRemoteTagToDelete] = React.useState<{
+    readonly tag: WebTag
+    readonly remotes: ReadonlyArray<string>
+  } | null>(null)
+  const [confirmation, setConfirmation] = React.useState<{
+    readonly title: string
+    readonly message: string
+    readonly label: string
+    readonly operation: WebGitOperation
+    readonly values: ReadonlyArray<string>
+    readonly force?: boolean
+  } | null>(null)
+  const [worktreeToMove, setWorktreeToMove] =
+    React.useState<WebWorktree | null>(null)
+  const close = () => {
+    setDialog(null)
+    setTarget(null)
+  }
+  const confirmOperation = async () => {
+    if (!confirmation) return
+    await props.dispatcher.runOperation(confirmation.operation, {
+      values: confirmation.values,
+      confirmed: true,
+      ...(confirmation.force === undefined
+        ? {}
+        : { force: confirmation.force }),
+    })
+    setConfirmation(null)
+  }
+  const deleteLocalTag = async () => {
+    if (!tagToDelete) return
+    await props.dispatcher.runOperation('tag-delete', {
+      values: [tagToDelete.name],
+      confirmed: true,
+    })
+    if (tagToDelete.pushedRemotes?.length)
+      setRemoteTagToDelete({
+        tag: tagToDelete,
+        remotes: tagToDelete.pushedRemotes,
+      })
+    setTagToDelete(null)
+  }
+  const deleteRemoteTag = async () => {
+    if (!remoteTagToDelete) return
+    for (const remote of remoteTagToDelete.remotes)
+      await props.dispatcher.runOperation('delete-remote-tag', {
+        values: [remote, remoteTagToDelete.tag.name],
+        confirmed: true,
+      })
+    setRemoteTagToDelete(null)
+  }
+  const showStashContextMenu = (stash: WebStash) => {
+    void showContextualMenu([
+      {
+        label: 'Inspect stash',
+        action: () => void props.dispatcher.inspectStash(stash),
+      },
+      {
+        label: 'Copy stash SHA',
+        action: () => void props.dispatcher.copyText(stash.stashSha),
+      },
+      {
+        label: 'Copy stash name',
+        action: () => void props.dispatcher.copyText(stash.name),
+      },
+      {
+        label: 'Copy branch name',
+        action: () => void props.dispatcher.copyText(stash.branchName),
+      },
+      { type: 'separator' },
+      {
+        label: 'Apply stash',
+        action: () =>
+          props.onStashActionChanged({ operation: 'stash-apply', stash }),
+      },
+      {
+        label: 'Pop stash',
+        action: () =>
+          props.onStashActionChanged({ operation: 'stash-pop', stash }),
+      },
+      {
+        label: 'Rename stash',
+        action: () => {
+          setTarget(stash)
+          setDialog('stash')
+        },
+      },
+      {
+        label: 'Drop stash',
+        action: () =>
+          props.onStashActionChanged({ operation: 'stash-drop', stash }),
+      },
+    ])
+  }
+  const showRemoteContextMenu = (remote: WebRemote) => {
+    void showContextualMenu([
+      {
+        label: 'Copy remote URL',
+        action: () => void props.dispatcher.copyText(remote.url),
+      },
+      {
+        label: 'Open remote in browser',
+        action: () => {
+          if (remote.webURL) props.dispatcher.openExternal(remote.webURL)
+        },
+        enabled: Boolean(remote.webURL),
+      },
+      {
+        label: 'Set remote URL',
+        action: () => {
+          setTarget(remote)
+          setDialog('remote')
+        },
+      },
+      { type: 'separator' },
+      {
+        label: 'Remove remote',
+        action: () =>
+          setConfirmation({
+            label: 'Remove remote',
+            message: 'Remove this remote configuration from the repository?',
+            operation: 'remote-remove',
+            title: 'Remove remote?',
+            values: [remote.name],
+          }),
+      },
+    ])
+  }
+
+  if (!props.state.selectedRepositoryPath) return null
+
+  return (
+    <section
+      aria-busy={props.state.loading}
+      className="web-tools-panel"
+      aria-label="Repository tools"
+    >
+      <div className="web-tools-heading">
+        <h2>Repository tools</h2>
+        <Button
+          ariaLabel="Refresh repository"
+          onClick={() => void props.dispatcher.refresh()}
+        >
+          Refresh
+        </Button>
+      </div>
+      <div className="web-tools-grid">
+        <section className="web-tools-section" aria-label="Stashes">
+          <div className="web-tools-section-heading">
+            <h3>Stashes</h3>
+            <Button onClick={() => setDialog('stash')}>Create stash</Button>
+          </div>
+          {stashes.length ? (
+            stashes.map(stash => (
+              <div
+                className="web-tool-row"
+                key={stash.stashSha}
+                onContextMenu={event => {
+                  event.preventDefault()
+                  showStashContextMenu(stash)
+                }}
+              >
+                <span title={stash.name}>
+                  {stash.customName || stash.name} on {stash.branchName}
+                </span>
+                <Button
+                  onClick={() => void props.dispatcher.inspectStash(stash)}
+                >
+                  Inspect
+                </Button>
+                <Button
+                  onClick={() =>
+                    props.onStashActionChanged({
+                      operation: 'stash-apply',
+                      stash,
+                    })
+                  }
+                >
+                  Apply
+                </Button>
+                <Button
+                  onClick={() =>
+                    props.onStashActionChanged({
+                      operation: 'stash-pop',
+                      stash,
+                    })
+                  }
+                >
+                  Pop
+                </Button>
+                <Button
+                  onClick={() => {
+                    setTarget(stash)
+                    setDialog('stash')
+                  }}
+                >
+                  Rename
+                </Button>
+                <Button
+                  className="destructive"
+                  onClick={() =>
+                    props.onStashActionChanged({
+                      operation: 'stash-drop',
+                      stash,
+                    })
+                  }
+                >
+                  Drop
+                </Button>
+              </div>
+            ))
+          ) : (
+            <p>No stashes</p>
+          )}
+        </section>
+        <section className="web-tools-section" aria-label="Remotes and tags">
+          <div className="web-tools-section-heading">
+            <h3>Remotes</h3>
+            <Button onClick={() => setDialog('remote')}>Add remote</Button>
+          </div>
+          {remotes.map(remote => (
+            <div
+              className="web-tool-row"
+              key={remote.name}
+              onContextMenu={event => {
+                event.preventDefault()
+                showRemoteContextMenu(remote)
+              }}
+            >
+              <span title={remote.url}>
+                {remote.name}: {remote.url}
+              </span>
+              <Button
+                onClick={() => {
+                  setTarget(remote)
+                  setDialog('remote')
+                }}
+              >
+                Set URL
+              </Button>
+              <Button
+                className="destructive"
+                onClick={() =>
+                  setConfirmation({
+                    label: 'Remove remote',
+                    message:
+                      'Remove this remote configuration from the repository?',
+                    operation: 'remote-remove',
+                    title: 'Remove remote?',
+                    values: [remote.name],
+                  })
+                }
+              >
+                Remove
+              </Button>
+            </div>
+          ))}
+          <div className="web-tools-section-heading">
+            <h3>Tags</h3>
+            <Button onClick={() => setDialog('tag')}>Create tag</Button>
+          </div>
+          {tags.map(tag => (
+            <div className="web-tool-row" key={tag.name}>
+              <span
+                title={
+                  tag.pushedRemotes?.length
+                    ? `Pushed to ${tag.pushedRemotes.join(', ')}`
+                    : 'Local tag'
+                }
+              >
+                {tag.name}
+                {tag.pushedRemotes?.length
+                  ? ` (pushed to ${tag.pushedRemotes.join(', ')})`
+                  : ' (local only)'}
+              </span>
+              {!tag.pushedRemotes?.length ? (
+                <Button
+                  onClick={() =>
+                    void props.dispatcher.runOperation('push', {
+                      tagsToPush: [tag.name],
+                    })
+                  }
+                >
+                  Push tag
+                </Button>
+              ) : null}
+              <Button
+                className="destructive"
+                onClick={() => setTagToDelete(tag)}
+              >
+                Delete
+              </Button>
+            </div>
+          ))}
+        </section>
+        <section className="web-tools-section" aria-label="Worktrees">
+          <div className="web-tools-section-heading">
+            <h3>Worktrees</h3>
+            <Button onClick={() => setDialog('worktree')}>
+              Create worktree
+            </Button>
+          </div>
+          <WebWorktreeList
+            onCopyPath={path => void props.dispatcher.copyText(path)}
+            onRevealPath={path => void props.dispatcher.openPath(path, true)}
+            onMove={worktree => {
+              setWorktreeToMove(worktree)
+              setDialog('worktree-move')
+            }}
+            onOpen={path => void props.dispatcher.addRepository(path)}
+            onPrune={worktree =>
+              setConfirmation({
+                label: 'Prune worktree',
+                message:
+                  'Prune this stale worktree metadata? The worktree path is no longer available.',
+                operation: 'worktree-prune',
+                title: 'Prune worktree?',
+                values: [worktree.path],
+              })
+            }
+            onRemove={worktree =>
+              (() => {
+                const force = worktree.isLocked || worktree.isDirty !== false
+                const action = {
+                  force,
+                  label: force ? 'Force remove worktree' : 'Remove worktree',
+                  message: force
+                    ? 'This worktree is locked or contains uncommitted changes. Force removal permanently removes its worktree files.'
+                    : 'Remove this linked worktree? Uncommitted changes may be lost.',
+                  operation: 'worktree-remove' as const,
+                  title: force ? 'Force remove worktree?' : 'Remove worktree?',
+                  values: [worktree.path],
+                }
+                if (!props.confirmWorktreeRemoval) {
+                  void props.dispatcher.runOperation(action.operation, {
+                    values: action.values,
+                    force: action.force,
+                  })
+                } else {
+                  setConfirmation(action)
+                }
+              })()
+            }
+            selectedRepositoryPath={props.state.selectedRepositoryPath}
+            worktrees={worktrees}
+            onOpenInNewWindow={path =>
+              props.dispatcher.openRepositoryInNewWindow(path)
+            }
+          />
+        </section>
+        <WebIntegrationsSection
+          dispatcher={props.dispatcher}
+          editorIntegration={editorIntegration}
+          shellIntegration={shellIntegration}
+          state={props.state}
+        />
+        <WebUpdateSection dispatcher={props.dispatcher} state={props.state} />
+        <WebLfsSection dispatcher={props.dispatcher} state={props.state} />
+      </div>
+      {props.state.inspectedStash ? (
+        <StashDiffView
+          diff={props.state.stashDiff}
+          dispatcher={props.dispatcher}
+          files={props.state.stashFiles}
+          loading={props.state.loading}
+          repositoryPath={props.state.selectedRepositoryPath}
+          selectedFilePath={props.state.selectedStashFilePath}
+          stash={props.state.inspectedStash}
+        />
+      ) : null}
+      {target && 'stashSha' in target ? (
+        <WebTextDialog
+          description="Rename the selected stash without changing its contents."
+          initialValue={target.customName || ''}
+          label="Stash name"
+          onDismiss={close}
+          onSubmit={async value => {
+            await props.dispatcher.runOperation('stash-rename', {
+              values: [target.name],
+              customName: value,
+            })
+            close()
+          }}
+          open={dialog === 'stash'}
+          submitLabel="Rename stash"
+          title="Rename stash"
+        />
+      ) : (
+        <WebStashDialog
+          onDismiss={close}
+          onSubmit={async (message, options) => {
+            await props.dispatcher.runOperation('stash', {
+              values: props.state.includedFiles,
+              message,
+              ...options,
+            })
+            close()
+          }}
+          open={dialog === 'stash'}
+        />
+      )}
+      <WebRemoteDialog
+        onDismiss={close}
+        onSubmit={async (name, url) => {
+          await props.dispatcher.runOperation(
+            target && 'url' in target ? 'remote-set-url' : 'remote-add',
+            { values: [name, url] }
+          )
+          close()
+        }}
+        open={dialog === 'remote'}
+        remote={target && 'url' in target ? target : null}
+      />
+      <WebTagDialog
+        onDismiss={close}
+        onSubmit={async (name, tagTarget, message) => {
+          await props.dispatcher.runOperation('tag-create', {
+            values: [name, ...(tagTarget ? [tagTarget] : [])],
+            message,
+          })
+          close()
+        }}
+        open={dialog === 'tag'}
+      />
+      <WebWorktreeDialog
+        onChooseDirectory={() => props.dispatcher.chooseDirectory()}
+        onDismiss={close}
+        onSubmit={async (value, branch) => {
+          await props.dispatcher.runOperation('worktree-add', {
+            values: [value],
+            createBranch: branch,
+            worktreePath: value,
+          })
+          close()
+        }}
+        open={dialog === 'worktree'}
+        worktreeInclude={branches?.worktreeInclude}
+      />
+      <WebTextDialog
+        description="Move the selected linked worktree to an absolute path."
+        label="New worktree path"
+        onDismiss={close}
+        initialValue={
+          worktreeToMove ? pathName(worktreeToMove.path) : undefined
+        }
+        validate={value => {
+          const nextPath = worktreeToMove
+            ? `${pathParent(worktreeToMove.path)}/${value.trim()}`
+            : value
+          return validateAbsolutePath(nextPath, 'New worktree path')
+        }}
+        onSubmit={async value => {
+          if (worktreeToMove) {
+            const nextPath = `${pathParent(worktreeToMove.path)}/${value}`
+            await props.dispatcher.runOperation('worktree-move', {
+              values: [worktreeToMove.path, nextPath],
+            })
+          }
+          close()
+          setWorktreeToMove(null)
+        }}
+        open={dialog === 'worktree-move'}
+        submitLabel="Rename worktree"
+        title="Rename worktree"
+      />
+      <WebConfirmDialog
+        confirmLabel={confirmation?.label || 'Confirm'}
+        message={confirmation?.message || ''}
+        onConfirm={confirmOperation}
+        onDismiss={() => setConfirmation(null)}
+        open={confirmation !== null}
+        title={confirmation?.title || 'Confirm action'}
+      />
+      <WebConfirmDialog
+        confirmLabel="Delete local tag"
+        message={`Delete the local tag ${tagToDelete?.name || 'this tag'}?${
+          tagToDelete?.pushedRemotes?.length
+            ? ` It is also pushed to ${tagToDelete.pushedRemotes.join(
+                ', '
+              )}; you can remove the remote tag in the next confirmation.`
+            : ''
+        }`}
+        onConfirm={deleteLocalTag}
+        onDismiss={() => setTagToDelete(null)}
+        open={tagToDelete !== null}
+        title="Delete tag?"
+      />
+      <WebConfirmDialog
+        confirmLabel="Delete remote tag"
+        message={`Also delete ${
+          remoteTagToDelete?.tag.name || 'this tag'
+        } from ${
+          remoteTagToDelete?.remotes.join(', ') || 'the configured remote'
+        }? This cannot be undone remotely.`}
+        onConfirm={deleteRemoteTag}
+        onDismiss={() => setRemoteTagToDelete(null)}
+        open={remoteTagToDelete !== null}
+        title="Delete pushed tag remotely?"
+      />
+    </section>
+  )
+}
+
+function HistoryCommitInspection(props: {
+  readonly state: WebApplicationState
+  readonly dispatcher: WebDispatcher
+  readonly commit: WebApplicationState['history'][number]
+}) {
+  const details = props.state.historyCommitDetails
+  const [selectedHistoryFilePaths, setSelectedHistoryFilePaths] =
+    React.useState<ReadonlyArray<string>>([])
+  const historyFileKey = details?.files.map(file => file.path).join('\0') || ''
+  React.useEffect(() => {
+    setSelectedHistoryFilePaths(
+      props.state.selectedHistoryFilePath
+        ? [props.state.selectedHistoryFilePath]
+        : []
+    )
+  }, [historyFileKey, props.commit.sha])
+  const selectedFile =
+    details?.files.find(
+      file => file.path === props.state.selectedHistoryFilePath
+    ) || null
+  const selectedFiles = details
+    ? selectedHistoryFilePaths.flatMap(path => {
+        const file = details.files.find(candidate => candidate.path === path)
+        return file ? [file] : []
+      })
+    : []
+  const selectedFilePaths = selectedFiles.map(file => file.path)
+  const desktopFile = selectedFile
+    ? getDesktopCommittedFile(selectedFile, props.commit)
+    : null
+  const diff =
+    desktopFile && selectedFile?.status.submoduleStatus
+      ? getDesktopSubmoduleDiff(selectedFile, props.state.historyDiff)
+      : getDesktopDiff(props.state.historyDiff)
+  const preferences = useWebDiffPresentationPreferences()
+  const [canExpandWholeFile, setCanExpandWholeFile] = React.useState(false)
+
+  if (!props.state.selectedRepositoryPath) return null
+
+  return (
+    <section
+      aria-busy={props.state.historyInspectionLoading}
+      aria-label="Commit details"
+      className="web-history-inspection"
+    >
+      <div className="web-tools-section-heading">
+        <div>
+          <h3>{props.commit.summary || 'Empty commit message'}</h3>
+          <p>
+            {props.commit.shortSha} - {details?.linesAdded || 0} additions,{' '}
+            {details?.linesDeleted || 0} deletions
+          </p>
+          <div aria-label="Commit metadata" className="web-commit-metadata">
+            <p>
+              Author: {props.commit.author.name} &lt;{props.commit.author.email}
+              &gt; on {new Date(props.commit.author.date).toLocaleString()}
+            </p>
+            <p>
+              Committer: {props.commit.committer.name} &lt;
+              {props.commit.committer.email}&gt; on{' '}
+              {new Date(props.commit.committer.date).toLocaleString()}
+            </p>
+            {props.commit.tags.length ? (
+              <p>Tags: {props.commit.tags.join(', ')}</p>
+            ) : null}
+            {props.commit.body.trim() ? (
+              <details>
+                <summary>Commit body</summary>
+                <pre>{props.commit.body}</pre>
+              </details>
+            ) : null}
+            {props.commit.trailers.length ? (
+              <details>
+                <summary>Commit trailers</summary>
+                <ul>
+                  {props.commit.trailers.map((trailer, index) => (
+                    <li key={`${trailer.token}-${index}`}>
+                      {trailer.token}: {trailer.value}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            ) : null}
+          </div>
+        </div>
+        <Button onClick={props.dispatcher.clearHistoryInspection}>Close</Button>
+      </div>
+      <div className="web-history-inspection-grid">
+        <div aria-label="Committed files" className="web-history-file-list">
+          {details ? (
+            details.files.length ? (
+              <>
+                <List
+                  ariaLabel="Committed files"
+                  getRowAriaLabel={row => {
+                    const file = details.files[row]
+                    return file ? `${file.path} ${file.status.kind}` : undefined
+                  }}
+                  invalidationProps={{
+                    selectedHistoryFilePaths,
+                    selectedHistoryFilePath:
+                      props.state.selectedHistoryFilePath,
+                  }}
+                  onRowClick={row => {
+                    const file = details.files[row]
+                    if (file) void props.dispatcher.selectHistoryFile(file.path)
+                  }}
+                  onSelectionChanged={rows => {
+                    const paths = rows
+                      .map(row => details.files[row]?.path)
+                      .filter((path): path is string => path !== undefined)
+                    setSelectedHistoryFilePaths(paths)
+                    const first = details.files[rows[0] || 0]
+                    if (first)
+                      void props.dispatcher.selectHistoryFile(first.path)
+                  }}
+                  rowCount={details.files.length}
+                  rowHeight={29}
+                  rowRenderer={row => {
+                    const file = details.files[row]
+                    return (
+                      <div className="file">
+                        <span>{file.path}</span>
+                        <small>{file.status.kind}</small>
+                      </div>
+                    )
+                  }}
+                  selectedRows={details.files.flatMap((file, index) =>
+                    selectedHistoryFilePaths.includes(file.path) ? [index] : []
+                  )}
+                  selectionMode="multi"
+                />
+                {selectedFiles.length > 1 ? (
+                  <div
+                    aria-label="Selected committed file actions"
+                    className="web-history-file-actions"
+                    role="group"
+                  >
+                    <Button
+                      onClick={() =>
+                        void props.dispatcher.copyPaths(
+                          selectedFilePaths,
+                          false
+                        )
+                      }
+                    >
+                      Copy selected paths
+                    </Button>
+                    <Button
+                      onClick={() =>
+                        void props.dispatcher.copyPaths(selectedFilePaths, true)
+                      }
+                    >
+                      Copy selected relative paths
+                    </Button>
+                  </div>
+                ) : null}
+              </>
+            ) : (
+              <p>No files changed</p>
+            )
+          ) : (
+            <p>Loading committed files...</p>
+          )}
+        </div>
+        <div className="web-history-diff">
+          {desktopFile && diff ? (
+            <>
+              {selectedFile?.status.submoduleStatus ? (
+                <WebSubmoduleActions
+                  disabled={props.state.historyInspectionLoading}
+                  dispatcher={props.dispatcher}
+                  filePath={selectedFile.path}
+                  fullPath={props.state.historyDiff?.fullPath}
+                  status={selectedFile.status.submoduleStatus}
+                />
+              ) : null}
+              <DiffHeader
+                canExpandWholeFile={canExpandWholeFile}
+                diff={diff}
+                hideWhitespaceInDiff={preferences.hideWhitespaceInDiff}
+                onHideWhitespaceInDiffChanged={async checked =>
+                  preferences.onHideWhitespaceInDiffChanged(checked)
+                }
+                onShowDiffMinimapChanged={preferences.onShowDiffMinimapChanged}
+                onShowSideBySideDiffChanged={
+                  preferences.onShowSideBySideDiffChanged
+                }
+                onShowWholeFileChanged={preferences.onShowWholeFileChanged}
+                onWrapDiffLinesChanged={preferences.onWrapDiffLinesChanged}
+                path={desktopFile.path}
+                showDiffMinimap={preferences.showDiffMinimap}
+                showSideBySideDiff={preferences.showSideBySideDiff}
+                showWholeFile={preferences.showWholeFile}
+                status={desktopFile.status}
+                wrapDiffLines={preferences.wrapDiffLines}
+              />
+              <SeamlessDiffSwitcher
+                diff={diff}
+                file={desktopFile}
+                externalFileContents={getDesktopFileContents(
+                  desktopFile,
+                  props.state.historyDiff
+                )}
+                hideWhitespaceInDiff={preferences.hideWhitespaceInDiff}
+                imageDiffType={preferences.imageDiffType}
+                onChangeImageDiffType={preferences.onImageDiffTypeChanged}
+                onHideWhitespaceInDiffChanged={async checked =>
+                  preferences.onHideWhitespaceInDiffChanged(checked)
+                }
+                onOpenBinaryFile={fullPath =>
+                  void props.dispatcher.openPath(fullPath)
+                }
+                onOpenSubmodule={fullPath =>
+                  void props.dispatcher.addRepository(fullPath)
+                }
+                readOnly={true}
+                repository={getDesktopRepository(
+                  props.state.selectedRepositoryPath
+                )}
+                showDiffCheckMarks={preferences.showDiffCheckMarks}
+                showDiffMinimap={preferences.showDiffMinimap}
+                showSideBySideDiff={preferences.showSideBySideDiff}
+                showWholeFile={preferences.showWholeFile}
+                onShowWholeFileChanged={preferences.onShowWholeFileChanged}
+                onWholeFileExpansionAvailabilityChanged={setCanExpandWholeFile}
+                wrapDiffLines={preferences.wrapDiffLines}
+              />
+              <WebFileActions
+                dispatcher={props.dispatcher}
+                fullPath={repositoryFilePath(
+                  props.state.selectedRepositoryPath,
+                  desktopFile.path
+                )}
+                openDisabled={
+                  desktopFile.status.kind === AppFileStatusKind.Deleted
+                }
+                path={desktopFile.path}
+              />
+            </>
+          ) : (
+            <p>
+              {props.state.selectedHistoryFilePath
+                ? 'Loading file diff...'
+                : 'Select a committed file to inspect its diff.'}
+            </p>
+          )}
+        </div>
+      </div>
+    </section>
   )
 }
 
@@ -5705,15 +9405,8 @@ function DesktopHistoryView(props: {
   readonly mode: 'sidebar' | 'content'
   readonly selectedSHAs: ReadonlyArray<string>
   readonly onSelectedSHAsChanged: (shas: ReadonlyArray<string>) => void
-  readonly confirmCheckoutCommit: boolean
-  readonly onConfirmCheckoutCommitChanged: (value: boolean) => void
   readonly preferAbsoluteDates: boolean
   readonly showConventionalCommitBadges: boolean
-  readonly onCommitMessagePopup: (popup: CommitMessagePopup | null) => void
-  readonly onHistoryRewriteStarted: (
-    kind: HistoryRewriteKind,
-    count: number
-  ) => void
 }) {
   if (props.mode === 'sidebar') {
     const commits = props.state.history.map(getDesktopCommit)
@@ -5722,6 +9415,10 @@ function DesktopHistoryView(props: {
       props.selectedSHAs.length === 1
         ? commitLookup.get(props.selectedSHAs[0]) || null
         : null
+    const headSHA = props.state.branches?.branch?.tip?.sha || null
+    const [historyAction, setHistoryAction] = React.useState<
+      'reset' | 'revert' | 'undo' | 'rewrite' | null
+    >(null)
     const [resetDialogOpen, setResetDialogOpen] = React.useState(false)
     const [cherryPickCommits, setCherryPickCommits] =
       React.useState<ReadonlyArray<Commit> | null>(null)
@@ -5729,165 +9426,672 @@ function DesktopHistoryView(props: {
       readonly name: string
       readonly remotes: ReadonlyArray<string>
     } | null>(null)
-    const [selectedCommitAction, setSelectedCommitAction] = React.useState<
-      | { readonly kind: 'branch' | 'tag'; readonly commit: Commit }
-      | {
-          readonly kind: 'checkout'
-          readonly commit: WebApplicationState['history'][number]
-        }
-      | null
+    const [remoteTagToDelete, setRemoteTagToDelete] = React.useState<{
+      readonly name: string
+      readonly remotes: ReadonlyArray<string>
+    } | null>(null)
+    const [keyboardReorderData, setKeyboardReorderData] = React.useState<
+      KeyboardInsertionData | undefined
+    >(undefined)
+    const [rewriteAction, setRewriteAction] = React.useState<
+      'reorder' | 'squash' | null
     >(null)
+    const [reorderBefore, setReorderBefore] = React.useState('')
+    const [squashMessage, setSquashMessage] = React.useState('')
+    const [pendingRewrite, setPendingRewrite] = React.useState<{
+      readonly action: 'reorder' | 'squash'
+      readonly before: string | null
+      readonly message: string
+    } | null>(null)
+    const [selectedCommitAction, setSelectedCommitAction] = React.useState<
+      'branch' | 'tag' | 'checkout' | null
+    >(null)
+    const historyScrollStorageKey = `desktop-plus-history-scroll:${
+      props.state.selectedRepositoryPath
+    }:${props.state.historyGraphMode ? 'graph' : 'list'}`
+    const [historyScrollTop, setHistoryScrollTop] = React.useState(() =>
+      Number(localStorage.getItem(historyScrollStorageKey) || 0)
+    )
+    const reorderTargets = props.state.history.filter(
+      commit => !props.selectedSHAs.includes(commit.sha)
+    )
+    const historyActionCommit =
+      selectedCommit ||
+      (historyAction === 'undo' && headSHA
+        ? commitLookup.get(headSHA) || null
+        : null)
+    const confirmHistoryAction = async () => {
+      if (!historyAction) return
+      if (historyAction === 'rewrite') return
+      const commitSHA = historyActionCommit?.sha
+      if (!commitSHA && historyAction !== 'undo') return
+      await props.dispatcher.runOperation(
+        historyAction === 'reset'
+          ? 'reset-commit'
+          : historyAction === 'revert'
+          ? 'revert'
+          : 'undo',
+        historyAction === 'undo'
+          ? {}
+          : {
+              values: [commitSHA as string],
+              ...(historyAction === 'reset' ? { mode: 'mixed' } : {}),
+            }
+      )
+      setHistoryAction(null)
+      props.onSelectedSHAsChanged([])
+    }
+    const confirmDeleteTag = async () => {
+      if (!tagToDelete) return
+      await props.dispatcher.runOperation('tag-delete', {
+        values: [tagToDelete.name],
+        confirmed: true,
+      })
+      if (tagToDelete.remotes.length)
+        setRemoteTagToDelete({
+          name: tagToDelete.name,
+          remotes: tagToDelete.remotes,
+        })
+      setTagToDelete(null)
+    }
+    const confirmDeleteRemoteTag = async () => {
+      if (!remoteTagToDelete) return
+      for (const remote of remoteTagToDelete.remotes)
+        await props.dispatcher.runOperation('delete-remote-tag', {
+          values: [remote, remoteTagToDelete.name],
+          confirmed: true,
+        })
+      setRemoteTagToDelete(null)
+    }
+    const reorderCommits = async (
+      baseCommit: Commit | null,
+      commitsToInsert: ReadonlyArray<Commit>,
+      lastRetainedCommitRef: string | null
+    ) => {
+      setKeyboardReorderData(undefined)
+      await props.dispatcher.runOperation('reorder-commits', {
+        commits: commitsToInsert.map(commit => commit.sha),
+        ...(baseCommit ? { before: baseCommit.sha } : {}),
+        ...(lastRetainedCommitRef ? { base: lastRetainedCommitRef } : {}),
+      })
+      props.onSelectedSHAsChanged([])
+    }
+
     return (
       <>
-        <DesktopCommitGraphSidebar
-          dispatcher={props.dispatcher}
-          onAmendCommit={commit => {
-            props.onSelectedSHAsChanged([commit.sha])
-            void props.dispatcher.startAmendingCommit(commit.sha)
-          }}
-          onCheckoutCommit={commit => {
-            props.onSelectedSHAsChanged([commit.sha])
-            const webCommit = props.state.history.find(
-              candidate => candidate.sha === commit.sha
-            )
-            if (webCommit)
-              setSelectedCommitAction({ kind: 'checkout', commit: webCommit })
-          }}
-          onCherryPick={commits => setCherryPickCommits(commits)}
-          onCommitMessagePopup={props.onCommitMessagePopup}
-          onCreateBranch={commit => {
-            props.onSelectedSHAsChanged([commit.sha])
-            setSelectedCommitAction({ kind: 'branch', commit })
-          }}
-          onCreateTag={commit => {
-            props.onSelectedSHAsChanged([commit.sha])
-            setSelectedCommitAction({ kind: 'tag', commit })
-          }}
-          onDeleteTag={name => {
-            void props.dispatcher
-              .loadRemoteTagMetadata()
-              .then(branches => {
-                const tag = branches.tags?.find(
+        <section className="panel">
+          <div className="web-history-actions">
+            <label htmlFor="web-history-filter">Search commits</label>
+            <input
+              id="web-history-filter"
+              onChange={event =>
+                void props.dispatcher.setHistoryFilterText(event.target.value)
+              }
+              placeholder="Summary, body, SHA, author, or tag"
+              type="search"
+              value={props.state.historyFilterText}
+            />
+            <div
+              aria-label="History view"
+              className="web-history-view-mode-switch button-group"
+            >
+              <Button
+                ariaLabel="List view"
+                ariaPressed={!props.state.historyGraphMode}
+                className={
+                  !props.state.historyGraphMode ? 'selected' : undefined
+                }
+                disabled={props.state.loading}
+                onClick={() => void props.dispatcher.setHistoryGraphMode(false)}
+                size="small"
+              >
+                <Octicon symbol={octicons.listUnordered} />
+              </Button>
+              <Button
+                ariaLabel="Graph view"
+                ariaPressed={props.state.historyGraphMode}
+                className={
+                  props.state.historyGraphMode ? 'selected' : undefined
+                }
+                disabled={props.state.loading}
+                onClick={() => void props.dispatcher.setHistoryGraphMode(true)}
+                size="small"
+              >
+                <Octicon symbol={octicons.gitBranch} />
+              </Button>
+            </div>
+            <Button
+              disabled={props.selectedSHAs.length === 0 || props.state.loading}
+              onClick={() => {
+                setReorderBefore('')
+                setRewriteAction('reorder')
+              }}
+            >
+              Reorder selected
+            </Button>
+            <Button
+              disabled={props.selectedSHAs.length < 2 || props.state.loading}
+              onClick={() => {
+                setSquashMessage(`Squash ${props.selectedSHAs.length} commits`)
+                setRewriteAction('squash')
+              }}
+            >
+              Squash selected
+            </Button>
+            {props.state.historyRewriteUndo ? (
+              <Button
+                className="destructive"
+                onClick={() => setHistoryAction('rewrite')}
+              >
+                Undo history rewrite
+              </Button>
+            ) : null}
+            <Button
+              disabled={selectedCommit === null || props.state.loading}
+              onClick={() => setSelectedCommitAction('branch')}
+            >
+              Create branch at selected commit
+            </Button>
+            <Button
+              disabled={selectedCommit === null || props.state.loading}
+              onClick={() => setSelectedCommitAction('tag')}
+            >
+              Create tag at selected commit
+            </Button>
+            <Button
+              disabled={selectedCommit === null || props.state.loading}
+              onClick={() => setSelectedCommitAction('checkout')}
+            >
+              Checkout selected commit
+            </Button>
+            <Button
+              disabled={selectedCommit === null || props.state.loading}
+              onClick={() => {
+                if (selectedCommit)
+                  void props.dispatcher.copyText(selectedCommit.sha)
+              }}
+            >
+              Copy SHA
+            </Button>
+            <Button
+              disabled={
+                selectedCommit === null ||
+                selectedCommit.tags.length === 0 ||
+                props.state.loading
+              }
+              onClick={() => {
+                if (selectedCommit)
+                  void props.dispatcher.copyText(selectedCommit.tags.join(' '))
+              }}
+            >
+              {selectedCommit && selectedCommit.tags.length > 1
+                ? 'Copy tags'
+                : 'Copy tag'}
+            </Button>
+            <Button
+              disabled={
+                selectedCommit === null ||
+                selectedCommit.sha === headSHA ||
+                props.state.loading
+              }
+              onClick={() => setResetDialogOpen(true)}
+            >
+              Reset selected commit
+            </Button>
+            <Button
+              disabled={selectedCommit === null || props.state.loading}
+              onClick={() => setHistoryAction('revert')}
+            >
+              Revert selected commit
+            </Button>
+            <Button
+              disabled={
+                selectedCommit === null ||
+                selectedCommit.sha !== headSHA ||
+                props.state.loading
+              }
+              onClick={() => setHistoryAction('undo')}
+            >
+              Undo latest commit
+            </Button>
+          </div>
+          {props.state.historyGraphMode ? (
+            <WebHistoryGraphView
+              dispatcher={props.dispatcher}
+              onAmendCommit={commit => {
+                props.onSelectedSHAsChanged([commit.sha])
+                void props.dispatcher.startAmendingCommit(commit.sha)
+              }}
+              onCheckoutCommit={commit => {
+                props.onSelectedSHAsChanged([commit.sha])
+                setSelectedCommitAction('checkout')
+              }}
+              onCherryPick={commits => setCherryPickCommits(commits)}
+              onCreateBranch={commit => {
+                props.onSelectedSHAsChanged([commit.sha])
+                setSelectedCommitAction('branch')
+              }}
+              onCreateTag={commit => {
+                props.onSelectedSHAsChanged([commit.sha])
+                setSelectedCommitAction('tag')
+              }}
+              onDeleteTag={name => {
+                const tag = props.state.branches?.tags?.find(
                   candidate => candidate.name === name
                 )
                 setTagToDelete({
                   name,
                   remotes: tag?.pushedRemotes || [],
                 })
-              })
-              .catch(() => undefined)
-          }}
-          onResetToCommit={commit => {
-            props.onSelectedSHAsChanged([commit.sha])
-            setResetDialogOpen(true)
-          }}
-          onRevertCommit={commit =>
-            void props.dispatcher
-              .runOperation('revert', { values: [commit.sha] })
-              .then(() => props.onSelectedSHAsChanged([]))
-          }
-          onSelectedSHAsChanged={selectedSHAs => {
-            props.onSelectedSHAsChanged(selectedSHAs)
-            if (selectedSHAs.length === 1)
-              void props.dispatcher.inspectHistoryCommit(selectedSHAs[0])
-            else props.dispatcher.clearHistoryInspection()
-          }}
-          onUndoCommit={() =>
-            void props.dispatcher
-              .runOperation('undo')
-              .then(() => props.onSelectedSHAsChanged([]))
-          }
-          onHistoryRewriteStarted={props.onHistoryRewriteStarted}
-          preferAbsoluteDates={props.preferAbsoluteDates}
-          selectedSHAs={props.selectedSHAs}
-          showConventionalCommitBadges={props.showConventionalCommitBadges}
-          state={props.state}
-        />
-        {resetDialogOpen && selectedCommit ? (
-          <DesktopResetWarningDialog
-            commit={selectedCommit}
-            dispatcher={props.dispatcher}
-            onDismiss={() => {
-              setResetDialogOpen(false)
-              props.onSelectedSHAsChanged([])
-            }}
-            repositoryPath={props.state.selectedRepositoryPath || ''}
-          />
-        ) : null}
-        {selectedCommitAction?.kind === 'branch' ? (
-          <DesktopCreateBranchAtCommitDialog
-            branches={props.state.branches?.branches || []}
-            commit={selectedCommitAction.commit}
-            currentBranch={props.state.branches?.branch}
-            defaultBranch={props.state.branches?.defaultBranch || null}
-            dispatcher={props.dispatcher}
-            onDismiss={() => {
-              setSelectedCommitAction(null)
-              props.onSelectedSHAsChanged([])
-            }}
-            repositoryPath={props.state.selectedRepositoryPath || ''}
-          />
-        ) : null}
-        {selectedCommitAction?.kind === 'tag' ? (
-          <DesktopCreateTagDialog
-            dispatcher={props.dispatcher}
-            onDismiss={() => {
-              setSelectedCommitAction(null)
-              props.onSelectedSHAsChanged([])
-            }}
-            repositoryPath={props.state.selectedRepositoryPath || ''}
-            tags={props.state.branches?.tags || []}
-            targetCommitSha={selectedCommitAction.commit.sha}
-          />
-        ) : null}
-        {selectedCommitAction?.kind === 'checkout' ? (
-          <DesktopConfirmCheckoutCommitDialog
-            askForConfirmation={props.confirmCheckoutCommit}
-            commit={selectedCommitAction.commit}
-            dispatcher={props.dispatcher}
-            onConfirmCheckoutCommitChanged={
-              props.onConfirmCheckoutCommitChanged
-            }
-            onDismiss={() => {
-              setSelectedCommitAction(null)
-              props.onSelectedSHAsChanged([])
-            }}
-            repositoryPath={props.state.selectedRepositoryPath || ''}
-          />
-        ) : null}
-        {cherryPickCommits ? (
-          <DesktopChooseCherryPickTargetDialog
-            branches={props.state.branches?.branches || []}
-            commits={cherryPickCommits}
-            currentBranch={props.state.branches?.branch}
-            defaultBranch={props.state.branches?.defaultBranch || null}
-            dispatcher={props.dispatcher}
-            onDismiss={() => {
-              setCherryPickCommits(null)
-              props.onSelectedSHAsChanged([])
-            }}
-            repositoryPath={props.state.selectedRepositoryPath || ''}
-          />
-        ) : null}
-        {tagToDelete ? (
-          tagToDelete.remotes.length ? (
-            <DesktopConfirmDeletePushedTagDialog
-              dispatcher={props.dispatcher}
-              onDeleted={() => undefined}
-              onDismiss={() => setTagToDelete(null)}
-              repositoryPath={props.state.selectedRepositoryPath || ''}
-              tagName={tagToDelete.name}
+              }}
+              onResetToCommit={commit => {
+                props.onSelectedSHAsChanged([commit.sha])
+                setResetDialogOpen(true)
+              }}
+              onRevertCommit={commit => {
+                props.onSelectedSHAsChanged([commit.sha])
+                setHistoryAction('revert')
+              }}
+              onSelectedSHAsChanged={selectedSHAs => {
+                props.onSelectedSHAsChanged(selectedSHAs)
+                if (selectedSHAs.length === 1)
+                  void props.dispatcher.inspectHistoryCommit(selectedSHAs[0])
+                else props.dispatcher.clearHistoryInspection()
+              }}
+              onUndoCommit={commit => {
+                props.onSelectedSHAsChanged([commit.sha])
+                setHistoryAction('undo')
+              }}
+              preferAbsoluteDates={props.preferAbsoluteDates}
+              selectedSHAs={props.selectedSHAs}
+              showConventionalCommitBadges={props.showConventionalCommitBadges}
+              state={props.state}
             />
           ) : (
-            <DesktopDeleteTagDialog
-              dispatcher={props.dispatcher}
-              onDeleted={() => undefined}
-              onDismiss={() => setTagToDelete(null)}
-              repositoryPath={props.state.selectedRepositoryPath || ''}
-              tagName={tagToDelete.name}
+            <CommitList
+              accounts={[]}
+              commitLookup={commitLookup}
+              commitSHAs={commits.map(commit => commit.sha)}
+              dispatcher={props.dispatcher as never}
+              emptyListMessage="No commits to list"
+              emoji={props.state.emoji}
+              headCommitSha={headSHA || undefined}
+              canAmendCommits={headSHA !== null}
+              canResetToCommits={headSHA !== null}
+              canUndoCommits={headSHA !== null}
+              isInformationalView={false}
+              isLocalRepository={
+                (props.state.branches?.remotes?.length || 0) === 0
+              }
+              localCommitSHAs={props.state.branches?.localCommitSHAs || []}
+              tagsToPush={props.state.branches?.tagsToPush || []}
+              reorderingEnabled={true}
+              isMultiCommitOperationInProgress={false}
+              keyboardReorderData={keyboardReorderData}
+              onCancelKeyboardReorder={() => setKeyboardReorderData(undefined)}
+              onScroll={(scrollTop, clientHeight) => {
+                const end =
+                  Math.floor(scrollTop / 50) + Math.ceil(clientHeight / 50)
+                if (
+                  props.state.hasMoreHistory &&
+                  end >= props.state.history.length - 5
+                )
+                  void props.dispatcher.loadMoreHistory()
+              }}
+              onRowsRendered={(_start, end) => {
+                if (
+                  props.state.hasMoreHistory &&
+                  end >= props.state.history.length - 5
+                )
+                  void props.dispatcher.loadMoreHistory()
+              }}
+              onCompareListScrolled={scrollTop => {
+                setHistoryScrollTop(scrollTop)
+                localStorage.setItem(historyScrollStorageKey, String(scrollTop))
+              }}
+              onCommitsSelected={commits => {
+                const selectedSHAs = commits.map(commit => commit.sha)
+                props.onSelectedSHAsChanged(selectedSHAs)
+                if (selectedSHAs.length === 1)
+                  void props.dispatcher.inspectHistoryCommit(selectedSHAs[0])
+                else props.dispatcher.clearHistoryInspection()
+              }}
+              onUndoCommit={commit => {
+                props.onSelectedSHAsChanged([commit.sha])
+                setHistoryAction('undo')
+              }}
+              onResetToCommit={commit => {
+                props.onSelectedSHAsChanged([commit.sha])
+                setResetDialogOpen(true)
+              }}
+              onRevertCommit={commit => {
+                props.onSelectedSHAsChanged([commit.sha])
+                setHistoryAction('revert')
+              }}
+              onAmendCommit={commit => {
+                props.onSelectedSHAsChanged([commit.sha])
+                void props.dispatcher.startAmendingCommit(commit.sha)
+              }}
+              onCreateBranch={commit => {
+                props.onSelectedSHAsChanged([commit.sha])
+                setSelectedCommitAction('branch')
+              }}
+              onCreateTag={sha => {
+                props.onSelectedSHAsChanged([sha])
+                setSelectedCommitAction('tag')
+              }}
+              onCheckoutCommit={commit => {
+                props.onSelectedSHAsChanged([commit.sha])
+                setSelectedCommitAction('checkout')
+              }}
+              onDeleteTag={name => {
+                const tag = props.state.branches?.tags?.find(
+                  candidate => candidate.name === name
+                )
+                setTagToDelete({
+                  name,
+                  remotes: tag?.pushedRemotes || [],
+                })
+              }}
+              onCherryPick={commitLines =>
+                setCherryPickCommits(
+                  commitLines.flatMap(commit => {
+                    const selected = commitLookup.get(commit.sha)
+                    return selected ? [selected] : []
+                  })
+                )
+              }
+              onKeyboardReorder={toReorder =>
+                setKeyboardReorderData({
+                  type: DragType.Commit,
+                  commits: toReorder,
+                  itemIndices: toReorder.map(commit =>
+                    commits.findIndex(item => item.sha === commit.sha)
+                  ),
+                })
+              }
+              onDropCommitInsertion={(
+                baseCommit,
+                commitsToInsert,
+                lastRetained
+              ) =>
+                void reorderCommits(baseCommit, commitsToInsert, lastRetained)
+              }
+              onSquash={(toSquash, squashOnto, lastRetained) => {
+                setPendingRewrite({
+                  action: 'squash',
+                  before: lastRetained,
+                  message: squashOnto.summary,
+                })
+                props.onSelectedSHAsChanged(toSquash.map(commit => commit.sha))
+              }}
+              compareListScrollTop={historyScrollTop}
+              preferAbsoluteDates={props.preferAbsoluteDates}
+              repository={null}
+              selectedSHAs={props.selectedSHAs}
+              showConventionalCommitBadges={props.showConventionalCommitBadges}
             />
-          )
+          )}
+        </section>
+        <WebConfirmDialog
+          confirmLabel={
+            historyAction === 'reset'
+              ? 'Reset commit'
+              : historyAction === 'revert'
+              ? 'Revert commit'
+              : 'Undo commit'
+          }
+          message={
+            historyAction === 'reset'
+              ? 'Resetting will move the current branch back to the selected commit and keep the changes in the working directory. Continue?'
+              : historyAction === 'revert'
+              ? 'Create a new commit that reverses the selected commit?'
+              : 'Undo the latest commit and leave its changes in the working directory?'
+          }
+          onConfirm={confirmHistoryAction}
+          onDismiss={() => setHistoryAction(null)}
+          open={historyAction !== null}
+          title={
+            historyAction === 'reset'
+              ? 'Reset selected commit?'
+              : historyAction === 'revert'
+              ? 'Revert selected commit?'
+              : 'Undo latest commit?'
+          }
+        />
+        <WebResetDialog
+          onConfirm={async mode => {
+            if (!selectedCommit) return
+            await props.dispatcher.runOperation('reset-commit', {
+              values: [selectedCommit.sha],
+              mode,
+            })
+            setResetDialogOpen(false)
+            props.onSelectedSHAsChanged([])
+          }}
+          onDismiss={() => setResetDialogOpen(false)}
+          open={resetDialogOpen}
+        />
+        {rewriteAction ? (
+          <DialogStackContext.Provider value={{ isTopMost: true }}>
+            <Dialog
+              ariaDescribedBy="history-rewrite-description"
+              onDismissed={() => setRewriteAction(null)}
+              onSubmit={() => {
+                if (rewriteAction === 'squash' && !squashMessage.trim()) return
+                setPendingRewrite({
+                  action: rewriteAction,
+                  before: reorderBefore || null,
+                  message: squashMessage.trim(),
+                })
+                setRewriteAction(null)
+              }}
+              title={
+                rewriteAction === 'reorder'
+                  ? 'Reorder selected commits'
+                  : 'Squash selected commits'
+              }
+            >
+              <DialogContent>
+                <p id="history-rewrite-description">
+                  {rewriteAction === 'reorder'
+                    ? 'Choose where the selected commits should be inserted.'
+                    : 'Provide the message for the rewritten squash commit.'}
+                </p>
+                {rewriteAction === 'reorder' ? (
+                  <>
+                    <label htmlFor="web-reorder-before">Insert before</label>
+                    <select
+                      id="web-reorder-before"
+                      onChange={event => setReorderBefore(event.target.value)}
+                      value={reorderBefore}
+                    >
+                      <option value="">End of the current history</option>
+                      {reorderTargets.map(commit => (
+                        <option key={commit.sha} value={commit.sha}>
+                          {commit.summary || 'Empty commit message'} (
+                          {commit.shortSha})
+                        </option>
+                      ))}
+                    </select>
+                  </>
+                ) : (
+                  <>
+                    <label htmlFor="web-squash-message">Commit message</label>
+                    <textarea
+                      autoFocus={true}
+                      id="web-squash-message"
+                      onChange={event => setSquashMessage(event.target.value)}
+                      rows={4}
+                      value={squashMessage}
+                    />
+                  </>
+                )}
+              </DialogContent>
+              <DialogFooter>
+                <Button onClick={() => setRewriteAction(null)}>Cancel</Button>
+                <Button
+                  disabled={rewriteAction === 'squash' && !squashMessage.trim()}
+                  type="submit"
+                >
+                  Continue
+                </Button>
+              </DialogFooter>
+            </Dialog>
+          </DialogStackContext.Provider>
         ) : null}
+        <WebConfirmDialog
+          confirmLabel={
+            pendingRewrite?.action === 'reorder'
+              ? 'Reorder commits'
+              : 'Squash commits'
+          }
+          message={
+            pendingRewrite?.action === 'reorder'
+              ? 'Reorder the selected commits and rewrite local history? The exact previous tip will be available for a guarded undo.'
+              : 'Squash the selected commits and rewrite local history? The exact previous tip will be available for a guarded undo.'
+          }
+          onConfirm={async () => {
+            if (!pendingRewrite) return
+            if (pendingRewrite.action === 'reorder')
+              await props.dispatcher.runOperation('reorder-commits', {
+                commits: props.selectedSHAs,
+                ...(pendingRewrite.before
+                  ? { before: pendingRewrite.before }
+                  : {}),
+              })
+            else
+              await props.dispatcher.runOperation('squash-commits', {
+                commits: props.selectedSHAs.slice(1),
+                squashOnto: props.selectedSHAs[0],
+                message: pendingRewrite.message,
+              })
+            setPendingRewrite(null)
+            props.onSelectedSHAsChanged([])
+          }}
+          onDismiss={() => setPendingRewrite(null)}
+          open={pendingRewrite !== null}
+          title={
+            pendingRewrite?.action === 'reorder'
+              ? 'Reorder commits?'
+              : 'Squash commits?'
+          }
+        />
+        <WebConfirmDialog
+          confirmLabel="Undo history rewrite"
+          message="Restore the exact branch tip from before the last history rewrite? This is guarded against intervening changes."
+          onConfirm={async () => {
+            const undo = props.state.historyRewriteUndo
+            if (!undo) return
+            await props.dispatcher.runOperation('undo-history-rewrite', {
+              values: [undo.branch, undo.originalTip, undo.rewrittenTip],
+              confirmed: true,
+            })
+            setHistoryAction(null)
+            props.onSelectedSHAsChanged([])
+          }}
+          onDismiss={() => setHistoryAction(null)}
+          open={historyAction === 'rewrite'}
+          title="Undo history rewrite?"
+        />
+        <WebTextDialog
+          description={`Create and check out a new local branch at ${
+            selectedCommit?.shortSha || 'the selected commit'
+          }.`}
+          label="Branch name"
+          onDismiss={() => setSelectedCommitAction(null)}
+          onSubmit={async name => {
+            if (!selectedCommit) return
+            await props.dispatcher.runOperation('create-branch', {
+              values: [name, selectedCommit.sha],
+              checkout: true,
+            })
+            setSelectedCommitAction(null)
+            props.onSelectedSHAsChanged([])
+          }}
+          validate={value => validateGitRefName(value, 'Branch name')}
+          open={selectedCommitAction === 'branch'}
+          submitLabel="Create branch"
+          title="Create branch at selected commit"
+        />
+        <WebTagDialog
+          initialTarget={selectedCommit?.sha}
+          onDismiss={() => setSelectedCommitAction(null)}
+          onSubmit={async (name, target, message) => {
+            if (!selectedCommit) return
+            await props.dispatcher.runOperation('tag-create', {
+              values: [name, target || selectedCommit.sha],
+              message,
+            })
+            setSelectedCommitAction(null)
+            props.onSelectedSHAsChanged([])
+          }}
+          open={selectedCommitAction === 'tag'}
+          title="Create tag at selected commit"
+        />
+        <WebConfirmDialog
+          confirmLabel="Checkout commit"
+          message={`Checking out ${
+            selectedCommit?.shortSha || 'the selected commit'
+          } creates a detached HEAD. You will no longer be on a branch.`}
+          onConfirm={async () => {
+            if (!selectedCommit) return
+            await props.dispatcher.runOperation('checkout-commit', {
+              values: [selectedCommit.sha],
+            })
+            setSelectedCommitAction(null)
+            props.onSelectedSHAsChanged([])
+          }}
+          onDismiss={() => setSelectedCommitAction(null)}
+          open={selectedCommitAction === 'checkout'}
+          title="Checkout selected commit?"
+        />
+        <WebConfirmDialog
+          confirmLabel={
+            cherryPickCommits?.length === 1
+              ? 'Cherry-pick commit'
+              : `Cherry-pick ${cherryPickCommits?.length || 0} commits`
+          }
+          message={`Cherry-pick ${
+            cherryPickCommits?.map(commit => commit.shortSha).join(', ') ||
+            'the selected commit'
+          } onto the current branch? Conflicts can be resolved from Changes.`}
+          onConfirm={async () => {
+            if (!cherryPickCommits?.length) return
+            await props.dispatcher.runOperation('cherry-pick', {
+              values: cherryPickCommits.map(commit => commit.sha),
+            })
+            setCherryPickCommits(null)
+            props.onSelectedSHAsChanged([])
+          }}
+          onDismiss={() => setCherryPickCommits(null)}
+          open={cherryPickCommits !== null}
+          title="Cherry-pick selected commit?"
+        />
+        <WebConfirmDialog
+          confirmLabel="Delete local tag"
+          message={`Delete the local tag ${tagToDelete?.name || 'this tag'}?${
+            tagToDelete?.remotes.length
+              ? ` It is also pushed to ${tagToDelete.remotes.join(
+                  ', '
+                )}; you can remove the remote tag in the next confirmation.`
+              : ''
+          }`}
+          onConfirm={confirmDeleteTag}
+          onDismiss={() => setTagToDelete(null)}
+          open={tagToDelete !== null}
+          title="Delete tag?"
+        />
+        <WebConfirmDialog
+          confirmLabel="Delete remote tag"
+          message={`Also delete ${remoteTagToDelete?.name || 'this tag'} from ${
+            remoteTagToDelete?.remotes.join(', ') || 'the remote'
+          }? This cannot be undone remotely.`}
+          onConfirm={confirmDeleteRemoteTag}
+          onDismiss={() => setRemoteTagToDelete(null)}
+          open={remoteTagToDelete !== null}
+          title="Delete pushed tag remotely?"
+        />
       </>
     )
   }
@@ -5918,22 +10122,87 @@ function DesktopHistoryContentView(props: {
   )
   const selectedCommit =
     selectedCommits.length === 1 ? selectedCommits[0] : null
-  const selectedCommitsWeb = props.state.history.filter(commit =>
-    props.selectedSHAs.includes(commit.sha)
-  )
+  const selectedCommitWeb =
+    selectedCommit &&
+    props.state.history.find(commit => commit.sha === selectedCommit.sha)
+  const details =
+    selectedCommitWeb &&
+    props.state.historyCommitDetails &&
+    props.state.historyCommitDetails.files
+      ? props.state.historyCommitDetails
+      : null
+  const changesetData = {
+    files:
+      selectedCommitWeb && details
+        ? details.files.map(file =>
+            getDesktopCommittedFile(file, selectedCommitWeb)
+          )
+        : [],
+    linesAdded: details?.linesAdded || 0,
+    linesDeleted: details?.linesDeleted || 0,
+  }
+  const [isExpanded, setIsExpanded] = React.useState(false)
+  const [shasToHighlight, setShasToHighlight] = React.useState<
+    ReadonlyArray<string>
+  >([])
+  const [unreachableTab, setUnreachableTab] =
+    React.useState<UnreachableCommitsTab | null>(null)
+  const commitLookup = new Map(commits.map(commit => [commit.sha, commit]))
+  const shasInDiff = selectedCommit ? [selectedCommit.sha] : []
 
   if (selectedCommits.length === 0 || !props.state.selectedRepositoryPath)
     return null
 
   return (
-    <DesktopSelectedCommits
-      dispatcher={props.dispatcher}
-      isContiguous={true}
-      selectedCommits={selectedCommits}
-      selectedCommitsWeb={selectedCommitsWeb}
-      shasInDiff={selectedCommit ? [selectedCommit.sha] : []}
-      state={props.state}
-    />
+    <div id="history" className={isExpanded ? 'expanded' : 'collapsed'}>
+      <ExpandableCommitSummary
+        accounts={[]}
+        changesetData={changesetData}
+        emoji={props.state.emoji}
+        isExpanded={isExpanded}
+        onExpandChanged={setIsExpanded}
+        onHighlightShas={setShasToHighlight}
+        repository={getDesktopRepository(props.state.selectedRepositoryPath)}
+        selectedCommits={selectedCommits}
+        shasInDiff={shasInDiff}
+        showUnreachableCommits={setUnreachableTab}
+      />
+      {unreachableTab !== null ? (
+        <UnreachableCommitsDialog
+          accounts={[]}
+          commitLookup={commitLookup}
+          dispatcher={props.dispatcher as never}
+          emoji={props.state.emoji}
+          onDismissed={() => setUnreachableTab(null)}
+          preferAbsoluteDates={props.preferAbsoluteDates}
+          selectedShas={props.selectedSHAs}
+          selectedTab={unreachableTab}
+          shasInDiff={shasInDiff}
+        />
+      ) : null}
+      {shasToHighlight.length ? (
+        <div
+          aria-label="Highlighted commits"
+          className="web-history-highlight-status"
+        >
+          Highlighting {shasToHighlight.length} commit
+          {shasToHighlight.length === 1 ? '' : 's'}
+        </div>
+      ) : null}
+      {props.state.selectedHistoryCommitSHA === selectedCommits[0]?.sha ? (
+        <HistoryCommitInspection
+          commit={
+            props.state.history.find(
+              commit => commit.sha === props.state.selectedHistoryCommitSHA
+            ) || props.state.history[0]
+          }
+          dispatcher={props.dispatcher}
+          state={props.state}
+        />
+      ) : (
+        <div className="commit-details" />
+      )}
+    </div>
   )
 }
 
@@ -5941,316 +10210,390 @@ function DesktopCompareView(props: {
   readonly state: WebApplicationState
   readonly dispatcher: WebDispatcher
   readonly mode: 'sidebar' | 'content'
-  readonly selectedSHAs: ReadonlyArray<string>
-  readonly onSelectedSHAsChanged: (shas: ReadonlyArray<string>) => void
-  readonly preferAbsoluteDates: boolean
-  readonly showConventionalCommitBadges: boolean
-  readonly onCommitMessagePopup: (popup: CommitMessagePopup | null) => void
-  readonly onHistoryRewriteStarted: (
-    kind: HistoryRewriteKind,
-    count: number
-  ) => void
 }) {
-  const branches = React.useMemo(
-    () =>
-      (props.state.branches?.branches || [])
-        .map(getDesktopBranch)
-        .filter((branch): branch is Branch => branch !== null)
-        .filter(branch => !branch.name.endsWith('/HEAD')),
-    [props.state.branches?.branches]
+  const currentBranch = props.state.branches?.branch?.name || null
+  const branches = (props.state.branches?.branches || []).filter(
+    branch =>
+      branch.name !== currentBranch &&
+      !branch.name.endsWith('/HEAD') &&
+      Boolean(branch.tip?.sha)
   )
-  const currentBranch = React.useMemo(
-    () => getDesktopBranch(props.state.branches?.branch),
-    [props.state.branches?.branch]
+  const comparisonFilter = props.state.comparisonFilterText.trim().toLowerCase()
+  const filteredBranches = branches.filter(branch =>
+    !comparisonFilter
+      ? true
+      : `${branch.name} ${branch.upstream || ''}`
+          .toLowerCase()
+          .includes(comparisonFilter)
   )
-  const comparisonBranch = React.useMemo(
-    () =>
-      branches.find(branch => branch.name === props.state.comparisonBranch) ||
-      null,
-    [branches, props.state.comparisonBranch]
-  )
-  const comparisonCommits = React.useMemo(
-    () => (props.state.comparison?.commits || []).map(getDesktopCommit),
-    [props.state.comparison?.commits]
-  )
-  const comparisonLookup = React.useMemo(
-    () => new Map(comparisonCommits.map(commit => [commit.sha, commit])),
-    [comparisonCommits]
-  )
-  const comparisonMode =
-    props.state.comparisonMode === 'Ahead'
-      ? ComparisonMode.Ahead
-      : ComparisonMode.Behind
-  const repository = React.useMemo(
-    () => getDesktopRepository(props.state.selectedRepositoryPath || ''),
-    [props.state.selectedRepositoryPath]
-  )
-  const aheadBehindStore = React.useMemo(() => new AheadBehindStore(), [])
+  const comparison = props.state.comparison
+  const selectedCommit =
+    comparison?.commits.find(
+      commit => commit.sha === props.state.selectedHistoryCommitSHA
+    ) || null
+  const [cherryPickOpen, setCherryPickOpen] = React.useState(false)
+  const [selectedComparisonSHAs, setSelectedComparisonSHAs] = React.useState<
+    ReadonlyArray<string>
+  >([])
+  const [cherryPickUndoOpen, setCherryPickUndoOpen] = React.useState(false)
+  const [mergeAction, setMergeAction] = React.useState<
+    'merge' | 'squash-merge' | 'rebase' | null
+  >(null)
   const compareScrollStorageKey = repositoryViewStorageKey(
     webCompareScrollStorageKey,
     props.state.selectedRepositoryPath
   )
-  const [resetCommit, setResetCommit] = React.useState<Commit | null>(null)
-
-  const desktopDispatcher = React.useMemo(
-    () =>
-      ({
-        changeCommitSelection: (
-          _repository: Repository,
-          shas: ReadonlyArray<string>
-        ) => {
-          props.onSelectedSHAsChanged(shas)
-          if (shas.length === 1)
-            return props.dispatcher.inspectHistoryCommit(shas[0])
-          props.dispatcher.clearHistoryInspection()
-          return Promise.resolve()
-        },
-        checkoutCommit: (_repository: Repository, commit: Commit) =>
-          props.dispatcher.runOperation('checkout-commit', {
-            values: [commit.sha],
-          }),
-        clearDragElement: () => undefined,
-        executeCompare: (
-          _repository: Repository,
-          action:
-            | { readonly kind: HistoryTabMode.History }
-            | {
-                readonly kind: HistoryTabMode.Compare
-                readonly branch: Branch
-                readonly comparisonMode: ComparisonMode
-              }
-        ) => {
-          if (action.kind === HistoryTabMode.History) {
-            void props.dispatcher.selectSection('history')
-            return Promise.resolve()
-          }
-          return props.dispatcher.loadComparison(
-            action.branch.name,
-            action.comparisonMode === ComparisonMode.Ahead ? 'Ahead' : 'Behind'
-          )
-        },
-        getCommitChangedFiles: () => Promise.resolve([]),
-        initializeCompare: () => {
-          if (!props.state.comparisonBranch)
-            props.dispatcher.setComparisonBranchListVisible(true)
-          return Promise.resolve()
-        },
-        incrementMetric: () => undefined,
-        initializeMultiCommitOperation: () => undefined,
-        loadChangedFilesForCurrentSelection: () => Promise.resolve(),
-        loadNextCommitBatch: () => props.dispatcher.loadMoreHistory(),
-        closePopup: () => props.onCommitMessagePopup(null),
-        mergeBranch: (
-          _repository: Repository,
-          branch: Branch,
-          _status: unknown,
-          squash = false
-        ) =>
-          props.dispatcher.runOperation(squash ? 'squash-merge' : 'merge', {
-            values: [branch.name],
-          }),
-        openInExternalEditor: () => Promise.resolve(),
-        recordSquashInvoked: () => undefined,
-        resetToCommit: (_repository: Repository, commit: Commit) =>
-          setResetCommit(commit),
-        reorderCommits: (
-          _repository: Repository,
-          commitsToReorder: ReadonlyArray<Commit>,
-          beforeCommit: Commit | null,
-          lastRetainedCommitRef: string | null
-        ) => {
-          props.onHistoryRewriteStarted('reorder', commitsToReorder.length)
-          return props.dispatcher
-            .runOperation('reorder-commits', {
-              base: lastRetainedCommitRef,
-              commits: commitsToReorder.map(commit => commit.sha),
-              before: beforeCommit?.sha || null,
-            })
-            .then(() => props.onSelectedSHAsChanged([]))
-        },
-        setCommitSearchQuery: () => Promise.resolve(),
-        setDragElement: () => undefined,
-        showCreateTagDialog: () => undefined,
-        showDeleteTagDialog: () => undefined,
-        showPopup: (popup: Popup) => {
-          if (popup.type === PopupType.CommitMessage)
-            props.onCommitMessagePopup(popup)
-          return Promise.resolve()
-        },
-        squash: (
-          _repository: Repository,
-          toSquash: ReadonlyArray<Commit>,
-          squashOnto: Commit,
-          lastRetainedCommitRef: string | null,
-          context: ICommitContext
-        ) => {
-          props.onHistoryRewriteStarted('squash', toSquash.length + 1)
-          return props.dispatcher
-            .runOperation('squash-commits', {
-              base: lastRetainedCommitRef,
-              commits: toSquash.map(commit => commit.sha),
-              squashOnto: squashOnto.sha,
-              message: formatCommitContextMessage(context),
-              noVerify: props.state.commitOptions.noVerify,
-            })
-            .then(() => props.onSelectedSHAsChanged([]))
-        },
-        startRebase: (
-          _repository: Repository,
-          baseBranch: Branch,
-          _targetBranch: Branch
-        ) =>
-          props.dispatcher.runOperation('rebase', {
-            values: [baseBranch.name],
-          }),
-        undoCommit: () => props.dispatcher.runOperation('undo'),
-        updateCompareForm: (
-          _repository: Repository,
-          update: {
-            readonly filterText?: string
-            readonly showBranchList?: boolean
-          }
-        ) => {
-          if (update.filterText !== undefined)
-            props.dispatcher.setComparisonFilterText(update.filterText)
-          if (update.showBranchList !== undefined)
-            props.dispatcher.setComparisonBranchListVisible(
-              update.showBranchList
-            )
-          return Promise.resolve()
-        },
-      } as unknown as Dispatcher),
-    [
-      props.dispatcher,
-      props.onCommitMessagePopup,
-      props.onHistoryRewriteStarted,
-      props.onSelectedSHAsChanged,
-      props.state.comparisonBranch,
-      props.state.commitOptions.noVerify,
-      props.state.comparisonBranchListVisible,
-      repository,
-    ]
+  const [compareScrollTop, setCompareScrollTop] = React.useState(() =>
+    Number(localStorage.getItem(compareScrollStorageKey) || 0)
   )
+  const compareListRef = React.useRef<HTMLDivElement | null>(null)
 
-  const compareState: ICompareState = {
-    allHistoryCommitSHAs: comparisonCommits.map(commit => commit.sha),
-    branches: branches.filter(branch => branch.name !== currentBranch?.name),
-    commitGraphCollapsedBranchGroups: [],
-    commitGraphCommitSHAs: [],
-    commitGraphHiddenBranchRefs: [],
-    commitGraphRefs: [],
-    commitSearchQuery: '',
-    compareCommitSHAs: comparisonCommits.map(commit => commit.sha),
-    defaultBranch:
-      branches.find(
-        branch => branch.name === props.state.branches?.defaultBranch
-      ) || null,
-    filterText: props.state.comparisonFilterText,
-    filteredHistoryCommitSHAs: [],
-    formState:
-      comparisonBranch && props.state.comparison
-        ? {
-            kind: HistoryTabMode.Compare,
-            comparisonBranch,
-            comparisonMode,
-            aheadBehind: {
-              ahead: props.state.comparison.ahead,
-              behind: props.state.comparison.behind,
-            },
-          }
-        : { kind: HistoryTabMode.History },
-    mergeStatus: null,
-    recentBranches: (props.state.branches?.recentBranches || []).flatMap(name =>
-      branches.filter(branch => branch.name === name)
-    ),
-    shasToHighlight: [],
-    showBranchList: props.state.comparisonBranchListVisible,
-    tip: currentBranch?.tip.sha || null,
-  }
+  React.useEffect(() => {
+    setCompareScrollTop(
+      Number(localStorage.getItem(compareScrollStorageKey) || 0)
+    )
+  }, [compareScrollStorageKey])
+
+  React.useEffect(() => {
+    if (compareListRef.current)
+      compareListRef.current.scrollTop = compareScrollTop
+  }, [compareScrollTop, comparison])
+
+  React.useEffect(() => {
+    if (
+      props.mode === 'sidebar' &&
+      props.state.comparisonBranch &&
+      !props.state.comparison &&
+      !props.state.comparisonLoading &&
+      props.state.branches
+    ) {
+      void props.dispatcher.loadComparison(
+        props.state.comparisonBranch,
+        props.state.comparisonMode
+      )
+    }
+  }, [
+    props.dispatcher,
+    props.mode,
+    props.state.branches,
+    props.state.comparison,
+    props.state.comparisonBranch,
+    props.state.comparisonLoading,
+    props.state.comparisonMode,
+  ])
+
+  React.useEffect(() => {
+    if (!comparison) {
+      setSelectedComparisonSHAs([])
+      return
+    }
+    setSelectedComparisonSHAs(current =>
+      current.filter(sha =>
+        comparison.commits.some(commit => commit.sha === sha)
+      )
+    )
+  }, [comparison])
 
   if (props.mode === 'sidebar') {
+    const selectedCommits = comparison
+      ? selectedComparisonSHAs.flatMap(sha => {
+          const commit = comparison.commits.find(item => item.sha === sha)
+          return commit ? [commit] : []
+        })
+      : []
+
     return (
-      <>
-        <CompareSidebar
-          accounts={[]}
-          aheadBehindStore={aheadBehindStore}
-          askForConfirmationOnCheckoutCommit={true}
-          branchSortOrder={DEFAULT_BRANCH_SORT_ORDER}
-          commitLookup={comparisonLookup}
-          compareListScrollTop={Number(
-            localStorage.getItem(compareScrollStorageKey) || 0
-          )}
-          compareState={compareState}
-          currentBranch={currentBranch}
-          dispatcher={desktopDispatcher}
-          emoji={props.state.emoji}
-          isCompareView={true}
-          isLocalRepository={(props.state.branches?.remotes?.length || 0) === 0}
-          isMultiCommitOperationInProgress={
-            props.state.operationTask?.status === 'running'
-          }
-          localCommitSHAs={props.state.branches?.localCommitSHAs || []}
-          localTags={
-            new Map(
-              (props.state.branches?.tags || []).map(tag => [tag.name, tag.sha])
-            )
-          }
-          onAmendCommit={commit =>
-            void props.dispatcher.startAmendingCommit(commit.sha)
-          }
-          onCherryPick={(_repository, commits) =>
-            void props.dispatcher.runOperation('cherry-pick', {
-              values: commits.map(commit => commit.sha),
-            })
-          }
-          onCompareListScrolled={scrollTop =>
-            localStorage.setItem(compareScrollStorageKey, String(scrollTop))
-          }
-          onRevertCommit={commit =>
-            void props.dispatcher.runOperation('revert', {
-              values: [commit.sha],
-            })
-          }
-          onViewCommitOnGitHub={() => undefined}
-          preferAbsoluteDates={props.preferAbsoluteDates}
-          repository={repository}
-          selectedCommitShas={props.selectedSHAs}
-          shasToHighlight={[]}
-          showConventionalCommitBadges={props.showConventionalCommitBadges}
-          tagsToPush={props.state.branches?.tagsToPush || []}
-        />
-        {resetCommit ? (
-          <DesktopResetWarningDialog
-            commit={resetCommit}
-            dispatcher={props.dispatcher}
-            onDismiss={() => setResetCommit(null)}
-            repositoryPath={props.state.selectedRepositoryPath || ''}
-          />
+      <section className="panel web-compare-sidebar" aria-label="Compare">
+        <div className="web-compare-controls">
+          {props.state.comparisonBranchListVisible ? (
+            <>
+              <label htmlFor="web-comparison-branch">Branch</label>
+              <select
+                id="web-comparison-branch"
+                onChange={event => {
+                  const branch = event.target.value
+                  if (branch)
+                    void props.dispatcher.loadComparison(
+                      branch,
+                      props.state.comparisonMode
+                    )
+                }}
+                value={props.state.comparisonBranch || ''}
+              >
+                <option value="">Choose a branch</option>
+                {filteredBranches.map(branch => (
+                  <option key={branch.name} value={branch.name}>
+                    {branch.name}
+                  </option>
+                ))}
+              </select>
+            </>
+          ) : null}
+          <label htmlFor="web-comparison-filter">Filter</label>
+          {props.state.comparisonBranchListVisible ? (
+            <input
+              id="web-comparison-filter"
+              onChange={event =>
+                props.dispatcher.setComparisonFilterText(event.target.value)
+              }
+              placeholder="Filter"
+              type="search"
+              value={props.state.comparisonFilterText}
+            />
+          ) : null}
+          <Button
+            onClick={() =>
+              props.dispatcher.setComparisonBranchListVisible(
+                !props.state.comparisonBranchListVisible
+              )
+            }
+          >
+            {props.state.comparisonBranchListVisible
+              ? 'Hide branch list'
+              : 'Show branch list'}
+          </Button>
+          <div aria-label="Comparison direction" className="web-compare-modes">
+            <Button
+              className={
+                props.state.comparisonMode === 'Behind' ? 'selected' : undefined
+              }
+              disabled={!props.state.comparisonBranch}
+              onClick={() => {
+                if (props.state.comparisonBranch)
+                  void props.dispatcher.loadComparison(
+                    props.state.comparisonBranch,
+                    'Behind'
+                  )
+              }}
+            >
+              Behind
+            </Button>
+            <Button
+              className={
+                props.state.comparisonMode === 'Ahead' ? 'selected' : undefined
+              }
+              disabled={!props.state.comparisonBranch}
+              onClick={() => {
+                if (props.state.comparisonBranch)
+                  void props.dispatcher.loadComparison(
+                    props.state.comparisonBranch,
+                    'Ahead'
+                  )
+              }}
+            >
+              Ahead
+            </Button>
+          </div>
+        </div>
+        {comparison ? (
+          <>
+            <p className="web-compare-summary">
+              {comparison.ahead} ahead, {comparison.behind} behind
+            </p>
+            <Button
+              disabled={
+                selectedCommits.length === 0 ||
+                props.state.comparisonMode !== 'Behind' ||
+                props.state.loading
+              }
+              onClick={() => setCherryPickOpen(true)}
+            >
+              Cherry-pick selected commit
+              {selectedCommits.length > 1 ? 's' : ''}
+            </Button>
+            <div
+              aria-label="Comparison branch actions"
+              className="web-compare-actions"
+              role="group"
+            >
+              <Button
+                disabled={
+                  props.state.loading ||
+                  !props.state.comparisonBranch ||
+                  props.state.comparisonMode !== 'Behind'
+                }
+                onClick={() => setMergeAction('merge')}
+              >
+                Merge branch
+              </Button>
+              <Button
+                disabled={
+                  props.state.loading ||
+                  !props.state.comparisonBranch ||
+                  props.state.comparisonMode !== 'Behind'
+                }
+                onClick={() => setMergeAction('squash-merge')}
+              >
+                Squash merge branch
+              </Button>
+              <Button
+                disabled={
+                  props.state.loading ||
+                  !props.state.comparisonBranch ||
+                  props.state.comparisonMode !== 'Behind'
+                }
+                onClick={() => setMergeAction('rebase')}
+              >
+                Rebase onto branch
+              </Button>
+            </div>
+            <div
+              aria-busy={props.state.comparisonLoading}
+              aria-label="Comparison commits"
+              className="web-compare-commits"
+              onScroll={event => {
+                const scrollTop = event.currentTarget.scrollTop
+                setCompareScrollTop(scrollTop)
+                localStorage.setItem(compareScrollStorageKey, String(scrollTop))
+              }}
+              ref={compareListRef}
+              role="listbox"
+              style={{ overflow: 'auto' }}
+            >
+              {comparison.commits.length ? (
+                comparison.commits.map(commit => (
+                  <Button
+                    ariaSelected={selectedComparisonSHAs.includes(commit.sha)}
+                    className={
+                      selectedComparisonSHAs.includes(commit.sha)
+                        ? 'selected'
+                        : undefined
+                    }
+                    key={commit.sha}
+                    onClick={event => {
+                      const nextSelection =
+                        event.metaKey || event.ctrlKey
+                          ? selectedComparisonSHAs.includes(commit.sha)
+                            ? selectedComparisonSHAs.filter(
+                                sha => sha !== commit.sha
+                              )
+                            : [...selectedComparisonSHAs, commit.sha]
+                          : [commit.sha]
+                      setSelectedComparisonSHAs(nextSelection)
+                      if (nextSelection.length === 1)
+                        void props.dispatcher.inspectHistoryCommit(
+                          nextSelection[0]
+                        )
+                      else props.dispatcher.clearHistoryInspection()
+                    }}
+                    role="option"
+                  >
+                    <span>{commit.summary || 'Empty commit message'}</span>
+                    <small>{commit.shortSha}</small>
+                  </Button>
+                ))
+              ) : (
+                <p>No commits in this direction.</p>
+              )}
+            </div>
+          </>
+        ) : (
+          <p>
+            {props.state.comparisonLoading
+              ? 'Loading comparison...'
+              : filteredBranches.length
+              ? 'Choose a branch to compare.'
+              : 'No other branches are available to compare.'}
+          </p>
+        )}
+        {props.state.cherryPickUndo ? (
+          <Button
+            className="destructive"
+            disabled={props.state.loading}
+            onClick={() => setCherryPickUndoOpen(true)}
+          >
+            Undo cherry-pick
+          </Button>
         ) : null}
-      </>
+        <WebConfirmDialog
+          confirmLabel={
+            selectedCommits.length === 1
+              ? 'Cherry-pick commit'
+              : `Cherry-pick ${selectedCommits.length} commits`
+          }
+          message={`Cherry-pick ${
+            selectedCommits.length
+              ? selectedCommits.map(commit => commit.shortSha).join(', ')
+              : selectedCommit?.shortSha || 'the selected commit'
+          } onto the current branch? Conflicts can be resolved from Changes.`}
+          onConfirm={async () => {
+            if (!selectedCommits.length) return
+            await props.dispatcher.runOperation('cherry-pick', {
+              values: selectedCommits.map(commit => commit.sha),
+            })
+            setCherryPickOpen(false)
+            setSelectedComparisonSHAs([])
+          }}
+          onDismiss={() => setCherryPickOpen(false)}
+          open={cherryPickOpen}
+          title={
+            selectedCommits.length === 1
+              ? 'Cherry-pick selected commit?'
+              : `Cherry-pick ${selectedCommits.length} commits?`
+          }
+        />
+        <WebConfirmDialog
+          confirmLabel="Undo cherry-pick"
+          message="Restore the exact branch tip from before the last cherry-pick? This is guarded against intervening changes and local changes."
+          onConfirm={async () => {
+            const undo = props.state.cherryPickUndo
+            if (!undo) return
+            await props.dispatcher.runOperation('undo-cherry-pick', {
+              values: [undo.branch, undo.originalTip, undo.rewrittenTip],
+              confirmed: true,
+            })
+            setCherryPickUndoOpen(false)
+          }}
+          onDismiss={() => setCherryPickUndoOpen(false)}
+          open={cherryPickUndoOpen}
+          title="Undo cherry-pick?"
+        />
+        <WebConfirmDialog
+          confirmLabel={
+            mergeAction === 'squash-merge'
+              ? 'Squash merge branch'
+              : mergeAction === 'rebase'
+              ? 'Rebase onto branch'
+              : 'Merge branch'
+          }
+          message={
+            mergeAction === 'squash-merge'
+              ? `Squash the commits from ${props.state.comparisonBranch} into the current branch and create one commit? Conflicts can be resolved from Changes.`
+              : mergeAction === 'rebase'
+              ? `Rebase the current branch onto ${props.state.comparisonBranch}? This rewrites local commits and conflicts can be resolved from Changes.`
+              : `Merge ${props.state.comparisonBranch} into the current branch? Conflicts can be resolved from Changes.`
+          }
+          onConfirm={async () => {
+            if (!mergeAction || !props.state.comparisonBranch) return
+            await props.dispatcher.runOperation(mergeAction, {
+              values: [props.state.comparisonBranch],
+            })
+            setMergeAction(null)
+          }}
+          onDismiss={() => setMergeAction(null)}
+          open={mergeAction !== null}
+          title={
+            mergeAction === 'squash-merge'
+              ? 'Squash merge branch?'
+              : mergeAction === 'rebase'
+              ? 'Rebase onto branch?'
+              : 'Merge branch?'
+          }
+        />
+      </section>
     )
   }
 
-  const selectedCommit =
-    comparisonCommits.find(
-      commit => commit.sha === props.state.selectedHistoryCommitSHA
-    ) || null
-  const selectedWebCommit =
-    props.state.comparison?.commits.find(
-      commit => commit.sha === selectedCommit?.sha
-    ) || null
-
-  if (!selectedCommit || !selectedWebCommit) return null
+  if (!selectedCommit) return <div className="commit-details" />
 
   return (
-    <DesktopSelectedCommits
-      dispatcher={props.dispatcher}
-      isContiguous={true}
-      selectedCommits={[selectedCommit]}
-      selectedCommitsWeb={[selectedWebCommit]}
-      shasInDiff={[selectedCommit.sha]}
-      state={props.state}
-    />
+    <div id="history" className="collapsed">
+      <HistoryCommitInspection
+        commit={selectedCommit}
+        dispatcher={props.dispatcher}
+        state={props.state}
+      />
+    </div>
   )
 }
 
@@ -6263,48 +10606,26 @@ function DesktopRepositoryView(props: {
   readonly onSelectedHistorySHAsChanged: (shas: ReadonlyArray<string>) => void
   readonly onRemoveRepository: (path: string) => void
   readonly onRelocateRepository: (path: string) => void
+  readonly onCloneRepositoryAgain: (url: string) => void
   readonly preferAbsoluteDates: boolean
   readonly showConventionalCommitBadges: boolean
   readonly confirmStashActions: boolean
-  readonly onConfirmStashActionsChanged: (value: boolean) => void
-  readonly confirmCheckoutCommit: boolean
-  readonly onConfirmCheckoutCommitChanged: (value: boolean) => void
+  readonly confirmWorktreeRemoval: boolean
   readonly showCommitLengthWarning: boolean
   readonly commitSummaryLengthWarningThreshold: number
   readonly showChangesFilter: boolean
   readonly showStashedChanges: boolean
-  readonly showCommitAuthorInfo: boolean
-  readonly showCompareTab: boolean
-  readonly editorIntegration: WebIntegrationSelection
 }) {
   const [stashAction, setStashAction] = React.useState<WebStashAction | null>(
     null
   )
-  const [conflictDialogOpen, setConflictDialogOpen] = React.useState(false)
-  const [confirmAbortOpen, setConfirmAbortOpen] = React.useState(false)
-  const [commitMessagePopup, setCommitMessagePopup] =
-    React.useState<CommitMessagePopup | null>(null)
-  const [commitProgressTaskID, setCommitProgressTaskID] = React.useState<
-    string | null
-  >(null)
-  const [historyRewrite, setHistoryRewrite] = React.useState<{
-    readonly kind: HistoryRewriteKind
-    readonly count: number
-  } | null>(null)
-  const [undoneHistoryRewrite, setUndoneHistoryRewrite] = React.useState<{
-    readonly kind: HistoryRewriteKind
-    readonly count: number
-  } | null>(null)
-  const [manualResolutions, setManualResolutions] = React.useState<
-    Map<string, ManualConflictResolution>
-  >(new Map())
   const requestStashAction = React.useCallback(
     (action: WebStashAction | null) => {
       if (action === null) {
         setStashAction(null)
         return
       }
-      if (action.operation !== 'stash-drop' || !props.confirmStashActions) {
+      if (!props.confirmStashActions) {
         void props.dispatcher.runOperation(action.operation, {
           values: [action.stash.name],
           ...(action.operation === 'stash-drop' ? { confirmed: true } : {}),
@@ -6315,537 +10636,319 @@ function DesktopRepositoryView(props: {
     },
     [props.confirmStashActions, props.dispatcher]
   )
-  const changesSelected =
-    props.state.selectedSection !== 'history' &&
-    (!props.showCompareTab || props.state.selectedSection !== 'compare')
+  const changesSelected = props.state.selectedSection === 'changes'
   const historySelected = props.state.selectedSection === 'history'
+  const compareSelected = props.state.selectedSection === 'compare'
+  const toolsSelected = props.state.selectedSection === 'repository-tools'
   const inspection = props.state.selectedRepositoryInspection
-  const operation = props.state.status?.operation || null
-  const operationKind =
-    operation === 'cherryPick'
-      ? MultiCommitOperationKind.CherryPick
-      : operation === 'rebase'
-      ? MultiCommitOperationKind.Rebase
-      : operation === 'squash'
-      ? MultiCommitOperationKind.Squash
-      : operation === 'merge' || operation === 'revert'
-      ? MultiCommitOperationKind.Merge
-      : null
-  const conflictOperationKey = `${props.state.selectedRepositoryPath || ''}:${
-    operation || ''
-  }:${props.state.status?.operationState?.currentCommit || ''}`
-  const conflictedFiles =
-    props.state.status?.workingDirectory.files.filter(
-      file => file.status.kind === AppFileStatusKind.Conflicted
-    ) || []
-
-  React.useEffect(() => {
-    setManualResolutions(new Map())
-    setConfirmAbortOpen(false)
-    setConflictDialogOpen(operationKind !== null && conflictedFiles.length > 0)
-  }, [conflictOperationKey])
-
-  React.useEffect(() => {
-    if (operationKind === null) {
-      setManualResolutions(new Map())
-      setConfirmAbortOpen(false)
-      setConflictDialogOpen(false)
-    }
-  }, [operationKind])
-
-  React.useEffect(() => {
-    setCommitMessagePopup(null)
-    setCommitProgressTaskID(null)
-    setHistoryRewrite(null)
-    setUndoneHistoryRewrite(null)
-  }, [props.state.selectedRepositoryPath])
-
-  React.useEffect(() => {
-    const task = props.state.operationTask
-    if (task?.operation === 'commit' && task.status === 'running')
-      setCommitProgressTaskID(task.id)
-  }, [props.state.operationTask])
-
-  const onHistoryRewriteStarted = React.useCallback(
-    (kind: HistoryRewriteKind, count: number) => {
-      props.onSelectedHistorySHAsChanged([])
-      setUndoneHistoryRewrite(null)
-      setHistoryRewrite({ kind, count })
-    },
-    [props.onSelectedHistorySHAsChanged]
-  )
-  const commitMessageDispatcher = React.useMemo(
-    () =>
-      ({
-        refreshAuthor: () => Promise.resolve(),
-        setCommitSpellcheckEnabled: (enabled: boolean) =>
-          props.dispatcher.setCommitSpellcheckEnabled(enabled),
-        showCreateForkDialog: () => Promise.resolve(),
-        showFoldout: () => Promise.resolve(),
-        showPopup: () => Promise.resolve(),
-        showUnknownAuthorsCommitWarning: (
-          _authors: unknown,
-          onCommitAnyway: () => void
-        ) => onCommitAnyway(),
-        stopAmendingRepository: () => Promise.resolve(),
-      } as unknown as Dispatcher),
-    [props.dispatcher]
-  )
+  const inspectedRepository =
+    inspection &&
+    props.state.repositories.find(
+      repository => repository.path === inspection.path
+    )
 
   if (inspection && inspection.kind !== 'regular') {
-    const repository = new Repository(inspection.path, 0, null, true)
-    const desktopDispatcher = {
-      cloneAgain: () => Promise.resolve(),
-      postError: () => Promise.resolve(),
-      refreshRepository: () =>
-        props.dispatcher.selectRepository(inspection.path),
-      relocateRepository: () => props.onRelocateRepository(inspection.path),
-      removeRepository: () => props.onRemoveRepository(inspection.path),
-    } as unknown as Dispatcher
-
+    const isUnsafe = inspection.kind === 'unsafe'
     return (
-      <MissingRepository
-        dispatcher={desktopDispatcher}
-        repository={repository}
-      />
+      <UiView id="missing-repository-view">
+        <div className="title-container">
+          <div className="title">
+            {isUnsafe
+              ? `${inspection.repositoryName} is potentially unsafe`
+              : inspection.kind === 'bare'
+              ? `${inspection.repositoryName} is a bare repository`
+              : `Can't find "${inspection.repositoryName}"`}
+          </div>
+          <div className="details">
+            {isUnsafe ? (
+              <>
+                <p>
+                  The Git repository at{' '}
+                  <strong>{inspection.unsafePath || inspection.path}</strong>{' '}
+                  appears to be owned by another user on your machine.
+                </p>
+                <p>
+                  Trust the repository only if you trust its owner and its
+                  contents.
+                </p>
+              </>
+            ) : inspection.kind === 'bare' ? (
+              <p>
+                Bare repositories are not currently supported by the web
+                renderer.
+              </p>
+            ) : (
+              <p>
+                It was last seen at <strong>{inspection.path}</strong>.
+              </p>
+            )}
+          </div>
+        </div>
+        <div className="row">
+          {isUnsafe ? (
+            <Button
+              disabled={props.state.loading}
+              onClick={async () => {
+                await props.dispatcher.trustRepository(inspection.path)
+                await props.dispatcher.selectRepository(inspection.path)
+              }}
+              type="button"
+            >
+              Trust repository
+            </Button>
+          ) : (
+            <Button
+              disabled={props.state.loading}
+              onClick={() =>
+                void props.dispatcher.selectRepository(inspection.path)
+              }
+              type="button"
+            >
+              Check again
+            </Button>
+          )}
+          {!isUnsafe ? (
+            <Button
+              disabled={props.state.loading}
+              onClick={() => props.onRelocateRepository(inspection.path)}
+              type="button"
+            >
+              Relocate repository
+            </Button>
+          ) : null}
+          {!isUnsafe && inspectedRepository?.remoteURL ? (
+            <Button
+              disabled={props.state.loading}
+              onClick={() =>
+                props.onCloneRepositoryAgain(inspectedRepository.remoteURL!)
+              }
+              type="button"
+            >
+              Clone repository again
+            </Button>
+          ) : null}
+          <Button
+            onClick={() => props.onRemoveRepository(inspection.path)}
+            type="button"
+          >
+            Remove
+          </Button>
+        </div>
+      </UiView>
     )
   }
 
-  const selectedSection = changesSelected
-    ? RepositorySectionTab.Changes
-    : historySelected
-    ? RepositorySectionTab.History
-    : RepositorySectionTab.Compare
-  const sidebar = (
-    <>
-      <RepositoryTabs
-        changesCount={props.state.status?.workingDirectory.files.length || 0}
-        onTabClicked={section =>
-          void props.dispatcher.selectSection(
-            section === RepositorySectionTab.Changes
-              ? 'changes'
-              : section === RepositorySectionTab.History
-              ? 'history'
-              : 'compare'
-          )
-        }
-        selectedSection={selectedSection}
-        showCompareTab={props.showCompareTab}
+  return (
+    <UiView id="repository">
+      <WebTutorialPanel dispatcher={props.dispatcher} state={props.state} />
+      <WebOperationTaskStatus
+        onCancel={() => void props.dispatcher.cancelOperation()}
+        task={props.state.operationTask}
       />
+      <FocusContainer>
+        <Resizable
+          description="Repository sidebar"
+          id="repository-sidebar"
+          maximumWidth={500}
+          minimumWidth={220}
+          onReset={() => props.onSidebarWidthChanged(250)}
+          onResize={props.onSidebarWidthChanged}
+          width={props.sidebarWidth}
+        >
+          <TabBar
+            onTabClicked={index =>
+              void props.dispatcher.selectSection(
+                index === 0
+                  ? 'changes'
+                  : index === 1
+                  ? 'history'
+                  : index === 2
+                  ? 'compare'
+                  : 'repository-tools'
+              )
+            }
+            selectedIndex={
+              changesSelected
+                ? 0
+                : historySelected
+                ? 1
+                : compareSelected
+                ? 2
+                : 3
+            }
+          >
+            <span className="with-indicator" id="changes-tab">
+              <span>Changes</span>
+            </span>
+            <span className="with-indicator" id="history-tab">
+              <span>History</span>
+            </span>
+            <span className="with-indicator" id="compare-tab">
+              <span>Compare</span>
+            </span>
+            <span className="with-indicator" id="repository-tools-tab">
+              <span>Tools</span>
+            </span>
+          </TabBar>
+          {changesSelected ? (
+            <DesktopChangesView
+              availableWidth={props.sidebarWidth - 1}
+              dispatcher={props.dispatcher}
+              mode="sidebar"
+              onStashActionChanged={requestStashAction}
+              state={props.state}
+              showCommitLengthWarning={props.showCommitLengthWarning}
+              showChangesFilter={props.showChangesFilter}
+              showStashedChanges={props.showStashedChanges}
+              commitSummaryLengthWarningThreshold={
+                props.commitSummaryLengthWarningThreshold
+              }
+            />
+          ) : historySelected ? (
+            <DesktopHistoryView
+              dispatcher={props.dispatcher}
+              mode="sidebar"
+              onSelectedSHAsChanged={props.onSelectedHistorySHAsChanged}
+              preferAbsoluteDates={props.preferAbsoluteDates}
+              selectedSHAs={props.selectedHistorySHAs}
+              showConventionalCommitBadges={props.showConventionalCommitBadges}
+              state={props.state}
+            />
+          ) : compareSelected ? (
+            <DesktopCompareView
+              dispatcher={props.dispatcher}
+              mode="sidebar"
+              state={props.state}
+            />
+          ) : toolsSelected ? (
+            <section className="panel web-tools-sidebar-summary">
+              <strong>Repository tools</strong>
+              <p>
+                Use the main pane to manage stashes, remotes, tags, and
+                worktrees.
+              </p>
+            </section>
+          ) : null}
+        </Resizable>
+      </FocusContainer>
       {changesSelected ? (
         <DesktopChangesView
           availableWidth={props.sidebarWidth - 1}
           dispatcher={props.dispatcher}
-          mode="sidebar"
+          mode="content"
           onStashActionChanged={requestStashAction}
           state={props.state}
           showCommitLengthWarning={props.showCommitLengthWarning}
           showChangesFilter={props.showChangesFilter}
           showStashedChanges={props.showStashedChanges}
-          showCommitAuthorInfo={props.showCommitAuthorInfo}
           commitSummaryLengthWarningThreshold={
             props.commitSummaryLengthWarningThreshold
           }
         />
       ) : historySelected ? (
         <DesktopHistoryView
-          confirmCheckoutCommit={props.confirmCheckoutCommit}
           dispatcher={props.dispatcher}
-          mode="sidebar"
-          onConfirmCheckoutCommitChanged={props.onConfirmCheckoutCommitChanged}
-          onCommitMessagePopup={setCommitMessagePopup}
-          onHistoryRewriteStarted={onHistoryRewriteStarted}
+          mode="content"
           onSelectedSHAsChanged={props.onSelectedHistorySHAsChanged}
           preferAbsoluteDates={props.preferAbsoluteDates}
           selectedSHAs={props.selectedHistorySHAs}
           showConventionalCommitBadges={props.showConventionalCommitBadges}
+          state={props.state}
+        />
+      ) : compareSelected ? (
+        <DesktopCompareView
+          dispatcher={props.dispatcher}
+          mode="content"
           state={props.state}
         />
       ) : (
-        <DesktopCompareView
+        <WebRepositoryToolsView
           dispatcher={props.dispatcher}
-          mode="sidebar"
-          onCommitMessagePopup={setCommitMessagePopup}
-          onHistoryRewriteStarted={onHistoryRewriteStarted}
-          onSelectedSHAsChanged={props.onSelectedHistorySHAsChanged}
-          preferAbsoluteDates={props.preferAbsoluteDates}
-          selectedSHAs={props.selectedHistorySHAs}
-          showConventionalCommitBadges={props.showConventionalCommitBadges}
+          onStashActionChanged={requestStashAction}
+          confirmWorktreeRemoval={props.confirmWorktreeRemoval}
           state={props.state}
         />
       )}
-    </>
-  )
-  const content = changesSelected ? (
-    <DesktopChangesView
-      availableWidth={props.sidebarWidth - 1}
-      dispatcher={props.dispatcher}
-      mode="content"
-      onStashActionChanged={requestStashAction}
-      state={props.state}
-      showCommitLengthWarning={props.showCommitLengthWarning}
-      showChangesFilter={props.showChangesFilter}
-      showStashedChanges={props.showStashedChanges}
-      showCommitAuthorInfo={props.showCommitAuthorInfo}
-      commitSummaryLengthWarningThreshold={
-        props.commitSummaryLengthWarningThreshold
-      }
-    />
-  ) : historySelected ? (
-    <DesktopHistoryView
-      confirmCheckoutCommit={props.confirmCheckoutCommit}
-      dispatcher={props.dispatcher}
-      mode="content"
-      onConfirmCheckoutCommitChanged={props.onConfirmCheckoutCommitChanged}
-      onCommitMessagePopup={setCommitMessagePopup}
-      onHistoryRewriteStarted={onHistoryRewriteStarted}
-      onSelectedSHAsChanged={props.onSelectedHistorySHAsChanged}
-      preferAbsoluteDates={props.preferAbsoluteDates}
-      selectedSHAs={props.selectedHistorySHAs}
-      showConventionalCommitBadges={props.showConventionalCommitBadges}
-      state={props.state}
-    />
-  ) : (
-    <DesktopCompareView
-      dispatcher={props.dispatcher}
-      mode="content"
-      onCommitMessagePopup={setCommitMessagePopup}
-      onHistoryRewriteStarted={onHistoryRewriteStarted}
-      onSelectedSHAsChanged={props.onSelectedHistorySHAsChanged}
-      preferAbsoluteDates={props.preferAbsoluteDates}
-      selectedSHAs={props.selectedHistorySHAs}
-      showConventionalCommitBadges={props.showConventionalCommitBadges}
-      state={props.state}
-    />
-  )
-
-  return (
-    <>
-      <RepositoryLayout
-        content={content}
-        onSidebarReset={() =>
-          props.onSidebarWidthChanged(webSidebarWidth.default)
+      <WebConfirmDialog
+        confirmLabel={
+          stashAction?.operation === 'stash-pop'
+            ? 'Pop stash'
+            : stashAction?.operation === 'stash-drop'
+            ? 'Drop stash'
+            : 'Apply stash'
         }
-        onSidebarResize={props.onSidebarWidthChanged}
-        sidebar={sidebar}
-        sidebarWidth={{
-          max: webSidebarWidth.max,
-          min: webSidebarWidth.min,
-          value: props.sidebarWidth,
+        message={
+          stashAction?.operation === 'stash-drop'
+            ? `Drop ${
+                stashAction.stash.customName ||
+                stashAction.stash.name ||
+                'this stash'
+              }? Its saved changes will be permanently removed.`
+            : `${stashAction?.operation === 'stash-pop' ? 'Pop' : 'Apply'} ${
+                stashAction?.stash.customName ||
+                stashAction?.stash.name ||
+                'this stash'
+              }? This changes the working directory.`
+        }
+        onConfirm={async () => {
+          if (!stashAction) return
+          await props.dispatcher.runOperation(stashAction.operation, {
+            values: [stashAction.stash.name],
+            ...(stashAction.operation === 'stash-drop'
+              ? { confirmed: true }
+              : {}),
+          })
+          setStashAction(null)
         }}
-        tutorial={
-          <DesktopTutorialPanel
-            dispatcher={props.dispatcher}
-            editorIntegration={props.editorIntegration}
-            state={props.state}
-          />
+        onDismiss={() => setStashAction(null)}
+        open={stashAction !== null}
+        title={
+          stashAction?.operation === 'stash-pop'
+            ? 'Pop stash?'
+            : stashAction?.operation === 'stash-drop'
+            ? 'Drop stash?'
+            : 'Apply stash?'
         }
       />
-      {props.state.historyRewriteUndo && historyRewrite
-        ? renderBanner(
-            {
-              type:
-                historyRewrite.kind === 'squash'
-                  ? BannerType.SuccessfulSquash
-                  : BannerType.SuccessfulReorder,
-              count: historyRewrite.count,
-              onUndo: () => {
-                const undo = props.state.historyRewriteUndo
-                if (!undo) return
-                void props.dispatcher
-                  .runOperation('undo-history-rewrite', {
-                    values: [undo.branch, undo.originalTip, undo.rewrittenTip],
-                    confirmed: true,
-                  })
-                  .then(() => {
-                    props.onSelectedHistorySHAsChanged([])
-                    setUndoneHistoryRewrite(historyRewrite)
-                    setHistoryRewrite(null)
-                  })
-              },
-            },
-            commitMessageDispatcher,
-            () => {
-              props.dispatcher.dismissHistoryRewriteUndo()
-              setHistoryRewrite(null)
-            }
-          )
-        : undoneHistoryRewrite
-        ? renderBanner(
-            {
-              type:
-                undoneHistoryRewrite.kind === 'squash'
-                  ? BannerType.SquashUndone
-                  : BannerType.ReorderUndone,
-              commitsCount: undoneHistoryRewrite.count,
-            },
-            commitMessageDispatcher,
-            () => setUndoneHistoryRewrite(null)
-          )
-        : null}
-      {commitMessagePopup && props.state.selectedRepositoryPath ? (
-        <DialogStackContext.Provider value={{ isTopMost: true }}>
-          <CommitMessageDialog
-            accounts={[]}
-            aheadBehind={props.state.branches?.aheadBehind || null}
-            allowEmptyCommit={false}
-            autocompletionProviders={[]}
-            branch={props.state.branches?.branch?.name || null}
-            coAuthors={commitMessagePopup.coAuthors}
-            commitAuthor={
-              props.state.gitIdentity?.name && props.state.gitIdentity.email
-                ? new CommitIdentity(
-                    props.state.gitIdentity.name,
-                    props.state.gitIdentity.email,
-                    new Date()
-                  )
-                : null
-            }
-            commitMessage={commitMessagePopup.commitMessage}
-            commitSpellcheckEnabled={props.state.commitSpellcheckEnabled}
-            dialogButtonText={commitMessagePopup.dialogButtonText}
-            dialogTitle={commitMessagePopup.dialogTitle}
-            dispatcher={commitMessageDispatcher}
-            onDismissed={() => setCommitMessagePopup(null)}
-            onSubmitCommitMessage={commitMessagePopup.onSubmitCommitMessage}
-            onUpdateCommitOptions={(_repository, options) => {
-              if (options.skipCommitHooks !== undefined)
-                props.dispatcher.setCommitOption(
-                  'noVerify',
-                  options.skipCommitHooks
-                )
-              if (options.signOffCommits !== undefined)
-                props.dispatcher.setCommitOption(
-                  'signOff',
-                  options.signOffCommits
-                )
-            }}
-            prepopulateCommitSummary={
-              commitMessagePopup.prepopulateCommitSummary
-            }
-            repository={getDesktopRepository(
-              props.state.selectedRepositoryPath
-            )}
-            repositoryAccount={null}
-            repoRulesInfo={new RepoRulesInfo()}
-            showBranchProtected={false}
-            showCoAuthoredBy={commitMessagePopup.showCoAuthoredBy}
-            showCommitLengthWarning={props.showCommitLengthWarning}
-            showNoWriteAccess={false}
-            signOffCommits={props.state.commitOptions.signOff}
-            skipCommitHooks={props.state.commitOptions.noVerify}
-          />
-        </DialogStackContext.Provider>
-      ) : null}
-      {commitProgressTaskID &&
-      props.state.operationTask?.id === commitProgressTaskID &&
-      props.state.operationTask.status === 'running' ? (
-        <DesktopCommitProgressDialog
-          onDismissed={() => {
-            setCommitProgressTaskID(null)
-            void props.dispatcher.cancelOperation()
-          }}
-          output={props.state.operationTask.output}
-        />
-      ) : null}
-      {operationKind !== null &&
-      conflictedFiles.length > 0 &&
-      !conflictDialogOpen &&
-      !confirmAbortOpen ? (
-        <ConflictsFoundBanner
-          onDismissed={() => undefined}
-          onOpenConflictsDialog={() => setConflictDialogOpen(true)}
-          operationDescription={operationKind.toLowerCase()}
-        />
-      ) : null}
-      {operationKind !== null &&
-      conflictDialogOpen &&
-      !props.state.error &&
-      props.state.selectedRepositoryPath ? (
-        <DialogStackContext.Provider value={{ isTopMost: true }}>
-          <ConflictsDialog
-            abortButton={`Abort ${operationKind}`}
-            accounts={[]}
-            dispatcher={
-              {
-                postError: () => Promise.resolve(),
-                updateManualConflictResolution: (
-                  _repository: Repository,
-                  path: string,
-                  resolution: ManualConflictResolution | null
-                ) =>
-                  setManualResolutions(current => {
-                    const next = new Map(current)
-                    if (resolution === null) next.delete(path)
-                    else next.set(path, resolution)
-                    return next
-                  }),
-              } as unknown as Dispatcher
-            }
-            headerTitle={`Resolve conflicts before ${operationKind}`}
-            manualResolutions={manualResolutions}
-            onAbort={async () => {
-              if (manualResolutions.size > 0) {
-                setConflictDialogOpen(false)
-                setConfirmAbortOpen(true)
-                return
-              }
-              await props.dispatcher.runOperation(
-                operation === 'rebase'
-                  ? 'abort-rebase'
-                  : operation === 'cherryPick'
-                  ? 'abort-cherry-pick'
-                  : operation === 'squash'
-                  ? 'abort-squash'
-                  : 'abort-merge'
-              )
-              setConflictDialogOpen(false)
-            }}
-            onDismissed={() => setConflictDialogOpen(false)}
-            onSubmit={async () => {
-              await props.dispatcher.runOperation(
-                operation === 'rebase'
-                  ? 'continue-rebase'
-                  : operation === 'cherryPick'
-                  ? 'continue-cherry-pick'
-                  : 'finish-merge',
-                {
-                  resolutions: [...manualResolutions].map(
-                    ([path, resolution]) => [path, resolution] as const
-                  ),
-                }
-              )
-              setConflictDialogOpen(false)
-            }}
-            onSkip={
-              operation === 'rebase'
-                ? async () => {
-                    await props.dispatcher.runOperation('skip-rebase')
-                    setConflictDialogOpen(false)
-                  }
-                : undefined
-            }
-            skipButtonText="Skip Rebase"
-            openFileInExternalEditor={path =>
-              void props.dispatcher.openIntegration(
-                'editor',
-                path,
-                props.editorIntegration
-              )
-            }
-            openRepositoryInShell={repository =>
-              void props.dispatcher.openIntegration('shell', repository.path)
-            }
-            ourBranch={props.state.branches?.branch?.name}
-            repository={getDesktopRepository(
-              props.state.selectedRepositoryPath
-            )}
-            resolvedExternalEditor={
-              props.editorIntegration.name ||
-              props.editorIntegration.custom?.path ||
-              null
-            }
-            shouldShowCopilotConflictResolutionCallOut={false}
-            submitButton={`Continue ${operationKind}`}
-            theirBranch={undefined}
-            userHasResolvedConflicts={manualResolutions.size > 0}
-            workingDirectory={WorkingDirectoryStatus.fromFiles(
-              (props.state.status?.workingDirectory.files || []).map(file =>
-                getDesktopWorkingDirectoryFile(file)
-              )
-            )}
-          />
-        </DialogStackContext.Provider>
-      ) : null}
-      {operationKind !== null && confirmAbortOpen ? (
-        <DialogStackContext.Provider value={{ isTopMost: true }}>
-          <ConfirmAbortDialog
-            onConfirmAbort={async () => {
-              await props.dispatcher.runOperation(
-                operation === 'rebase'
-                  ? 'abort-rebase'
-                  : operation === 'cherryPick'
-                  ? 'abort-cherry-pick'
-                  : operation === 'squash'
-                  ? 'abort-squash'
-                  : 'abort-merge'
-              )
-              setConfirmAbortOpen(false)
-            }}
-            onReturnToConflicts={() => {
-              setConfirmAbortOpen(false)
-              setConflictDialogOpen(true)
-            }}
-            operation={operationKind}
-          />
-        </DialogStackContext.Provider>
-      ) : null}
-      {stashAction?.operation === 'stash-drop' &&
-      props.state.selectedRepositoryPath ? (
-        <DesktopConfirmDiscardStashDialog
-          askForConfirmation={props.confirmStashActions}
-          dispatcher={props.dispatcher}
-          onConfirmStashActionsChanged={props.onConfirmStashActionsChanged}
-          onDismiss={() => setStashAction(null)}
-          repositoryPath={props.state.selectedRepositoryPath}
-          stash={stashAction.stash}
-        />
-      ) : null}
-    </>
+    </UiView>
   )
 }
 
 export function WebApp({ store, dispatcher }: WebAppProps) {
   const state = useApplicationState(store)
-  const [undoneCherryPick, setUndoneCherryPick] = React.useState<{
-    readonly branch: string
-    readonly count: number
-  } | null>(null)
   const diffPreferences = useWebDiffPresentationPreferencesState()
+  const [zoomFactor, setZoomFactor] = React.useState(() =>
+    clampWebZoomFactor(getFloatNumber(webZoomFactorStorageKey, 1))
+  )
+  const [zoomAnnouncement, setZoomAnnouncement] = React.useState<string | null>(
+    null
+  )
   const [sidebarWidth, setSidebarWidth] = React.useState(() =>
-    Math.min(
-      webSidebarWidth.max,
-      Math.max(
-        webSidebarWidth.min,
-        getNumber(webSidebarWidthStorageKey, webSidebarWidth.default)
-      )
-    )
+    Math.min(500, Math.max(220, getNumber(webSidebarWidthStorageKey, 250)))
   )
   const [repositoryDialogOpen, setRepositoryDialogOpen] = React.useState(false)
-  const [repositorySettingsOpen, setRepositorySettingsOpen] =
-    React.useState(false)
+  const [tutorialStartOpen, setTutorialStartOpen] = React.useState(false)
   const [preferencesOpen, setPreferencesOpen] = React.useState(false)
-  const [toolbarMenuRequests, setToolbarMenuRequests] = React.useState({
-    createBranch: 0,
-    renameBranch: 0,
-    deleteBranch: 0,
-    discardAllChanges: 0,
-    permanentlyDiscardAllChanges: 0,
-    stashAllChanges: 0,
-    newWorktree: 0,
-    openWithEditor: 0,
-    deleteUnusedLocalBranches: 0,
-    manageRemotes: 0,
-    mergeBranch: 0,
-    squashMergeBranch: 0,
-    rebaseBranch: 0,
-  })
   const [browserNotificationsEnabled, setBrowserNotificationsEnabled] =
     React.useState(() =>
       getBoolean(webBrowserNotificationsEnabledStorageKey, true)
     )
-  const [showChangesFilter] = React.useState(() =>
+  const [showChangesFilter, setShowChangesFilter] = React.useState(() =>
     getBoolean(webShowChangesFilterStorageKey, true)
   )
-  const [showStashedChanges] = React.useState(() =>
+  const [showStashedChanges, setShowStashedChanges] = React.useState(() =>
     getBoolean(webShowStashedChangesStorageKey, true)
   )
-  const [repositoryAliasTarget, setRepositoryAliasTarget] = React.useState<
-    WebApplicationState['repositories'][number] | null
-  >(null)
+  const [repositorySettingsTarget, setRepositorySettingsTarget] =
+    React.useState<WebApplicationState['repositories'][number] | null>(null)
   const [repositoryRemovalPath, setRepositoryRemovalPath] = React.useState<
     string | null
   >(null)
+  const [repositoryDeletionPath, setRepositoryDeletionPath] = React.useState<
+    string | null
+  >(null)
+  const [permanentDeleteRecoveryPath, setPermanentDeleteRecoveryPath] =
+    React.useState<string | null>(null)
   const [repositoryGroupToRename, setRepositoryGroupToRename] = React.useState<
     string | null
   >(null)
@@ -6854,7 +10957,7 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
   const [showBranchName, setShowBranchName] = React.useState<
     'never' | 'always' | 'non-default'
   >(() => {
-    const value = localStorage.getItem(webShowBranchNameStorageKey)
+    const value = localStorage.getItem('show-branch-name-in-repository-list')
     return value === 'always' || value === 'non-default' ? value : 'never'
   })
   const [branchSortOrder, setBranchSortOrder] = React.useState<BranchSortOrder>(
@@ -6879,7 +10982,10 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
   const [showCommitLengthWarning, setShowCommitLengthWarning] = React.useState(
     () => getBoolean(webShowCommitLengthWarningStorageKey, true)
   )
-  const [commitSummaryLengthWarningThreshold] = React.useState(() =>
+  const [
+    commitSummaryLengthWarningThreshold,
+    setCommitSummaryLengthWarningThreshold,
+  ] = React.useState(() =>
     Math.min(
       72,
       Math.max(
@@ -6910,57 +11016,11 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
   const [confirmWorktreeRemoval, setConfirmWorktreeRemoval] = React.useState(
     () => getBoolean(webConfirmWorktreeRemovalStorageKey, true)
   )
-  const [confirmCheckoutCommit, setConfirmCheckoutCommit] = React.useState(() =>
-    getBoolean(webConfirmCheckoutCommitStorageKey, true)
-  )
-  const [confirmDiscardChanges, setConfirmDiscardChanges] = React.useState(() =>
-    getBoolean(webConfirmDiscardChangesStorageKey, true)
-  )
-  const [confirmCommitFilteredChanges, setConfirmCommitFilteredChanges] =
-    React.useState(() =>
-      getBoolean(webConfirmCommitFilteredChangesStorageKey, true)
-    )
-  const [confirmCommitMessageOverride, setConfirmCommitMessageOverride] =
-    React.useState(() =>
-      getBoolean(webConfirmCommitMessageOverrideStorageKey, true)
-    )
-  const [
-    confirmDiscardChangesPermanently,
-    setConfirmDiscardChangesPermanently,
-  ] = React.useState(() =>
-    getBoolean(webConfirmDiscardChangesPermanentlyStorageKey, true)
-  )
-  const [confirmForcePush, setConfirmForcePush] = React.useState(() =>
-    getBoolean(webConfirmForcePushStorageKey, true)
-  )
-  const [confirmUndoCommit, setConfirmUndoCommit] = React.useState(() =>
-    getBoolean(webConfirmUndoCommitStorageKey, true)
-  )
-  const [hideWindowOnQuit, setHideWindowOnQuit] = React.useState(() =>
-    getBoolean(webHideWindowOnQuitStorageKey, false)
-  )
-  const [optOutOfUsageTracking, setOptOutOfUsageTracking] = React.useState(() =>
-    getBoolean(webOptOutOfUsageTrackingStorageKey, false)
-  )
-  const [showCommitAuthorInfo, setShowCommitAuthorInfo] = React.useState(() =>
-    getBoolean(webShowCommitAuthorInfoStorageKey, false)
-  )
-  const [showCompareTab, setShowCompareTab] = React.useState(() =>
-    getBoolean(webShowCompareTabStorageKey, true)
-  )
-  const [showWorktrees, setShowWorktrees] = React.useState(() =>
-    getBoolean(webShowWorktreesStorageKey, true)
-  )
-  const [useExternalCredentialHelper, setUseExternalCredentialHelper] =
-    React.useState(() =>
-      getBoolean(webUseExternalCredentialHelperStorageKey, false)
-    )
-  const [useWindowsOpenSSH, setUseWindowsOpenSSH] = React.useState(() =>
-    getBoolean(webUseWindowsOpenSSHStorageKey, false)
-  )
-  const [underlineLinks, setUnderlineLinks] = React.useState(() =>
-    getBoolean('underline-links', false)
-  )
+  const [repositorySortOrder, setRepositorySortOrder] =
+    React.useState<WebRepositorySortOrder>(() => {
+      const value = localStorage.getItem(webRepositorySortOrderStorageKey)
+      return value === 'alphabetical' ? 'alphabetical' : 'recent'
+    })
   const [editorIntegration, setEditorIntegration] =
     React.useState<WebIntegrationSelection>(() =>
       getStoredIntegrationSelection(webEditorIntegrationStorageKey)
@@ -6969,6 +11029,11 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
     React.useState<WebIntegrationSelection>(() =>
       getStoredIntegrationSelection(webShellIntegrationStorageKey)
     )
+  const [menuAction, setMenuAction] = React.useState<{
+    readonly id: number
+    readonly action: WebMenuAction
+  } | null>(null)
+  const menuActionId = React.useRef(0)
   const [repositorySetupMode, setRepositorySetupMode] = React.useState<
     'clone' | 'init' | null
   >(null)
@@ -7003,17 +11068,6 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
     setStoredHistorySelection(historySelectionKey, selectedHistorySHAs)
   }, [historySelectionKey, selectedHistorySHAs])
 
-  React.useEffect(() => {
-    if (state.selectedSection !== 'history') return
-    const availableSHAs = new Set(state.history.map(commit => commit.sha))
-    setSelectedHistorySHAs(selection => {
-      const availableSelection = selection.filter(sha => availableSHAs.has(sha))
-      return availableSelection.length === selection.length
-        ? selection
-        : availableSelection
-    })
-  }, [state.history, state.selectedSection])
-
   const updateSelectedHistorySHAs = React.useCallback(
     (shas: ReadonlyArray<string>) => {
       setSelectedHistorySHAs(shas)
@@ -7030,30 +11084,6 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
       ? `${selectedRepository.name} - Desktop Plus`
       : 'Desktop Plus'
   }, [selectedRepository])
-
-  React.useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (
-        (event.metaKey || event.ctrlKey) &&
-        !event.altKey &&
-        !event.shiftKey &&
-        event.key === ','
-      ) {
-        event.preventDefault()
-        void warmWebPreferences().then(() => setPreferencesOpen(true))
-      }
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [])
-
-  React.useEffect(() => {
-    ;(
-      window as Window & {
-        __DESKTOP_PLUS_WEB_REPOSITORY_PATH__?: string | null
-      }
-    ).__DESKTOP_PLUS_WEB_REPOSITORY_PATH__ = state.selectedRepositoryPath
-  }, [state.selectedRepositoryPath])
 
   React.useEffect(() => {
     if (repositoryIndicatorsEnabled)
@@ -7093,7 +11123,7 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
       requestedPath !== state.selectedRepositoryPath
     ) {
       openedRepositoryQuery.current = requestedPath
-      void dispatcher.addRepositoryWithWorktrees(requestedPath)
+      void dispatcher.addRepository(requestedPath)
     }
   }, [dispatcher, state.selectedRepositoryPath])
 
@@ -7104,26 +11134,48 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
     setRepositorySetupMode('clone')
   }
   const openInitDialog = (repositoryPath?: string) => {
-    setCloneURL('')
     setInitialRepositoryPath(repositoryPath)
     setRepositorySetupMode('init')
   }
-  const dismissRepositorySetup = () => {
+  const addRepository = async (path: string) => {
+    await dispatcher.addRepository(path)
+    setRepositoryDialogOpen(false)
+  }
+  const cloneRepository = async (
+    url: string,
+    path: string,
+    branch?: string
+  ) => {
+    await dispatcher.cloneRepository(url, path, branch)
     setRepositorySetupMode(null)
     setCloneURL('')
-    setInitialRepositoryPath(undefined)
   }
-  const addRepositoryFromCreateDialog = (path: string) => {
-    dismissRepositorySetup()
-    void dispatcher.addRepository(path)
+  const initializeRepository = async (
+    options: WebRepositoryInitializationOptions
+  ) => {
+    await dispatcher.initializeRepository(options)
+    setRepositorySetupMode(null)
   }
-  const openRepositoryAlias = (
+  const openRepositorySettings = async (
     repository: WebApplicationState['repositories'][number]
   ) => {
-    setRepositoryAliasTarget(repository)
+    if (repository.path !== state.selectedRepositoryPath)
+      await dispatcher.selectRepository(repository.path)
+    setRepositorySettingsTarget(repository)
+  }
+  const saveRepositorySettings = (
+    alias: string,
+    group: string | null,
+    defaultBranch: string | null
+  ) => {
+    dispatcher.setRepositoryAlias(alias)
+    dispatcher.setRepositoryGroup(group)
+    void dispatcher
+      .setRepositoryDefaultBranch(defaultBranch)
+      .finally(() => setRepositorySettingsTarget(null))
   }
   const updateShowBranchName = (value: 'never' | 'always' | 'non-default') => {
-    localStorage.setItem(webShowBranchNameStorageKey, value)
+    localStorage.setItem('show-branch-name-in-repository-list', value)
     setShowBranchName(value)
   }
   const updateBranchSortOrder = (value: BranchSortOrder) => {
@@ -7150,6 +11202,11 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
   const updateShowCommitLengthWarning = (value: boolean) => {
     setBoolean(webShowCommitLengthWarningStorageKey, value)
     setShowCommitLengthWarning(value)
+  }
+  const updateCommitSummaryLengthWarningThreshold = (value: number) => {
+    const threshold = Math.min(72, Math.max(1, Math.round(value) || 50))
+    setNumber(webCommitSummaryLengthWarningThresholdStorageKey, threshold)
+    setCommitSummaryLengthWarningThreshold(threshold)
   }
   const updateUncommittedChangesStrategy = (
     value: UncommittedChangesStrategy
@@ -7183,93 +11240,9 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
     setBoolean(webConfirmWorktreeRemovalStorageKey, value)
     setConfirmWorktreeRemoval(value)
   }
-  const updateConfirmCheckoutCommit = (value: boolean) => {
-    setBoolean(webConfirmCheckoutCommitStorageKey, value)
-    setConfirmCheckoutCommit(value)
-  }
-  const updateConfirmDiscardChanges = (value: boolean) => {
-    setBoolean(webConfirmDiscardChangesStorageKey, value)
-    setConfirmDiscardChanges(value)
-  }
-  const updateBooleanPreference = (
-    key: string,
-    setter: React.Dispatch<React.SetStateAction<boolean>>,
-    value: boolean
-  ) => {
-    setBoolean(key, value)
-    setter(value)
-  }
-  const updateConfirmCommitFilteredChanges = (value: boolean) =>
-    updateBooleanPreference(
-      webConfirmCommitFilteredChangesStorageKey,
-      setConfirmCommitFilteredChanges,
-      value
-    )
-  const updateConfirmCommitMessageOverride = (value: boolean) =>
-    updateBooleanPreference(
-      webConfirmCommitMessageOverrideStorageKey,
-      setConfirmCommitMessageOverride,
-      value
-    )
-  const updateConfirmDiscardChangesPermanently = (value: boolean) =>
-    updateBooleanPreference(
-      webConfirmDiscardChangesPermanentlyStorageKey,
-      setConfirmDiscardChangesPermanently,
-      value
-    )
-  const updateConfirmForcePush = (value: boolean) =>
-    updateBooleanPreference(
-      webConfirmForcePushStorageKey,
-      setConfirmForcePush,
-      value
-    )
-  const updateConfirmUndoCommit = (value: boolean) =>
-    updateBooleanPreference(
-      webConfirmUndoCommitStorageKey,
-      setConfirmUndoCommit,
-      value
-    )
-  const updateHideWindowOnQuit = (value: boolean) =>
-    updateBooleanPreference(
-      webHideWindowOnQuitStorageKey,
-      setHideWindowOnQuit,
-      value
-    )
-  const updateOptOutOfUsageTracking = (value: boolean) =>
-    updateBooleanPreference(
-      webOptOutOfUsageTrackingStorageKey,
-      setOptOutOfUsageTracking,
-      value
-    )
-  const updateShowCommitAuthorInfo = (value: boolean) =>
-    updateBooleanPreference(
-      webShowCommitAuthorInfoStorageKey,
-      setShowCommitAuthorInfo,
-      value
-    )
-  const updateShowCompareTab = (value: boolean) =>
-    updateBooleanPreference(
-      webShowCompareTabStorageKey,
-      setShowCompareTab,
-      value
-    )
-  const updateShowWorktrees = (value: boolean) =>
-    updateBooleanPreference(webShowWorktreesStorageKey, setShowWorktrees, value)
-  const updateUseExternalCredentialHelper = (value: boolean) =>
-    updateBooleanPreference(
-      webUseExternalCredentialHelperStorageKey,
-      setUseExternalCredentialHelper,
-      value
-    )
-  const updateUseWindowsOpenSSH = (value: boolean) =>
-    updateBooleanPreference(
-      webUseWindowsOpenSSHStorageKey,
-      setUseWindowsOpenSSH,
-      value
-    )
-  const updateUnderlineLinks = (value: boolean) => {
-    setBoolean('underline-links', value)
-    setUnderlineLinks(value)
+  const updateRepositorySortOrder = (value: WebRepositorySortOrder) => {
+    localStorage.setItem(webRepositorySortOrderStorageKey, value)
+    setRepositorySortOrder(value)
   }
   const updateEditorIntegration = (value: WebIntegrationSelection) => {
     setStoredIntegrationSelection(webEditorIntegrationStorageKey, value)
@@ -7279,158 +11252,92 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
     setStoredIntegrationSelection(webShellIntegrationStorageKey, value)
     setShellIntegration(value)
   }
+  const requestMenuAction = (action: WebMenuAction) => {
+    menuActionId.current += 1
+    setMenuAction({ id: menuActionId.current, action })
+  }
+  const runSelectedIntegration = (kind: 'editor' | 'shell') => {
+    const selection = kind === 'editor' ? editorIntegration : shellIntegration
+    void dispatcher.launchIntegration(kind, selection.name, selection.custom)
+  }
+  const toggleFullscreen = () => {
+    if (document.fullscreenElement) void document.exitFullscreen()
+    else void document.documentElement.requestFullscreen()
+  }
+  const resizeActivePanel = (direction: 'increase' | 'decrease') => {
+    updateSidebarWidth(sidebarWidth + (direction === 'increase' ? 20 : -20))
+  }
   const updateBrowserNotificationsEnabled = (value: boolean) => {
     setBoolean(webBrowserNotificationsEnabledStorageKey, value)
     setBrowserNotificationsEnabled(value)
   }
+  const updateShowChangesFilter = (value: boolean) => {
+    setBoolean(webShowChangesFilterStorageKey, value)
+    setShowChangesFilter(value)
+  }
+  const updateShowStashedChanges = (value: boolean) => {
+    setBoolean(webShowStashedChangesStorageKey, value)
+    setShowStashedChanges(value)
+  }
   const updateSidebarWidth = (width: number) => {
-    const normalized = Math.min(
-      webSidebarWidth.max,
-      Math.max(webSidebarWidth.min, Math.round(width))
-    )
+    const normalized = Math.min(500, Math.max(220, Math.round(width)))
     setNumber(webSidebarWidthStorageKey, normalized)
     setSidebarWidth(normalized)
   }
+  const updateZoomFactor = (value: number) => {
+    const normalized = clampWebZoomFactor(value)
+    setNumber(webZoomFactorStorageKey, normalized)
+    setZoomFactor(normalized)
+    setZoomAnnouncement(`Zoom ${Math.round(normalized * 100)}%`)
+  }
+  const zoomIn = () => updateZoomFactor(zoomFactor + 0.05)
+  const zoomOut = () => updateZoomFactor(zoomFactor - 0.05)
+  const resetZoom = () => updateZoomFactor(1)
+
+  React.useEffect(() => {
+    if (!zoomAnnouncement) return
+    const timeout = window.setTimeout(() => setZoomAnnouncement(null), 1000)
+    return () => window.clearTimeout(timeout)
+  }, [zoomAnnouncement])
   const requestRepositoryRemoval = (path: string) => {
-    if (
-      !confirmRepositoryRemoval ||
-      !state.repositories.some(repository => repository.path === path)
-    ) {
+    if (!confirmRepositoryRemoval) {
       dispatcher.removeRepository(path)
       return
     }
     setRepositoryRemovalPath(path)
   }
+  const requestRepositoryDeletion = (path: string) => {
+    setRepositoryDeletionPath(path)
+  }
+  const deleteRepository = async (
+    mode: WebRepositoryDeleteMode
+  ): Promise<boolean> => {
+    if (!repositoryDeletionPath) return false
+    await dispatcher.deleteRepository(repositoryDeletionPath, mode)
+    return !store.getState().error
+  }
+  const choosePermanentDeleteRecovery = () => {
+    if (!repositoryDeletionPath || state.errorCode !== 'trash-failed') return
+    setPermanentDeleteRecoveryPath(repositoryDeletionPath)
+    dispatcher.dismissError()
+  }
+  const confirmPermanentDeleteRecovery = async () => {
+    if (!permanentDeleteRecoveryPath) return
+    await dispatcher.deleteRepository(permanentDeleteRecoveryPath, 'permanent')
+    if (!store.getState().error) {
+      setPermanentDeleteRecoveryPath(null)
+      setRepositoryDeletionPath(null)
+    }
+  }
   const openRepositoryRelocation = (path: string) => {
     setRepositoryRelocationPath(path)
   }
-  const requestToolbarMenu = React.useCallback(
-    (menu: keyof typeof toolbarMenuRequests) => {
-      setToolbarMenuRequests(requests => ({
-        ...requests,
-        [menu]: requests[menu] + 1,
-      }))
-    },
-    []
-  )
-  const executeWebMenuItem = React.useCallback(
-    (item: MenuItem) => {
-      if (item.type !== 'menuItem') return
-      const path = state.selectedRepositoryPath
-      switch (item.id) {
-        case 'add-repository':
-          openRepositoryDialog()
-          break
-        case 'clone-repository':
-          openCloneDialog()
-          break
-        case 'create-repository':
-          openInitDialog()
-          break
-        case 'show-preferences':
-          void warmWebPreferences().then(() => setPreferencesOpen(true))
-          break
-        case 'show-changes':
-          dispatcher.selectSection('changes')
-          break
-        case 'show-history':
-          dispatcher.selectSection('history')
-          break
-        case 'show-compare':
-        case 'compare-to-branch':
-          dispatcher.selectSection('compare')
-          break
-        case 'push':
-          if (path) void dispatcher.runOperation('push')
-          break
-        case 'pull':
-          if (path) void dispatcher.runOperation('pull')
-          break
-        case 'fetch':
-          if (path) void dispatcher.runOperation('fetch')
-          break
-        case 'view-repository-in-browser':
-          if (selectedRepository?.remoteWebURL)
-            dispatcher.openExternal(selectedRepository.remoteWebURL)
-          break
-        case 'open-with-editor':
-          requestToolbarMenu('openWithEditor')
-          break
-        case 'new-worktree':
-          requestToolbarMenu('newWorktree')
-          break
-        case 'repository-settings':
-          if (selectedRepository) setRepositorySettingsOpen(true)
-          break
-        case 'discard-all-changes':
-          requestToolbarMenu('discardAllChanges')
-          break
-        case 'permanently-discard-all-changes':
-          requestToolbarMenu('permanentlyDiscardAllChanges')
-          break
-        case 'stash-all-changes':
-          requestToolbarMenu('stashAllChanges')
-          break
-        case 'delete-unused-local-branches':
-          requestToolbarMenu('deleteUnusedLocalBranches')
-          break
-        case 'create-branch':
-          requestToolbarMenu('createBranch')
-          break
-        case 'rename-branch':
-          requestToolbarMenu('renameBranch')
-          break
-        case 'delete-branch':
-          requestToolbarMenu('deleteBranch')
-          break
-        case 'manage-remotes':
-          requestToolbarMenu('manageRemotes')
-          break
-        case 'merge-branch':
-          requestToolbarMenu('mergeBranch')
-          break
-        case 'squash-and-merge-branch':
-          requestToolbarMenu('squashMergeBranch')
-          break
-        case 'rebase-branch':
-          requestToolbarMenu('rebaseBranch')
-          break
-        case 'update-from-default':
-          if (path)
-            void dispatcher.runOperation('update-from-default', {
-              defaultBranch: state.branches?.defaultBranch || undefined,
-              updateStrategy: getStoredUpdateBranchStrategy(path),
-            })
-          break
-        case 'open-external-editor':
-          if (path)
-            void dispatcher.openIntegration('editor', path, editorIntegration)
-          break
-        case 'open-in-shell':
-          if (path)
-            void dispatcher.openIntegration('shell', path, shellIntegration)
-          break
-        case 'open-working-directory':
-          if (path) void dispatcher.openPath(path, true)
-          break
-        case 'remove-repository':
-          if (path) requestRepositoryRemoval(path)
-          break
-      }
-    },
-    [
-      dispatcher,
-      editorIntegration,
-      openCloneDialog,
-      openInitDialog,
-      requestToolbarMenu,
-      requestRepositoryRemoval,
-      selectedRepository,
-      shellIntegration,
-      state.branches?.defaultBranch,
-      state.selectedRepositoryPath,
-    ]
-  )
+  const relocateRepository = async (newPath: string) => {
+    if (!repositoryRelocationPath) return
+    await dispatcher.relocateRepository(repositoryRelocationPath, newPath)
+    setRepositoryRelocationPath(null)
+  }
+
   return (
     <WebIntegrationPreferencesContext.Provider
       value={{ editor: editorIntegration, shell: shellIntegration }}
@@ -7443,32 +11350,92 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
               dispatcher={dispatcher}
               onOpenCloneDialog={openCloneDialog}
               onOpenInitDialog={() => openInitDialog()}
+              onOpenPreferences={() => setPreferencesOpen(true)}
               onOpenRepositoryDialog={openRepositoryDialog}
+              onCreateTutorialRepository={() => {
+                void dispatcher.loadRepositorySetupOptions()
+                setTutorialStartOpen(true)
+              }}
+              onResumeTutorialRepository={() =>
+                void dispatcher.resumeTutorial()
+              }
+              tutorialPaused={state.tutorialPaused}
             />
-            {repositoryDialogOpen ? (
-              <DesktopAddExistingRepositoryDialog
-                dispatcher={dispatcher}
-                onCreateRepository={path => {
-                  setRepositoryDialogOpen(false)
-                  openInitDialog(path)
-                }}
-                onDismiss={() => setRepositoryDialogOpen(false)}
-              />
-            ) : null}
-            {repositorySetupMode === 'clone' ? (
-              <DesktopCloneRepositoryDialog
-                dispatcher={dispatcher}
-                initialURL={cloneURL}
-                onDismiss={dismissRepositorySetup}
-              />
-            ) : repositorySetupMode === 'init' ? (
-              <DesktopCreateRepositoryDialog
-                dispatcher={dispatcher}
-                initialPath={initialRepositoryPath}
-                onAddRepository={addRepositoryFromCreateDialog}
-                onDismiss={dismissRepositorySetup}
-              />
-            ) : null}
+            <RepositoryPathDialog
+              onChooseDirectory={() => dispatcher.chooseDirectory()}
+              onDismiss={() => setRepositoryDialogOpen(false)}
+              onCreateRepository={path => {
+                setRepositoryDialogOpen(false)
+                openInitDialog(path)
+              }}
+              onInspect={path => dispatcher.inspectRepository(path)}
+              onTrust={path => dispatcher.trustRepository(path)}
+              onSubmit={addRepository}
+              open={repositoryDialogOpen}
+            />
+            <RepositorySetupDialog
+              initialRepositoryPath={initialRepositoryPath}
+              initialURL={cloneURL}
+              mode={repositorySetupMode || 'clone'}
+              dispatcher={dispatcher}
+              onChooseDirectory={() => dispatcher.chooseDirectory()}
+              onClone={cloneRepository}
+              onDismiss={() => {
+                setRepositorySetupMode(null)
+                setCloneURL('')
+                setInitialRepositoryPath(undefined)
+              }}
+              onInit={initializeRepository}
+              open={repositorySetupMode !== null}
+              setupOptions={state.repositorySetupOptions}
+            />
+          </>
+        ) : state.tutorialPaused ? (
+          <>
+            <DesktopHome
+              diffPreferences={diffPreferences}
+              dispatcher={dispatcher}
+              onOpenCloneDialog={openCloneDialog}
+              onOpenInitDialog={() => openInitDialog()}
+              onOpenPreferences={() => setPreferencesOpen(true)}
+              onOpenRepositoryDialog={openRepositoryDialog}
+              onCreateTutorialRepository={() => {
+                void dispatcher.loadRepositorySetupOptions()
+                setTutorialStartOpen(true)
+              }}
+              onResumeTutorialRepository={() =>
+                void dispatcher.resumeTutorial()
+              }
+              tutorialPaused={state.tutorialPaused}
+            />
+            <RepositoryPathDialog
+              onChooseDirectory={() => dispatcher.chooseDirectory()}
+              onDismiss={() => setRepositoryDialogOpen(false)}
+              onCreateRepository={path => {
+                setRepositoryDialogOpen(false)
+                openInitDialog(path)
+              }}
+              onInspect={path => dispatcher.inspectRepository(path)}
+              onTrust={path => dispatcher.trustRepository(path)}
+              onSubmit={addRepository}
+              open={repositoryDialogOpen}
+            />
+            <RepositorySetupDialog
+              initialRepositoryPath={initialRepositoryPath}
+              initialURL={cloneURL}
+              mode={repositorySetupMode || 'clone'}
+              dispatcher={dispatcher}
+              onChooseDirectory={() => dispatcher.chooseDirectory()}
+              onClone={cloneRepository}
+              onDismiss={() => {
+                setRepositorySetupMode(null)
+                setCloneURL('')
+                setInitialRepositoryPath(undefined)
+              }}
+              onInit={initializeRepository}
+              open={repositorySetupMode !== null}
+              setupOptions={state.repositorySetupOptions}
+            />
           </>
         ) : (
           <>
@@ -7477,19 +11444,78 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
               diffFontSize={diffPreferences.diffFontSize}
               tabSize={diffPreferences.tabSize}
               theme={diffPreferences.theme}
+              zoomFactor={zoomFactor}
+              menu={{
+                onCommit: dispatcher.requestCommitDialog,
+                onOpenCloneDialog: openCloneDialog,
+                onOpenInitDialog: () => openInitDialog(),
+                onOpenPreferences: () => setPreferencesOpen(true),
+                onOpenRepositoryDialog: openRepositoryDialog,
+                onResetZoom: resetZoom,
+                onRefresh: () => void dispatcher.refresh(),
+                onRunOperation: (operation, options) =>
+                  void dispatcher.runOperation(operation, options),
+                onZoomIn: zoomIn,
+                onZoomOut: zoomOut,
+                onToggleChangesFilter: () =>
+                  updateShowChangesFilter(!showChangesFilter),
+                onToggleStashedChanges: () =>
+                  updateShowStashedChanges(!showStashedChanges),
+                showChangesFilter,
+                showStashedChanges,
+                zoomFactor,
+                onSelectSection: section =>
+                  void dispatcher.selectSection(section),
+                onEdit: action => {
+                  if (action === 'find') {
+                    const event = new CustomEvent('find-text', {
+                      bubbles: true,
+                      cancelable: true,
+                    })
+                    if (document.activeElement !== null) {
+                      document.activeElement.dispatchEvent(event)
+                    } else {
+                      document.dispatchEvent(event)
+                    }
+                    return
+                  }
+                  document.execCommand(action)
+                },
+                onRequestAction: requestMenuAction,
+                onToggleFullscreen: toggleFullscreen,
+                onResize: resizeActivePanel,
+                onRemoveRepository: () => {
+                  if (state.selectedRepositoryPath)
+                    requestRepositoryRemoval(state.selectedRepositoryPath)
+                },
+                onOpenShell: () => runSelectedIntegration('shell'),
+                onOpenEditor: () => runSelectedIntegration('editor'),
+                onRevealRepository: () => {
+                  if (state.selectedRepositoryPath)
+                    void dispatcher.openPath(state.selectedRepositoryPath, true)
+                },
+                onOpenRepositorySettings: () => {
+                  if (selectedRepository)
+                    void openRepositorySettings(selectedRepository)
+                },
+                onManageRemotes: () =>
+                  void dispatcher.selectSection('repository-tools'),
+                onOpenExternal: url => dispatcher.openExternal(url),
+              }}
             >
               <DesktopToolbar
                 dispatcher={dispatcher}
                 onOpenRepositoryDialog={openRepositoryDialog}
-                onOpenCloneDialog={() => openCloneDialog()}
-                onOpenInitDialog={() => openInitDialog()}
-                onChangeRepositoryAlias={openRepositoryAlias}
+                onOpenPreferences={() => setPreferencesOpen(true)}
+                onOpenRepositorySettings={repository =>
+                  void openRepositorySettings(repository)
+                }
                 onRemoveRepository={requestRepositoryRemoval}
+                onDeleteRepository={requestRepositoryDeletion}
                 branchSortOrder={branchSortOrder}
                 onBranchSortOrderChanged={updateBranchSortOrder}
                 sidebarWidth={sidebarWidth}
                 showBranchName={showBranchName}
-                showWorktrees={showWorktrees}
                 showWorktreesInRepositoryList={showWorktreesInRepositoryList}
                 repositoryIndicatorsEnabled={repositoryIndicatorsEnabled}
                 showRecentRepositories={showRecentRepositories}
@@ -7508,51 +11534,14 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
                 onRenameRepositoryGroup={group =>
                   setRepositoryGroupToRename(group)
                 }
-                toolbarMenuRequests={toolbarMenuRequests}
-                confirmWorktreeRemoval={confirmWorktreeRemoval}
-                onConfirmWorktreeRemovalChanged={updateConfirmWorktreeRemoval}
-                confirmForcePush={confirmForcePush}
-                confirmDiscardChanges={confirmDiscardChanges}
-                onConfirmDiscardChangesChanged={updateConfirmDiscardChanges}
-                underlineLinks={underlineLinks}
+                repositorySortOrder={repositorySortOrder}
                 uncommittedChangesStrategy={uncommittedChangesStrategy}
+                menuAction={menuAction || undefined}
+                onMenuActionHandled={() => setMenuAction(null)}
                 state={state}
               />
-              {state.cherryPickUndo ? (
-                <SuccessfulCherryPick
-                  countCherryPicked={state.cherryPickUndo.count}
-                  onDismissed={() => dispatcher.dismissCherryPickUndo()}
-                  onUndo={() => {
-                    const undo = state.cherryPickUndo
-                    if (!undo) return
-                    void dispatcher
-                      .runOperation('undo-cherry-pick', {
-                        values: [
-                          undo.branch,
-                          undo.originalTip,
-                          undo.rewrittenTip,
-                        ],
-                        confirmed: true,
-                      })
-                      .then(() =>
-                        setUndoneCherryPick({
-                          branch: undo.branch,
-                          count: undo.count,
-                        })
-                      )
-                  }}
-                  targetBranchName={state.cherryPickUndo.branch}
-                />
-              ) : undoneCherryPick ? (
-                <CherryPickUndone
-                  countCherryPicked={undoneCherryPick.count}
-                  onDismissed={() => setUndoneCherryPick(null)}
-                  targetBranchName={undoneCherryPick.branch}
-                />
-              ) : null}
               <DesktopRepositoryView
                 dispatcher={dispatcher}
-                editorIntegration={editorIntegration}
                 onSidebarWidthChanged={updateSidebarWidth}
                 onSelectedHistorySHAsChanged={updateSelectedHistorySHAs}
                 selectedHistorySHAs={selectedHistorySHAs}
@@ -7560,75 +11549,81 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
                 state={state}
                 onRemoveRepository={requestRepositoryRemoval}
                 onRelocateRepository={openRepositoryRelocation}
+                onCloneRepositoryAgain={openCloneDialog}
                 preferAbsoluteDates={preferAbsoluteDates}
                 showConventionalCommitBadges={showConventionalCommitBadges}
                 confirmStashActions={confirmStashActions}
-                onConfirmStashActionsChanged={updateConfirmStashActions}
-                confirmCheckoutCommit={confirmCheckoutCommit}
-                onConfirmCheckoutCommitChanged={updateConfirmCheckoutCommit}
+                confirmWorktreeRemoval={confirmWorktreeRemoval}
                 showCommitLengthWarning={showCommitLengthWarning}
                 showChangesFilter={showChangesFilter}
                 showStashedChanges={showStashedChanges}
-                showCommitAuthorInfo={showCommitAuthorInfo}
-                showCompareTab={showCompareTab}
                 commitSummaryLengthWarningThreshold={
                   commitSummaryLengthWarningThreshold
                 }
               />
-              <DesktopOperationAuthPrompt
+              <ErrorDialog
+                canRetry={state.canRetry}
                 dispatcher={dispatcher}
-                task={state.operationTask}
+                error={state.error}
+                errorCode={state.errorCode}
+                configLockScope={state.configLockScope}
+                hookFailure={state.hookFailure}
+                operationOutput={state.operationOutput}
+                onRefreshRepository={() => void dispatcher.refresh()}
+                onChoosePermanentDelete={choosePermanentDeleteRecovery}
               />
-              {repositorySettingsOpen && selectedRepository ? (
-                <DesktopRepositorySettingsDialog
-                  branches={state.branches}
-                  dispatcher={dispatcher}
-                  onDismissed={() => setRepositorySettingsOpen(false)}
-                  onManageRemotes={() => {
-                    setRepositorySettingsOpen(false)
-                    requestToolbarMenu('manageRemotes')
-                  }}
-                  repository={selectedRepository}
-                />
-              ) : null}
-              <DesktopAppError dispatcher={dispatcher} state={state} />
             </DesktopAppChrome>
-            {repositoryDialogOpen ? (
-              <DesktopAddExistingRepositoryDialog
-                dispatcher={dispatcher}
-                onCreateRepository={path => {
-                  setRepositoryDialogOpen(false)
-                  openInitDialog(path)
-                }}
-                onDismiss={() => setRepositoryDialogOpen(false)}
-              />
+            {zoomAnnouncement ? (
+              <div
+                aria-label="Browser zoom"
+                aria-live="polite"
+                className="web-zoom-announcement"
+                role="status"
+              >
+                {zoomAnnouncement}
+              </div>
             ) : null}
-            {repositorySetupMode === 'clone' ? (
-              <DesktopCloneRepositoryDialog
-                dispatcher={dispatcher}
-                initialURL={cloneURL}
-                onDismiss={dismissRepositorySetup}
-              />
-            ) : repositorySetupMode === 'init' ? (
-              <DesktopCreateRepositoryDialog
-                dispatcher={dispatcher}
-                initialPath={initialRepositoryPath}
-                onAddRepository={addRepositoryFromCreateDialog}
-                onDismiss={dismissRepositorySetup}
-              />
-            ) : null}
-            {repositoryAliasTarget ? (
-              <DesktopChangeRepositoryAliasDialog
-                dispatcher={dispatcher}
-                onDismiss={() => setRepositoryAliasTarget(null)}
-                repository={repositoryAliasTarget}
-              />
-            ) : null}
+            <RepositoryPathDialog
+              onChooseDirectory={() => dispatcher.chooseDirectory()}
+              onDismiss={() => setRepositoryDialogOpen(false)}
+              onCreateRepository={path => {
+                setRepositoryDialogOpen(false)
+                openInitDialog(path)
+              }}
+              onInspect={path => dispatcher.inspectRepository(path)}
+              onTrust={path => dispatcher.trustRepository(path)}
+              onSubmit={addRepository}
+              open={repositoryDialogOpen}
+            />
+            <RepositorySetupDialog
+              initialRepositoryPath={initialRepositoryPath}
+              initialURL={cloneURL}
+              mode={repositorySetupMode || 'clone'}
+              dispatcher={dispatcher}
+              onChooseDirectory={() => dispatcher.chooseDirectory()}
+              onClone={cloneRepository}
+              onDismiss={() => {
+                setRepositorySetupMode(null)
+                setCloneURL('')
+                setInitialRepositoryPath(undefined)
+              }}
+              onInit={initializeRepository}
+              open={repositorySetupMode !== null}
+              setupOptions={state.repositorySetupOptions}
+            />
+            <WebRepositorySettingsDialog
+              branches={state.branches?.branches || []}
+              onDismiss={() => setRepositorySettingsTarget(null)}
+              onSave={saveRepositorySettings}
+              open={repositorySettingsTarget !== null}
+              repository={repositorySettingsTarget}
+            />
           </>
         )}
-        <DesktopPreferencesDialog
+        <WebPreferencesDialog
           branchSortOrder={branchSortOrder}
           browserNotificationsEnabled={browserNotificationsEnabled}
+          dispatcher={dispatcher}
           onBrowserNotificationsEnabledChanged={
             updateBrowserNotificationsEnabled
           }
@@ -7648,10 +11643,21 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
           confirmStashActions={confirmStashActions}
           showCommitLengthWarning={showCommitLengthWarning}
           onShowCommitLengthWarningChanged={updateShowCommitLengthWarning}
+          commitSummaryLengthWarningThreshold={
+            commitSummaryLengthWarningThreshold
+          }
+          onCommitSummaryLengthWarningThresholdChanged={
+            updateCommitSummaryLengthWarningThreshold
+          }
           uncommittedChangesStrategy={uncommittedChangesStrategy}
           onUncommittedChangesStrategyChanged={updateUncommittedChangesStrategy}
           showRecentRepositories={showRecentRepositories}
           onShowRecentRepositoriesChanged={updateShowRecentRepositories}
+          showChangesFilter={showChangesFilter}
+          onShowChangesFilterChanged={updateShowChangesFilter}
+          showStashedChanges={showStashedChanges}
+          onShowStashedChangesChanged={updateShowStashedChanges}
+          integrations={state.integrations}
           editorIntegration={editorIntegration}
           shellIntegration={shellIntegration}
           onEditorIntegrationChanged={updateEditorIntegration}
@@ -7668,77 +11674,88 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
           onConfirmRepositoryRemovalChanged={updateConfirmRepositoryRemoval}
           confirmWorktreeRemoval={confirmWorktreeRemoval}
           onConfirmWorktreeRemovalChanged={updateConfirmWorktreeRemoval}
-          confirmCheckoutCommit={confirmCheckoutCommit}
-          onConfirmCheckoutCommitChanged={updateConfirmCheckoutCommit}
-          confirmDiscardChanges={confirmDiscardChanges}
-          onConfirmDiscardChangesChanged={updateConfirmDiscardChanges}
-          confirmCommitFilteredChanges={confirmCommitFilteredChanges}
-          onConfirmCommitFilteredChangesChanged={
-            updateConfirmCommitFilteredChanges
-          }
-          confirmCommitMessageOverride={confirmCommitMessageOverride}
-          onConfirmCommitMessageOverrideChanged={
-            updateConfirmCommitMessageOverride
-          }
-          confirmDiscardChangesPermanently={confirmDiscardChangesPermanently}
-          onConfirmDiscardChangesPermanentlyChanged={
-            updateConfirmDiscardChangesPermanently
-          }
-          confirmForcePush={confirmForcePush}
-          onConfirmForcePushChanged={updateConfirmForcePush}
-          confirmUndoCommit={confirmUndoCommit}
-          onConfirmUndoCommitChanged={updateConfirmUndoCommit}
-          hideWindowOnQuit={hideWindowOnQuit}
-          onHideWindowOnQuitChanged={updateHideWindowOnQuit}
-          optOutOfUsageTracking={optOutOfUsageTracking}
-          onOptOutOfUsageTrackingChanged={updateOptOutOfUsageTracking}
-          showCommitAuthorInfo={showCommitAuthorInfo}
-          onShowCommitAuthorInfoChanged={updateShowCommitAuthorInfo}
-          showCompareTab={showCompareTab}
-          onShowCompareTabChanged={updateShowCompareTab}
-          showWorktrees={showWorktrees}
-          onShowWorktreesChanged={updateShowWorktrees}
-          useExternalCredentialHelper={useExternalCredentialHelper}
-          onUseExternalCredentialHelperChanged={
-            updateUseExternalCredentialHelper
-          }
-          useWindowsOpenSSH={useWindowsOpenSSH}
-          onUseWindowsOpenSSHChanged={updateUseWindowsOpenSSH}
-          underlineLinks={underlineLinks}
-          onUnderlineLinksChanged={updateUnderlineLinks}
-          onEditGlobalGitConfig={() => void dispatcher.openGlobalGitConfig()}
-          selectedRepositoryPath={state.selectedRepositoryPath}
+          repositorySortOrder={repositorySortOrder}
+          onRepositorySortOrderChanged={updateRepositorySortOrder}
         />
-        {repositoryRelocationPath ? (
-          <DesktopRelocateRepositoryDialog
-            dispatcher={dispatcher}
-            oldPath={repositoryRelocationPath}
-            onDismiss={() => setRepositoryRelocationPath(null)}
-          />
-        ) : null}
-        {repositoryGroupToRename ? (
-          <DesktopEditRepositoryGroupDialog
-            dispatcher={dispatcher}
-            groupName={repositoryGroupToRename}
-            onDismiss={() => setRepositoryGroupToRename(null)}
-            repositories={state.repositories}
-          />
-        ) : null}
-        {repositoryRemovalPath ? (
-          state.repositories.find(
-            repository => repository.path === repositoryRemovalPath
-          ) ? (
-            <DesktopConfirmRemoveRepositoryDialog
-              dispatcher={dispatcher}
-              onDismiss={() => setRepositoryRemovalPath(null)}
-              repository={
-                state.repositories.find(
-                  repository => repository.path === repositoryRemovalPath
-                )!
-              }
-            />
-          ) : null
-        ) : null}
+        <RepositoryPathDialog
+          onChooseDirectory={() => dispatcher.chooseDirectory()}
+          description="Enter the new absolute path for this remembered repository."
+          onDismiss={() => setRepositoryRelocationPath(null)}
+          onInspect={path => dispatcher.inspectRepository(path)}
+          onSubmit={relocateRepository}
+          onTrust={path => dispatcher.trustRepository(path)}
+          open={repositoryRelocationPath !== null}
+          submitLabel="Relocate repository"
+          title="Relocate repository"
+        />
+        <WebTextDialog
+          description="Rename this repository group. All repositories in the group will keep their current settings."
+          initialValue={repositoryGroupToRename || ''}
+          label="Group name"
+          onDismiss={() => setRepositoryGroupToRename(null)}
+          onSubmit={async value => {
+            if (repositoryGroupToRename)
+              dispatcher.renameRepositoryGroup(
+                repositoryGroupToRename,
+                value.trim() || null
+              )
+            setRepositoryGroupToRename(null)
+          }}
+          open={repositoryGroupToRename !== null}
+          submitLabel="Rename group"
+          title={`Rename group: ${repositoryGroupToRename || ''}`}
+        />
+        <WebConfirmDialog
+          confirmLabel="Remove repository"
+          message={`Remove ${
+            state.repositories.find(item => item.path === repositoryRemovalPath)
+              ?.name || 'this repository'
+          } from Desktop Plus? The repository files will remain on disk.`}
+          onConfirm={async () => {
+            if (repositoryRemovalPath)
+              dispatcher.removeRepository(repositoryRemovalPath)
+            setRepositoryRemovalPath(null)
+          }}
+          onDismiss={() => setRepositoryRemovalPath(null)}
+          open={repositoryRemovalPath !== null}
+          title="Remove repository?"
+        />
+        <WebDeleteRepositoryDialog
+          loading={state.loading}
+          onConfirm={deleteRepository}
+          onDismiss={() => setRepositoryDeletionPath(null)}
+          open={repositoryDeletionPath !== null}
+          repositoryName={
+            state.repositories.find(
+              repository => repository.path === repositoryDeletionPath
+            )?.name || 'this repository'
+          }
+        />
+        <WebConfirmDialog
+          confirmLabel="Delete permanently"
+          message={`Permanently delete ${
+            state.repositories.find(
+              repository => repository.path === permanentDeleteRecoveryPath
+            )?.name || 'this repository'
+          } and all of its files? Moving it to the macOS Trash failed, so this action cannot be undone.`}
+          onConfirm={confirmPermanentDeleteRecovery}
+          onDismiss={() => setPermanentDeleteRecoveryPath(null)}
+          open={permanentDeleteRecoveryPath !== null}
+          title="Delete repository permanently?"
+        />
+        <WebTutorialStartDialog
+          defaultParentPath={
+            state.repositorySetupOptions?.defaultParentPath || ''
+          }
+          loading={state.loading}
+          onChooseDirectory={() => dispatcher.chooseDirectory()}
+          onDismiss={() => setTutorialStartOpen(false)}
+          onSubmit={async parentPath => {
+            await dispatcher.createTutorialRepository(parentPath)
+            setTutorialStartOpen(false)
+          }}
+          open={tutorialStartOpen}
+        />
       </WebDiffPresentationPreferencesContext.Provider>
     </WebIntegrationPreferencesContext.Provider>
   )
