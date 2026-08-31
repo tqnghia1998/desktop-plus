@@ -10,9 +10,10 @@ Git and local filesystem operations. The renderer is built from
 ```sh
 yarn build:web
 yarn start:web
+yarn start:web --port 4000
 ```
 
-Open `http://127.0.0.1:3000`. Set `PORT` to use another port.
+Open `http://127.0.0.1:3000`. Use `--port` or set `PORT` to use another port.
 
 The current source renderer supports opening local repositories, cloning or
 initializing repositories, inspecting the current branch and ahead/behind
