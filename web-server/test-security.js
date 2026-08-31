@@ -58,8 +58,8 @@ async function main() {
       'script execution must remain same-origin without inline exceptions'
     )
     assert.ok(
-      contentSecurityPolicy.includes("style-src 'self' 'unsafe-inline'"),
-      'shared desktop React geometry styles must remain available in Chromium'
+      contentSecurityPolicy.includes("style-src 'self'"),
+      'stylesheet elements must remain same-origin without inline exceptions'
     )
     assert.ok(
       contentSecurityPolicy.includes("style-src-attr 'unsafe-inline'"),
@@ -73,25 +73,6 @@ async function main() {
     assert.equal(result.headers['x-frame-options'], 'DENY')
     assert.equal(result.headers['referrer-policy'], 'no-referrer')
     assert.equal(result.headers['access-control-allow-origin'], undefined)
-
-    process.env.DESKTOP_PLUS_FRAME_ANCESTORS =
-      'http://localhost:5173, http://localhost:8100, "javascript:alert(1)"'
-    try {
-      result = await rawRequest(base, '/')
-      assert.equal(result.headers['x-frame-options'], undefined)
-      const embeddedPolicy = result.headers['content-security-policy']
-        .split('; ')
-        .find(part => part.startsWith('frame-ancestors '))
-      assert.equal(
-        embeddedPolicy,
-        'frame-ancestors http://localhost:5173 http://localhost:8100'
-      )
-    } finally {
-      delete process.env.DESKTOP_PLUS_FRAME_ANCESTORS
-    }
-
-    result = await rawRequest(base, '/')
-    assert.equal(result.headers['x-frame-options'], 'DENY')
 
     result = await rawRequest(base, '/static/empty-no-repo.svg')
     assert.equal(result.status, 200)

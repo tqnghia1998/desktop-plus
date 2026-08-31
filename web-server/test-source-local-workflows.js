@@ -10,27 +10,16 @@ function git(cwd, ...args) {
   return execFileSync('git', args, { cwd, encoding: 'utf8' }).trim()
 }
 
-async function reloadRepository(page) {
-  await page.reload({ waitUntil: 'networkidle' })
-  await page.locator('.branch-toolbar-button').waitFor()
-  await page.getByRole('tab', { name: 'Changes' }).waitFor()
-}
-
-async function stashAllChanges(page) {
-  await page.getByRole('tab', { name: 'Changes' }).click()
-  await page.locator('.filter-field-row').first().dispatchEvent('contextmenu')
-  const menu = page.locator('#web-context-menu')
-  await menu.waitFor()
-  await menu.getByRole('menuitem', { name: /Stash all changes(?:…)?/i }).click()
-}
-
-async function openOnlyStash(page) {
-  const stash = page.getByRole('button', { name: /^1 stash \(/ })
-  await stash.waitFor()
-  await stash.click()
-  const viewer = page.locator('#stash-diff-viewer')
-  await viewer.waitFor()
-  return viewer
+async function refreshTools(page) {
+  await page.getByRole('tab', { name: 'Tools' }).click()
+  const tools = page.getByRole('region', { name: 'Repository tools' })
+  await tools.getByRole('button', { name: 'Refresh repository' }).click()
+  await tools.waitFor({ state: 'visible' })
+  await page.waitForFunction(
+    () =>
+      document.querySelector('.web-tools-panel')?.getAttribute('aria-busy') ===
+      'false'
+  )
 }
 
 async function addRepository(page, repository) {
@@ -46,17 +35,8 @@ async function addRepository(page, repository) {
       .first()
       .evaluate(button => button.click())
     await page.getByRole('button', { name: 'Add', exact: true }).click()
-    await page
-      .getByRole('menuitem', { name: 'Add Existing Repository…' })
-      .click()
   }
-  const repositoryInspection = page.waitForResponse(
-    response =>
-      response.url().includes('/api/repository/inspect') &&
-      response.status() === 200
-  )
   await page.getByLabel('Local path').fill(repository)
-  await repositoryInspection
   await page.getByRole('button', { name: 'Add repository' }).click()
   await page.locator('.branch-toolbar-button').waitFor()
   await page.waitForFunction(
@@ -72,22 +52,10 @@ async function openBranchMenu(page) {
     .locator('.branch-toolbar-button')
     .getByRole('button')
     .last()
-  const picker = page.locator('.branches-container')
-  if (await picker.isVisible().catch(() => false)) return picker
   await branchButton.focus()
   await branchButton.press('Enter')
-  await picker.getByPlaceholder('Filter').waitFor()
-  return picker
-}
-
-async function openBranchContextMenu(page, branch) {
-  const picker = await openBranchMenu(page)
-  await picker
-    .getByRole('option', { name: new RegExp(`^${branch}(?:\\s|,|$)`) })
-    .dispatchEvent('contextmenu')
-  const menu = page.locator('#web-context-menu')
-  await menu.waitFor()
-  return menu
+  await page.getByRole('button', { name: 'Create branch' }).waitFor()
+  return branchButton
 }
 
 async function waitForBranch(page, branch) {
@@ -141,7 +109,11 @@ async function main() {
     path.join(os.tmpdir(), 'desktop-plus-source-local-')
   )
   const repository = path.join(root, 'repository')
+  const backup = path.join(root, 'backup.git')
+  const replacementBackup = path.join(root, 'replacement-backup.git')
   const worktree = path.join(root, 'worktree')
+  const movedWorktree = path.join(root, 'moved-worktree')
+  const stashConflictRepository = path.join(root, 'stash-conflict')
   fs.mkdirSync(repository)
   git(repository, 'init', '-b', 'main')
   git(repository, 'config', 'user.name', 'Source Local')
@@ -149,6 +121,8 @@ async function main() {
   fs.writeFileSync(path.join(repository, 'README.md'), '# local workflows\n')
   git(repository, 'add', 'README.md')
   git(repository, 'commit', '-m', 'initial')
+  git(repository, 'clone', '--bare', repository, backup)
+  git(repository, 'clone', '--bare', repository, replacementBackup)
 
   const server = createServer({ getDesktopRepositories: async () => [] })
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve))
@@ -166,13 +140,7 @@ async function main() {
         name: /Add an Existing Repository from your local drive…/i,
       })
       .click()
-    const repositoryInspection = page.waitForResponse(
-      response =>
-        response.url().includes('/api/repository/inspect') &&
-        response.status() === 200
-    )
     await page.getByLabel('Local path').fill(repository)
-    await repositoryInspection
     await page.getByRole('button', { name: 'Add repository' }).click()
     await page.locator('.branch-toolbar-button').waitFor()
     await page.waitForFunction(
@@ -182,167 +150,307 @@ async function main() {
           ?.textContent?.includes('No branch')
     )
 
-    let branchMenu = await openBranchMenu(page)
-    await branchMenu.getByRole('button', { name: 'New Branch' }).click()
+    await openBranchMenu(page)
+    await page.getByRole('button', { name: 'Create branch' }).click()
     const branchDialog = page
       .getByRole('dialog')
       .filter({ hasText: 'Create branch' })
-    await branchDialog.getByLabel('Name').fill('feature')
-    await branchDialog.getByRole('button', { name: 'Create Branch' }).click()
+    await branchDialog.getByLabel('Branch name').fill('feature')
+    await branchDialog.getByRole('button', { name: 'Create branch' }).click()
     await waitForBranchExists(repository, 'feature')
     await waitForGit(repository, ['branch', '--show-current'], 'feature')
     await waitForBranch(page, 'feature')
-    branchMenu = await openBranchContextMenu(page, 'feature')
-    await branchMenu
-      .getByRole('menuitem', { name: 'Rename…', exact: true })
+    await openBranchMenu(page)
+    await page
+      .getByRole('button', { name: 'Rename current branch' })
+      .first()
       .click()
     const renameDialog = page
       .getByRole('dialog')
       .filter({ hasText: 'Rename branch' })
-    await renameDialog.getByLabel('Name').fill('renamed-feature')
-    await renameDialog.getByRole('button', { name: 'Rename feature' }).click()
+    await renameDialog.getByLabel('Branch name').fill('renamed-feature')
+    await renameDialog.getByRole('button', { name: 'Rename branch' }).click()
     await waitForBranchExists(repository, 'renamed-feature')
+    await refreshTools(page)
     await waitForBranch(page, 'renamed-feature')
-    branchMenu = await openBranchMenu(page)
-    await branchMenu.getByRole('option', { name: /^main(?:\s|,|$)/ }).click()
+    await openBranchMenu(page)
+    await page.getByRole('button', { name: 'Switch to main' }).first().click()
     await waitForGit(repository, ['branch', '--show-current'], 'main')
     await waitForBranch(page, 'main')
-    branchMenu = await openBranchContextMenu(page, 'renamed-feature')
-    await branchMenu
-      .getByRole('menuitem', { name: 'Delete…', exact: true })
+    await refreshTools(page)
+    await waitForBranch(page, 'main')
+    await openBranchMenu(page)
+    await page
+      .getByRole('button', { name: 'Delete renamed-feature' })
+      .first()
       .click()
-    await confirm(page, 'Delete')
+    await page.getByRole('alertdialog').waitFor()
+    await page
+      .getByRole('alertdialog')
+      .getByRole('button', { name: 'Cancel' })
+      .click()
+    await page.getByRole('alertdialog').waitFor({ state: 'hidden' })
+    assert.match(git(repository, 'branch'), /renamed-feature/)
+    await page
+      .getByRole('button', { name: 'Delete renamed-feature' })
+      .first()
+      .click()
+    await confirm(page, 'Delete branch')
     assert.doesNotMatch(git(repository, 'branch'), /renamed-feature/)
 
+    await refreshTools(page)
+    const tools = page.getByRole('region', { name: 'Repository tools' })
+
     fs.writeFileSync(path.join(repository, 'README.md'), '# stashed work\n')
-    await reloadRepository(page)
-    await stashAllChanges(page)
-    await waitForGit(repository, ['stash', 'list', '--format=%gd'], 'stash@{0}')
-    const stashButton = page.getByRole('button', { name: /^1 stash \(/ })
-    await stashButton.click({ button: 'right' })
-    await page
-      .locator('#web-context-menu')
-      .getByRole('menuitem', { name: 'Rename…' })
-      .click()
+    await refreshTools(page)
+    await tools.getByRole('button', { name: 'Create stash' }).click()
+    const stashDialog = page
+      .getByRole('dialog')
+      .filter({ hasText: 'Create stash' })
+    await stashDialog.getByLabel('Message').fill('saved work')
+    await stashDialog.getByRole('button', { name: 'Create stash' }).click()
+    await tools.getByText(/saved work on main/).waitFor()
+    assert.match(git(repository, 'stash', 'list'), /saved%20work/)
+    await tools.getByRole('button', { name: 'Inspect' }).click()
+    const stashInspection = page.getByRole('region', {
+      name: 'Stash inspection',
+    })
+    await stashInspection.getByRole('option', { name: 'README.md' }).waitFor()
+    await stashInspection.getByRole('option', { name: 'README.md' }).click()
+    await page.waitForFunction(() =>
+      document
+        .querySelector('.web-stash-diff')
+        ?.textContent?.includes('stashed work')
+    )
+    assert.match(await stashInspection.innerText(), /stashed work/)
+    await stashInspection.getByRole('button', { name: 'Close' }).click()
+    await tools.getByRole('button', { name: 'Rename' }).click()
     const stashRenameDialog = page
       .getByRole('dialog')
-      .filter({ hasText: /Rename stash/i })
-    await stashRenameDialog.getByLabel('Name').fill('renamed stash')
+      .filter({ hasText: 'Rename stash' })
+    await stashRenameDialog.getByLabel('Stash name').fill('renamed stash')
     await stashRenameDialog
-      .getByRole('button', { name: /Rename stash/i })
+      .getByRole('button', { name: 'Rename stash' })
       .click()
-    await page
-      .getByRole('button', { name: '1 stash (renamed stash)' })
-      .waitFor()
-    await stashButton.click({ button: 'right' })
-    await page
-      .locator('#web-context-menu')
-      .getByRole('menuitem', { name: 'Apply Changes', exact: true })
-      .click()
+    await tools.getByText(/renamed stash on main/).waitFor()
+    const applyDialog = page.getByRole('alertdialog')
+    await tools.getByRole('button', { name: 'Apply' }).click()
+    await applyDialog.waitFor()
+    assert.equal(await applyDialog.count(), 1)
+    await applyDialog.getByRole('button', { name: 'Cancel' }).click()
+    await applyDialog.waitFor({ state: 'hidden' })
+    assert.equal(
+      fs.readFileSync(path.join(repository, 'README.md'), 'utf8'),
+      '# local workflows\n'
+    )
+    await tools.getByRole('button', { name: 'Apply' }).click()
+    await confirm(page, 'Apply stash')
     await waitForFile(path.join(repository, 'README.md'), '# stashed work\n')
-    assert.match(git(repository, 'stash', 'list'), /renamed%20stash/)
-    await reloadRepository(page)
-    await page.locator('.filter-field-row').first().dispatchEvent('contextmenu')
+    await page.getByRole('tab', { name: 'Changes' }).click()
     await page
-      .locator('#web-context-menu')
-      .getByRole('menuitem', { name: 'Discard All Changes…', exact: true })
+      .locator('.web-changes-actions')
+      .getByRole('button', { name: 'Discard' })
       .click()
     await confirm(page, 'Discard changes')
-    let stashViewer = await openOnlyStash(page)
-    await stashViewer.getByRole('option', { name: 'README.md' }).waitFor()
-    await stashViewer.getByRole('option', { name: 'README.md' }).click()
-    await stashViewer.getByText('stashed work', { exact: false }).waitFor()
-    await stashViewer.locator('.loading-indicator').waitFor({
-      state: 'detached',
+    await refreshTools(page)
+    await tools.getByRole('button', { name: 'Drop' }).click()
+    await confirm(page, 'Drop stash')
+    assert.doesNotMatch(git(repository, 'stash', 'list'), /renamed%20stash/)
+
+    fs.mkdirSync(stashConflictRepository)
+    git(stashConflictRepository, 'init', '-b', 'main')
+    git(stashConflictRepository, 'config', 'user.name', 'Stash Conflict')
+    git(
+      stashConflictRepository,
+      'config',
+      'user.email',
+      'stash-conflict@example.com'
+    )
+    fs.writeFileSync(path.join(stashConflictRepository, 'shared.txt'), 'base\n')
+    git(stashConflictRepository, 'add', 'shared.txt')
+    git(stashConflictRepository, 'commit', '-m', 'base')
+    fs.writeFileSync(
+      path.join(stashConflictRepository, 'shared.txt'),
+      'stashed version\n'
+    )
+    await addRepository(page, stashConflictRepository)
+    await refreshTools(page)
+    const conflictTools = page.getByRole('region', {
+      name: 'Repository tools',
     })
-    assert.match(await stashViewer.innerText(), /stashed work/)
-    await stashViewer.getByRole('button', { name: 'Restore options' }).click()
-    await page.getByRole('menuitemradio', { name: /^Apply Changes/ }).click()
-    await stashViewer.getByRole('button', { name: 'Apply Changes' }).click()
-    await waitForFile(path.join(repository, 'README.md'), '# stashed work\n')
-    assert.match(git(repository, 'stash', 'list'), /renamed%20stash/)
-    await reloadRepository(page)
-    await page.locator('.filter-field-row').first().dispatchEvent('contextmenu')
-    await page
-      .locator('#web-context-menu')
-      .getByRole('menuitem', { name: 'Discard All Changes…', exact: true })
+    await conflictTools.getByRole('button', { name: 'Create stash' }).click()
+    const conflictStashDialog = page
+      .getByRole('dialog')
+      .filter({ hasText: 'Create stash' })
+    await conflictStashDialog.getByLabel('Message').fill('conflict stash')
+    await conflictStashDialog
+      .getByRole('button', { name: 'Create stash' })
       .click()
-    await confirm(page, 'Discard changes')
-    stashViewer = await openOnlyStash(page)
-    await stashViewer.getByRole('button', { name: 'Restore options' }).click()
-    await page.getByRole('menuitemradio', { name: /^Restore Changes/ }).click()
-    await stashViewer.getByRole('button', { name: 'Restore Changes' }).click()
-    await waitForFile(path.join(repository, 'README.md'), '# stashed work\n')
-    assert.equal(git(repository, 'stash', 'list'), '')
-    await reloadRepository(page)
-    await page.locator('.filter-field-row').first().dispatchEvent('contextmenu')
-    await page
-      .locator('#web-context-menu')
-      .getByRole('menuitem', { name: 'Discard All Changes…', exact: true })
-      .click()
-    await confirm(page, 'Discard changes')
+    await conflictTools.getByText(/conflict stash on main/).waitFor()
+    fs.writeFileSync(
+      path.join(stashConflictRepository, 'shared.txt'),
+      'committed version\n'
+    )
+    git(stashConflictRepository, 'add', 'shared.txt')
+    git(stashConflictRepository, 'commit', '-m', 'conflicting change')
+    await conflictTools.getByRole('button', { name: 'Pop' }).click()
+    await confirm(page, 'Pop stash')
+    await page.getByRole('tab', { name: 'Changes' }).click()
+    await page.getByRole('button', { name: 'Use ours' }).waitFor()
+    await page.getByRole('button', { name: 'Use ours' }).click()
+    await page.getByRole('button', { name: 'Use ours' }).waitFor({
+      state: 'hidden',
+    })
+    assert.equal(
+      fs.readFileSync(path.join(stashConflictRepository, 'shared.txt'), 'utf8'),
+      'committed version\n'
+    )
+    await refreshTools(page)
+    await conflictTools.getByRole('button', { name: 'Drop' }).click()
+    await confirm(page, 'Drop stash')
+    assert.doesNotMatch(
+      git(stashConflictRepository, 'stash', 'list'),
+      /conflict%20stash/
+    )
 
-    fs.writeFileSync(path.join(repository, 'README.md'), '# discard stash\n')
-    await reloadRepository(page)
-    await stashAllChanges(page)
-    await page
-      .getByRole('button', { name: /^1 stash \(/ })
-      .click({ button: 'right' })
-    await page
-      .locator('#web-context-menu')
-      .getByRole('menuitem', { name: 'Discard', exact: true })
-      .click()
-    await confirm(page, 'Discard')
-    await waitForGit(repository, ['stash', 'list'], '')
+    await addRepository(page, repository)
+    await refreshTools(page)
 
-    await page.getByRole('tab', { name: 'History' }).click()
-    const initialCommit = page
-      .locator('#commit-list .list-item')
-      .filter({ has: page.getByText('initial', { exact: true }) })
-      .first()
-    await initialCommit.waitFor()
-    await initialCommit.click()
-    await initialCommit.click({ button: 'right' })
+    await tools.getByRole('button', { name: 'Add remote' }).click()
+    const remoteDialog = page
+      .getByRole('dialog')
+      .filter({ hasText: 'Add remote' })
+    await remoteDialog.getByLabel('Remote name').fill('backup')
+    await remoteDialog.getByLabel('Remote URL').fill(backup)
+    await remoteDialog.getByRole('button', { name: 'Add remote' }).click()
+    await tools
+      .getByText(
+        new RegExp(`backup: ${backup.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`)
+      )
+      .waitFor()
+    assert.equal(git(repository, 'remote', 'get-url', 'backup'), backup)
+    await tools.getByRole('button', { name: 'Set URL' }).click()
+    const setRemoteDialog = page
+      .getByRole('dialog')
+      .filter({ hasText: 'Set remote URL' })
+    await setRemoteDialog.getByLabel('Remote name').fill('backup')
+    await setRemoteDialog.getByLabel('Remote URL').fill(replacementBackup)
+    await setRemoteDialog.getByRole('button', { name: 'Set URL' }).click()
+    await tools
+      .getByText(
+        new RegExp(
+          `backup: ${replacementBackup.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`
+        )
+      )
+      .waitFor()
+    assert.equal(
+      git(repository, 'remote', 'get-url', 'backup'),
+      replacementBackup
+    )
+    await tools.getByRole('button', { name: 'Remove' }).click()
+    await page.getByRole('alertdialog').waitFor()
     await page
-      .locator('#web-context-menu')
-      .getByRole('menuitem', { name: 'Create Tag…' })
+      .getByRole('alertdialog')
+      .getByRole('button', { name: 'Cancel' })
       .click()
-    const tagDialog = page.locator('#create-tag')
-    await tagDialog.waitFor()
-    await tagDialog.getByLabel('Name').fill('v1.0.0')
-    await tagDialog.getByRole('button', { name: /Create tag/i }).click()
-    await tagDialog.waitFor({ state: 'hidden' })
+    await page.getByRole('alertdialog').waitFor({ state: 'hidden' })
+    assert.equal(git(repository, 'remote'), 'backup')
+    await tools.getByRole('button', { name: 'Remove' }).click()
+    await confirm(page, 'Remove remote')
+    assert.equal(git(repository, 'remote'), '')
+
+    await tools.getByRole('button', { name: 'Create tag' }).click()
+    const tagDialog = page.getByRole('dialog').filter({ hasText: 'Create tag' })
+    await tagDialog.getByLabel('Tag name').fill('v1.0.0')
+    await tagDialog.getByRole('button', { name: 'Create tag' }).click()
     await waitForGit(repository, ['tag'], 'v1.0.0')
+    await refreshTools(page)
+    await tools.getByText(/v1\.0\.0 \(local only\)/).waitFor()
     assert.equal(git(repository, 'tag'), 'v1.0.0')
 
-    git(repository, 'branch', 'worktree-branch')
-    await reloadRepository(page)
-    branchMenu = await openBranchContextMenu(page, 'worktree-branch')
-    await branchMenu
-      .getByRole('menuitem', {
-        name: 'Checkout in New Worktree…',
-        exact: true,
-      })
-      .click()
+    await tools.getByRole('button', { name: 'Create worktree' }).click()
     const worktreeDialog = page
       .getByRole('dialog')
-      .filter({ hasText: 'Add Worktree' })
+      .filter({ hasText: 'Create a linked worktree' })
+    await worktreeDialog.getByLabel('Worktree path').fill(worktree)
+    await worktreeDialog.getByLabel('New branch').fill('worktree-branch')
     await worktreeDialog
-      .getByLabel('Worktree Name')
-      .fill(path.basename(worktree))
-    await worktreeDialog.getByLabel('Local Path').fill(root)
+      .getByRole('button', { name: 'Create worktree' })
+      .click()
+    await tools.getByText(worktree, { exact: false }).waitFor()
+    assert.equal(git(worktree, 'branch', '--show-current'), 'worktree-branch')
+
+    await tools.getByRole('button', { name: 'Rename', exact: true }).click()
+    const moveDialog = page
+      .getByRole('dialog')
+      .filter({ hasText: 'Rename worktree' })
+    await moveDialog
+      .getByLabel('New worktree path')
+      .fill(path.basename(movedWorktree))
+    await moveDialog.getByRole('button', { name: 'Rename worktree' }).click()
+    await tools.getByText(movedWorktree, { exact: false }).waitFor()
     assert.equal(
-      await worktreeDialog.getByLabel('Branch Name').inputValue(),
+      git(movedWorktree, 'branch', '--show-current'),
       'worktree-branch'
     )
-    await worktreeDialog
-      .getByRole('button', { name: 'Create Worktree' })
+    await tools
+      .getByRole('region', { name: 'Worktrees' })
+      .locator('.web-tool-row')
+      .filter({ hasText: movedWorktree })
+      .getByRole('button', { name: 'Open', exact: true })
       .click()
-    await worktreeDialog.waitFor({ state: 'hidden' })
-    assert.equal(git(worktree, 'branch', '--show-current'), 'worktree-branch')
+    await page.waitForFunction(() =>
+      document.title.startsWith('moved-worktree -')
+    )
+    await addRepository(page, repository)
+    await refreshTools(page)
+    await page
+      .getByRole('region', { name: 'Repository tools' })
+      .getByText(movedWorktree, { exact: false })
+      .waitFor()
+    const reopenedTools = page.getByRole('region', {
+      name: 'Repository tools',
+    })
+    await reopenedTools.getByRole('button', { name: 'Remove' }).click()
+    await confirm(page, 'Remove worktree')
+    assert.equal(fs.existsSync(movedWorktree), false)
+    assert.doesNotMatch(git(repository, 'worktree', 'list'), /worktree-branch/)
+
+    const dirtyWorktree = path.join(root, 'dirty-worktree')
+    const dirtyWorktreeBranch = 'dirty-worktree-branch'
+    git(repository, 'worktree', 'add', '-b', dirtyWorktreeBranch, dirtyWorktree)
+    fs.writeFileSync(path.join(dirtyWorktree, 'dirty.txt'), 'uncommitted\n')
+    await refreshTools(page)
+    await tools.getByText(/dirty-worktree-branch.*has changes/).waitFor()
+    await tools.getByRole('button', { name: 'Force remove' }).click()
+    await confirm(page, 'Force remove worktree')
+    assert.equal(fs.existsSync(dirtyWorktree), false)
+    assert.doesNotMatch(
+      git(repository, 'worktree', 'list'),
+      /dirty-worktree-branch/
+    )
+
+    const staleWorktree = path.join(root, 'stale-worktree')
+    git(
+      repository,
+      'worktree',
+      'add',
+      '-b',
+      'stale-worktree-branch',
+      staleWorktree
+    )
+    fs.rmSync(staleWorktree, { recursive: true, force: true })
+    await refreshTools(page)
+    await tools.getByText(/stale-worktree-branch.*prunable/).waitFor()
+    await tools.getByRole('button', { name: 'Prune' }).click()
+    await confirm(page, 'Prune worktree')
+    assert.doesNotMatch(
+      git(repository, 'worktree', 'list'),
+      /stale-worktree-branch/
+    )
     assert.deepEqual(errors, [])
     console.log(
-      'Source local workflows passed: branch, stash, tag, and worktree creation'
+      'Source local workflows passed: branch, stash, remote, tag, and worktree lifecycle'
     )
   } finally {
     await browser.close()

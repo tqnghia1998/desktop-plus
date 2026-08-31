@@ -16,13 +16,7 @@ async function addRepository(page, repository) {
       name: /Add an Existing Repository from your local drive…/i,
     })
     .click()
-  const repositoryInspection = page.waitForResponse(
-    response =>
-      response.url().includes('/api/repository/inspect') &&
-      response.status() === 200
-  )
   await page.getByLabel('Local path').fill(repository)
-  await repositoryInspection
   await page.getByRole('button', { name: 'Add repository' }).click()
 }
 

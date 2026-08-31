@@ -22,30 +22,15 @@ async function addRepository(page, repository) {
       .first()
       .evaluate(button => button.click())
     await page.getByRole('button', { name: 'Add', exact: true }).click()
-    await page
-      .getByRole('menuitem', { name: 'Add Existing Repository…' })
-      .click()
   }
-  const repositoryInspection = page.waitForResponse(
-    response =>
-      response.url().includes('/api/repository/inspect') &&
-      response.status() === 200
-  )
   await page.getByLabel('Local path').fill(repository)
-  await repositoryInspection
   await page.getByRole('button', { name: 'Add repository' }).click()
   await page.locator('.branch-toolbar-button').waitFor()
 }
 
 async function openPreferences(page) {
-  await page.evaluate(() =>
-    window.dispatchEvent(
-      new KeyboardEvent('keydown', { bubbles: true, ctrlKey: true, key: ',' })
-    )
-  )
-  const dialog = page.getByRole('dialog').filter({
-    hasText: /Preferences|Options|Settings/,
-  })
+  await page.getByRole('button', { name: 'Open preferences' }).click()
+  const dialog = page.getByRole('dialog').filter({ hasText: 'Preferences' })
   await dialog.waitFor()
   return dialog
 }
@@ -64,6 +49,7 @@ async function selectListCommit(page) {
     has: page.getByText('second commit', { exact: true }),
   })
   await row.click()
+  await page.getByRole('button', { name: 'Revert selected commit' }).waitFor()
   return row
 }
 
@@ -95,30 +81,29 @@ async function main() {
     await addRepository(page, repository)
 
     let preferences = await openPreferences(page)
-    await preferences.getByRole('tab', { name: 'Prompts', exact: true }).click()
-    const bringChanges = preferences.getByLabel(
-      'Always bring my changes to my new branch'
-    )
-    await bringChanges.check()
-    assert.equal(await bringChanges.isChecked(), true)
+    const threshold = preferences.getByLabel('Commit summary warning length')
+    await threshold.fill('60')
+    await preferences
+      .getByLabel('Always bring my changes to my new branch')
+      .check()
     await preferences
       .locator('.dialog-footer')
-      .getByRole('button', { name: 'Save', exact: true })
+      .getByRole('button', { name: 'Close', exact: true })
       .click()
     await preferences.waitFor({ state: 'hidden' })
 
     await page.reload({ waitUntil: 'networkidle' })
     preferences = await openPreferences(page)
-    await preferences.getByRole('tab', { name: 'Prompts', exact: true }).click()
+    assert.equal(await threshold.inputValue(), '60')
     assert.equal(
-      await page.evaluate(() =>
-        localStorage.getItem('uncommitted-changes-strategy')
-      ),
-      'MoveToNewBranch'
+      await preferences
+        .getByLabel('Always bring my changes to my new branch')
+        .isChecked(),
+      true
     )
     await preferences
       .locator('.dialog-footer')
-      .getByRole('button', { name: 'Save', exact: true })
+      .getByRole('button', { name: 'Close', exact: true })
       .click()
     await preferences.waitFor({ state: 'hidden' })
 
@@ -133,12 +118,13 @@ async function main() {
     })
     assert.equal(await restoredListRow.getAttribute('aria-selected'), 'true')
     await page.getByRole('button', { name: 'Graph view' }).click()
-    await page.locator('#commitGraph-branches-pane').waitFor()
+    await page.getByRole('complementary', { name: 'History refs' }).waitFor()
 
     const graphCommit = page
       .locator('[aria-label="Commits"] [aria-selected]')
       .filter({ hasText: 'second commit' })
     await graphCommit.click()
+    await page.getByRole('button', { name: 'Revert selected commit' }).waitFor()
     assert.equal(await graphCommit.getAttribute('aria-selected'), 'true')
 
     await page.getByRole('button', { name: 'List view' }).click()
@@ -155,7 +141,7 @@ async function main() {
     )
 
     await page.getByRole('button', { name: 'Graph view' }).click()
-    await page.locator('#commitGraph-branches-pane').waitFor()
+    await page.getByRole('complementary', { name: 'History refs' }).waitFor()
     const restoredGraphCommit = page
       .locator('[aria-label="Commits"] [aria-selected]')
       .filter({ hasText: 'second commit' })

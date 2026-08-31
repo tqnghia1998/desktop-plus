@@ -3,7 +3,7 @@ const fs = require('fs')
 const path = require('path')
 
 const publicDir = path.join(__dirname, 'public')
-const MAX_PUBLIC_BYTES = 8.5 * 1024 * 1024
+const MAX_PUBLIC_BYTES = 8 * 1024 * 1024
 const MAX_NON_EMOJI_FILES = 250
 const MAX_EMOJI_FILES = 1000
 const allowedExtensions = new Set([
@@ -113,9 +113,8 @@ const application = fs.readFileSync(
   'utf8'
 )
 assert.match(application, /__DESKTOP_PLUS_SOURCE_RENDERER__/)
-assert.match(application, /Current repository/)
-assert.match(application, /Add Existing Repository/)
-assert.match(application, /Clone Repository/)
+assert.match(application, /Add repository/)
+assert.match(application, /Repository tools/)
 assert.doesNotMatch(
   application,
   /desktop-app\.template\.js|sourceCommit|__desktopPlusDispatcherContract/

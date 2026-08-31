@@ -21,7 +21,6 @@ async function main() {
     const dialog = page.locator('dialog').filter({ hasText: 'Add repository' })
     await dialog.waitFor()
     assert.equal(await dialog.getByLabel('Local path').inputValue(), '')
-    await page.waitForTimeout(250)
     await dialog.getByRole('button', { name: 'Cancel' }).click()
     await dialog.waitFor({ state: 'hidden' })
     assert.equal(await dialog.isVisible(), false)
