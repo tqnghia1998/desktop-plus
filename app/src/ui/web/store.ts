@@ -17,8 +17,11 @@ import {
   WebGitOperation,
   WebOperationOptions,
   WebRepositoryInitializationOptions,
+  WebRepositorySetupOptions,
+  WebRepositorySetupPreview,
   WebCloneSetupPreview,
   WebRepositoryInspection,
+  WebGitIdentity,
   WebGitConfigScope,
   WebCommitOptions,
   WebCommitTrailer,
@@ -527,14 +530,8 @@ export function createWebApplicationStore(
   let persisted = loadPersistedState()
   const listeners = new Set<() => void>()
   let retryLastAction: (() => Promise<void>) | null = null
-  let retryGenericCredentials: {
-    readonly username: string
-    readonly password: string
-  } | null = null
   const deliveredNotificationIds = new Set<string>()
   let historyRefreshGeneration = 0
-  let historyInspectionGeneration = 0
-  let comparisonGeneration = 0
   let fileSelectionGeneration = 0
   let repositoryRefreshGeneration = 0
   let repositorySelectionGeneration = 0
@@ -766,18 +763,11 @@ export function createWebApplicationStore(
     operation: WebGitOperation,
     options: WebOperationOptions = {}
   ): Promise<WebOperationResult | null> => {
-    // Credentials are only retained long enough to start the retry. Keeping
-    // them out of application state prevents them from reaching localStorage.
-    const genericCredentials = retryGenericCredentials
-    retryGenericCredentials = null
-    const task = await git.startOperation(path, operation, {
-      ...options,
-      ...(genericCredentials ? { genericCredentials } : {}),
-    })
+    const task = await git.startOperation(path, operation, options)
     update({ operationTask: task })
     const completed = await waitForOperation(task)
     if (completed.status === 'cancelled') {
-      await refreshRepository(path).catch(() => undefined)
+      await refreshRepository(path, true).catch(() => undefined)
       if (
         typeof document !== 'undefined' &&
         document.visibilityState === 'hidden'
@@ -795,23 +785,13 @@ export function createWebApplicationStore(
       document.visibilityState === 'hidden'
     )
       platform.notify('Desktop Plus', `${operation} completed.`)
+    update({
+      historyRewriteUndo: completed.result.undo || null,
+      cherryPickUndo:
+        operation === 'cherry-pick' ? completed.result.undo || null : null,
+    })
     return completed.result
   }
-  const publishOperationUndo = (
-    operation: WebGitOperation,
-    options: WebOperationOptions,
-    result: WebOperationResult
-  ) =>
-    update({
-      historyRewriteUndo: result.undo || null,
-      cherryPickUndo:
-        operation === 'cherry-pick' && result.undo
-          ? {
-              ...result.undo,
-              count: options.values?.length || 0,
-            }
-          : null,
-    })
   const selectedPath = () => {
     if (!state.selectedRepositoryPath)
       throw new Error('Choose a repository first.')
@@ -819,6 +799,7 @@ export function createWebApplicationStore(
   }
   const refreshRepository = async (
     path: string,
+    resetHistory: boolean,
     historyFilterText = state.historyFilterText
   ) => {
     const generation = ++repositoryRefreshGeneration
@@ -827,12 +808,9 @@ export function createWebApplicationStore(
     // restore stale diff data after the refresh has begun.
     const selectionGeneration = fileSelectionGeneration
     ++fileSelectionGeneration
-    const inspectionGeneration = historyInspectionGeneration
-    const activeComparisonGeneration = comparisonGeneration
     const selectedFileBeforeRefresh = state.selectedFilePath
     update({ loading: true, error: null })
     try {
-      let comparisonState = getStoredComparisonState(path)
       const [status, branches, history] = await Promise.all([
         git.getStatus(path),
         git.getBranches(path),
@@ -844,25 +822,6 @@ export function createWebApplicationStore(
           state.historyGraphMode
         ),
       ])
-      if (
-        generation !== repositoryRefreshGeneration ||
-        state.selectedRepositoryPath !== path
-      )
-        return
-      let comparison: WebApplicationState['comparison'] = null
-      if (comparisonState.branch) {
-        const comparisonBranchExists = (branches.branches || []).some(
-          branch => branch.name === comparisonState.branch
-        )
-        if (!comparisonBranchExists) {
-          setStoredComparisonState(path, { branch: null })
-          comparisonState = { ...comparisonState, branch: null }
-        } else {
-          comparison = await git
-            .getComparison(path, comparisonState.branch, comparisonState.mode)
-            .catch(() => null)
-        }
-      }
       if (
         generation !== repositoryRefreshGeneration ||
         state.selectedRepositoryPath !== path
@@ -917,32 +876,7 @@ export function createWebApplicationStore(
         return
       const selectionChangedDuringRefresh =
         fileSelectionGeneration !== selectionGeneration + 1
-      const committableFiles = status.workingDirectory.files.filter(
-        file => file.status.kind !== 'Conflicted'
-      )
-      const fileSelections = new Map(
-        committableFiles.map(file => [
-          file.path,
-          selectionChangedDuringRefresh
-            ? state.fileSelections.get(file.path) ||
-              DiffSelection.fromInitialSelection(DiffSelectionType.All)
-            : DiffSelection.fromInitialSelection(DiffSelectionType.All),
-        ])
-      )
-      const includedFiles = committableFiles
-        .filter(
-          file =>
-            fileSelections.get(file.path)?.getSelectionType() !==
-            DiffSelectionType.None
-        )
-        .map(file => file.path)
-      const partialFilePatches = selectionChangedDuringRefresh
-        ? new Map(
-            [...state.partialFilePatches].filter(([file]) =>
-              fileSelections.has(file)
-            )
-          )
-        : new Map<string, string>()
+      const comparisonState = getStoredComparisonState(path)
       const savedState = loadPersistedState()
       const savedOptions = savedState.commitOptions[path]
       update({
@@ -975,29 +909,30 @@ export function createWebApplicationStore(
             ? state.historyGraphHiddenRefs
             : defaultHistoryGraphHiddenRefs(branches),
         hasMoreHistory: history.commits.length === historyPageSize,
-        ...(historyInspectionGeneration === inspectionGeneration
-          ? {
-              selectedHistoryCommitSHA: null,
-              historyCommitDetails: null,
-              selectedHistoryFilePath: null,
-              historyDiff: null,
-              historyInspectionLoading: false,
-            }
-          : {}),
-        ...(comparisonGeneration === activeComparisonGeneration
-          ? {
-              comparisonBranch: comparisonState.branch,
-              comparisonMode: comparisonState.mode,
-              comparisonFilterText: comparisonState.filterText,
-              comparisonBranchListVisible: comparisonState.branchListVisible,
-              comparison,
-              comparisonLoading: false,
-            }
-          : {}),
+        selectedHistoryCommitSHA: null,
+        historyCommitDetails: null,
+        selectedHistoryFilePath: null,
+        historyDiff: null,
+        historyInspectionLoading: false,
+        comparisonBranch: comparisonState.branch,
+        comparisonMode: comparisonState.mode,
+        comparisonFilterText: comparisonState.filterText,
+        comparisonBranchListVisible: comparisonState.branchListVisible,
+        comparison: null,
+        comparisonLoading: false,
         ...(selectionChangedDuringRefresh ? {} : { selectedFilePath }),
-        includedFiles,
-        fileSelections,
-        partialFilePatches,
+        includedFiles: status.workingDirectory.files
+          .filter(file => file.status.kind !== 'Conflicted')
+          .map(file => file.path),
+        fileSelections: new Map(
+          status.workingDirectory.files
+            .filter(file => file.status.kind !== 'Conflicted')
+            .map(file => [
+              file.path,
+              DiffSelection.fromInitialSelection(DiffSelectionType.All),
+            ])
+        ),
+        partialFilePatches: new Map(),
         ...(selectionChangedDuringRefresh
           ? {}
           : {
@@ -1028,6 +963,7 @@ export function createWebApplicationStore(
         },
         commitToAmend: amendingCurrentRepository ? state.commitToAmend : null,
         historyFilterText,
+        ...(resetHistory ? {} : {}),
       })
     } catch (error) {
       if (
@@ -1152,7 +1088,6 @@ export function createWebApplicationStore(
           await git.trustRepository(path)
         } catch (error) {
           fail(error, action)
-          throw error
         } finally {
           update({ loading: false })
         }
@@ -1172,22 +1107,14 @@ export function createWebApplicationStore(
         }
         throw new Error(messages[inspection.kind])
       }
-      const repositoryPath = inspection.repositoryPath
+      const repositoryPath = inspection.path
       const existing = state.repositories.find(
-        repository =>
-          repository.path === repositoryPath ||
-          repository.path === inspection.path
+        repository => repository.path === repositoryPath
       )
       const repositories = existing
         ? state.repositories.map(repository =>
-            repository.path === repositoryPath ||
-            repository.path === inspection.path
-              ? {
-                  ...repository,
-                  path: repositoryPath,
-                  name: repositoryName(repositoryPath),
-                  lastOpenedAt: Date.now(),
-                }
+            repository.path === repositoryPath
+              ? { ...repository, lastOpenedAt: Date.now() }
               : repository
           )
         : [
@@ -1204,60 +1131,8 @@ export function createWebApplicationStore(
         repositories,
         selectedRepositoryPath: repositoryPath,
         selectedRepositoryInspection: inspection,
-        status: null,
-        branches: null,
-        history: [],
-        historyRewriteUndo: null,
-        cherryPickUndo: null,
-        hasMoreHistory: false,
-        selectedHistoryCommitSHA: null,
-        historyCommitDetails: null,
-        selectedHistoryFilePath: null,
-        historyDiff: null,
-        historyInspectionLoading: false,
-        comparison: null,
-        comparisonLoading: false,
-        selectedFilePath: null,
-        includedFiles: [],
-        fileSelections: new Map(),
-        partialFilePatches: new Map(),
-        diff: null,
-        inspectedStash: null,
-        stashFiles: [],
-        selectedStashFilePath: null,
-        stashDiff: null,
       })
-      await refreshRepository(repositoryPath)
-    },
-
-    async addRepositoryWithWorktrees(path) {
-      await dispatcher.addRepository(path)
-      // refreshRepository stored the worktree family (main worktree first) on
-      // the selected repository; surface every member as its own repository so
-      // the picker can switch between them. The selected path must not change.
-      const worktrees = state.repositories.find(
-        repository => repository.path === state.selectedRepositoryPath
-      )?.worktrees
-      if (!worktrees?.length) return
-      const known = new Set(
-        state.repositories.map(repository => repository.path)
-      )
-      const missing = worktrees.filter(
-        worktree => worktree.path && !known.has(worktree.path)
-      )
-      if (!missing.length) return
-      update({
-        repositories: [
-          ...state.repositories,
-          ...missing.map(worktree => ({
-            path: worktree.path,
-            name: repositoryName(worktree.path),
-            lastOpenedAt: 0,
-            defaultBranch: null,
-            currentBranch: null,
-          })),
-        ],
-      })
+      await refreshRepository(repositoryPath, true)
     },
 
     async relocateRepository(oldPath, newPath) {
@@ -1295,7 +1170,7 @@ export function createWebApplicationStore(
             : state.selectedRepositoryPath,
         selectedRepositoryInspection: inspection,
       })
-      await refreshRepository(nextPath)
+      await refreshRepository(nextPath, true)
     },
 
     async chooseRepository() {
@@ -1429,7 +1304,7 @@ export function createWebApplicationStore(
             tutorialPaused: false,
             currentTutorialStep: TutorialStep.CreateBranch,
           })
-          await refreshRepository(repositoryPath)
+          await refreshRepository(repositoryPath, true)
         } catch (error) {
           fail(error, action)
         } finally {
@@ -1472,10 +1347,9 @@ export function createWebApplicationStore(
 
     async selectRepository(path) {
       const generation = ++repositorySelectionGeneration
-      let selectedPath = path
       const isCurrentSelection = () =>
         generation === repositorySelectionGeneration &&
-        state.selectedRepositoryPath === selectedPath
+        state.selectedRepositoryPath === path
       const lastOpenedAt = Date.now()
       update({
         repositories: state.repositories.map(repository =>
@@ -1487,63 +1361,18 @@ export function createWebApplicationStore(
         loading: true,
         error: null,
         selectedRepositoryInspection: null,
-        status: null,
-        branches: null,
-        history: [],
-        historyRewriteUndo: null,
-        cherryPickUndo: null,
-        hasMoreHistory: false,
-        selectedHistoryCommitSHA: null,
-        historyCommitDetails: null,
-        selectedHistoryFilePath: null,
-        historyDiff: null,
-        historyInspectionLoading: false,
-        comparison: null,
-        comparisonLoading: false,
-        selectedFilePath: null,
-        includedFiles: [],
-        fileSelections: new Map(),
-        partialFilePatches: new Map(),
-        diff: null,
-        inspectedStash: null,
-        stashFiles: [],
-        selectedStashFilePath: null,
-        stashDiff: null,
         lfsStatus: null,
         lfsOperation: null,
       })
       try {
         const inspection = await git.inspectRepository(path)
         if (!isCurrentSelection()) return
-        selectedPath =
-          inspection.kind === 'regular' ? inspection.repositoryPath : path
         update({
-          selectedRepositoryPath: selectedPath,
+          selectedRepositoryPath: path,
           selectedRepositoryInspection: inspection,
         })
         if (inspection.kind === 'regular') {
-          if (
-            !state.repositories.some(
-              repository =>
-                repository.path === inspection.repositoryPath ||
-                repository.path === inspection.path
-            )
-          ) {
-            update({
-              repositories: [
-                ...state.repositories,
-                {
-                  path: inspection.repositoryPath,
-                  name: repositoryName(inspection.repositoryPath),
-                  lastOpenedAt,
-                  defaultBranch: null,
-                  currentBranch: null,
-                },
-              ],
-              selectedRepositoryPath: selectedPath,
-            })
-          }
-          await refreshRepository(selectedPath)
+          await refreshRepository(inspection.path, true)
         } else {
           if (!isCurrentSelection()) return
           update({
@@ -1618,7 +1447,7 @@ export function createWebApplicationStore(
             },
             selectedSection: 'changes',
           })
-          await refreshRepository(path)
+          await refreshRepository(path, true)
           update({
             commitToAmend: commit,
             commitDraft: amendMessage,
@@ -1750,7 +1579,6 @@ export function createWebApplicationStore(
     },
 
     setFileIncluded(file, included) {
-      ++fileSelectionGeneration
       const includedFiles = included
         ? [...new Set([...state.includedFiles, file])]
         : state.includedFiles.filter(path => path !== file)
@@ -1770,7 +1598,6 @@ export function createWebApplicationStore(
     },
 
     setFileSelection(file, selection, patch) {
-      ++fileSelectionGeneration
       const fileSelections = new Map(state.fileSelections)
       const partialFilePatches = new Map(state.partialFilePatches)
       fileSelections.set(file, selection)
@@ -1817,7 +1644,6 @@ export function createWebApplicationStore(
     },
 
     setAllVisibleFilesIncluded(files, included) {
-      ++fileSelectionGeneration
       const visibleFiles = new Set(files)
       const includedFiles = included
         ? [
@@ -1849,7 +1675,6 @@ export function createWebApplicationStore(
     async setHistoryFilterText(text) {
       const path = selectedPath()
       const generation = ++historyRefreshGeneration
-      const inspectionGeneration = historyInspectionGeneration
       update({ historyFilterText: text })
       update({ loading: true, error: null })
       try {
@@ -1864,15 +1689,11 @@ export function createWebApplicationStore(
         update({
           history: history.commits,
           hasMoreHistory: history.commits.length === historyPageSize,
-          ...(inspectionGeneration === historyInspectionGeneration
-            ? {
-                selectedHistoryCommitSHA: null,
-                historyCommitDetails: null,
-                selectedHistoryFilePath: null,
-                historyDiff: null,
-                historyInspectionLoading: false,
-              }
-            : {}),
+          selectedHistoryCommitSHA: null,
+          historyCommitDetails: null,
+          selectedHistoryFilePath: null,
+          historyDiff: null,
+          historyInspectionLoading: false,
           historyFilterText: text,
         })
       } catch (error) {
@@ -1887,7 +1708,6 @@ export function createWebApplicationStore(
 
     async setHistoryGraphMode(enabled) {
       const generation = ++historyRefreshGeneration
-      const inspectionGeneration = historyInspectionGeneration
       localStorage.setItem(historyGraphModeKey, String(enabled))
       update({ historyGraphMode: enabled, loading: true, error: null })
       try {
@@ -1903,15 +1723,11 @@ export function createWebApplicationStore(
         update({
           history: history.commits,
           hasMoreHistory: history.commits.length === historyPageSize,
-          ...(inspectionGeneration === historyInspectionGeneration
-            ? {
-                selectedHistoryCommitSHA: null,
-                historyCommitDetails: null,
-                selectedHistoryFilePath: null,
-                historyDiff: null,
-                historyInspectionLoading: false,
-              }
-            : {}),
+          selectedHistoryCommitSHA: null,
+          historyCommitDetails: null,
+          selectedHistoryFilePath: null,
+          historyDiff: null,
+          historyInspectionLoading: false,
         })
       } catch (error) {
         if (generation === historyRefreshGeneration)
@@ -1933,7 +1749,6 @@ export function createWebApplicationStore(
 
     async inspectHistoryCommit(sha) {
       const path = selectedPath()
-      const generation = ++historyInspectionGeneration
       update({
         selectedHistoryCommitSHA: sha,
         historyCommitDetails: null,
@@ -1944,24 +1759,15 @@ export function createWebApplicationStore(
       })
       try {
         const historyCommitDetails = await git.getCommitDetails(path, sha)
-        if (
-          generation === historyInspectionGeneration &&
-          state.selectedHistoryCommitSHA === sha
-        )
+        if (state.selectedHistoryCommitSHA === sha)
           update({ historyCommitDetails })
       } catch (error) {
-        if (
-          generation === historyInspectionGeneration &&
-          state.selectedHistoryCommitSHA === sha
-        )
+        if (state.selectedHistoryCommitSHA === sha)
           update({
             error: error instanceof Error ? error.message : String(error),
           })
       } finally {
-        if (
-          generation === historyInspectionGeneration &&
-          state.selectedHistoryCommitSHA === sha
-        )
+        if (state.selectedHistoryCommitSHA === sha)
           update({ historyInspectionLoading: false })
       }
     },
@@ -2012,7 +1818,6 @@ export function createWebApplicationStore(
     },
 
     clearHistoryInspection() {
-      ++historyInspectionGeneration
       update({
         selectedHistoryCommitSHA: null,
         historyCommitDetails: null,
@@ -2024,7 +1829,6 @@ export function createWebApplicationStore(
 
     async loadComparison(branch, mode) {
       const path = selectedPath()
-      const generation = ++comparisonGeneration
       setStoredComparisonState(path, { branch, mode })
       update({
         comparisonBranch: branch,
@@ -2040,42 +1844,16 @@ export function createWebApplicationStore(
       })
       try {
         const comparison = await git.getComparison(path, branch, mode)
-        if (
-          generation === comparisonGeneration &&
-          state.comparisonBranch === branch &&
-          state.comparisonMode === mode
-        )
+        if (state.comparisonBranch === branch && state.comparisonMode === mode)
           update({ comparison })
       } catch (error) {
-        if (
-          generation === comparisonGeneration &&
-          state.comparisonBranch === branch &&
-          state.comparisonMode === mode
-        )
+        if (state.comparisonBranch === branch && state.comparisonMode === mode)
           update({
             error: error instanceof Error ? error.message : String(error),
           })
       } finally {
-        if (
-          generation === comparisonGeneration &&
-          state.comparisonBranch === branch &&
-          state.comparisonMode === mode
-        )
+        if (state.comparisonBranch === branch && state.comparisonMode === mode)
           update({ comparisonLoading: false })
-      }
-    },
-
-    async loadRemoteTagMetadata() {
-      const path = selectedPath()
-      try {
-        const branches = await git.getBranches(path, true)
-        if (state.selectedRepositoryPath === path) update({ branches })
-        return branches
-      } catch (error) {
-        update({
-          error: error instanceof Error ? error.message : String(error),
-        })
-        throw error
       }
     },
 
@@ -2201,7 +1979,7 @@ export function createWebApplicationStore(
         begin()
         try {
           await git.appendIgnore(path, { kind: 'file', paths: files })
-          await refreshRepository(path)
+          await refreshRepository(path, true)
         } catch (error) {
           fail(error, action)
         } finally {
@@ -2217,30 +1995,9 @@ export function createWebApplicationStore(
         begin()
         try {
           await git.appendIgnore(path, { kind: 'pattern', paths: patterns })
-          await refreshRepository(path)
+          await refreshRepository(path, true)
         } catch (error) {
           fail(error, action)
-        } finally {
-          update({ loading: false })
-        }
-      }
-      await action()
-    },
-
-    async readGitIgnore() {
-      return (await git.readGitIgnore(selectedPath())).text
-    },
-
-    async saveGitIgnore(text) {
-      const path = selectedPath()
-      const action = async () => {
-        begin()
-        try {
-          await git.saveGitIgnore(path, text)
-          await refreshRepository(path)
-        } catch (error) {
-          fail(error, action)
-          throw error
         } finally {
           update({ loading: false })
         }
@@ -2265,11 +2022,7 @@ export function createWebApplicationStore(
     },
 
     async openIntegration(kind, filePath, selection) {
-      try {
-        await platform.openIntegration(kind, filePath, selection)
-      } catch (error) {
-        fail(error)
-      }
+      await platform.openIntegration(kind, filePath, selection)
     },
 
     async runOperation(
@@ -2282,36 +2035,15 @@ export function createWebApplicationStore(
         try {
           const result = await executeTrackedOperation(path, operation, options)
           if (!result) return
-          await refreshRepository(path)
-          publishOperationUndo(operation, options, result)
+          await refreshRepository(path, true)
         } catch (error) {
-          await refreshRepository(path)
+          await refreshRepository(path, true)
           fail(error, action)
         } finally {
-          update({ loading: false, operationTask: null })
+          update({ loading: false })
         }
       }
       await action()
-    },
-
-    async runOperationOrThrow(
-      operation: WebGitOperation,
-      options: WebOperationOptions = {}
-    ) {
-      const path = selectedPath()
-      begin()
-      try {
-        const result = await executeTrackedOperation(path, operation, options)
-        if (!result) return
-        await refreshRepository(path)
-        publishOperationUndo(operation, options, result)
-      } catch (error) {
-        await refreshRepository(path)
-        fail(error)
-        throw error
-      } finally {
-        update({ loading: false, operationTask: null })
-      }
     },
 
     async cancelOperation() {
@@ -2320,17 +2052,6 @@ export function createWebApplicationStore(
       try {
         update({
           operationTask: await git.cancelOperation(task.id),
-        })
-      } catch (error) {
-        fail(error)
-      }
-    },
-
-    async respondOperationAuth(id, response, remember = false) {
-      if (state.operationTask?.id !== id) return
-      try {
-        update({
-          operationTask: await git.respondOperationAuth(id, response, remember),
         })
       } catch (error) {
         fail(error)
@@ -2380,12 +2101,11 @@ export function createWebApplicationStore(
             .filter(file => file.status.kind !== 'Conflicted')
             .map(file => file.path) || []
         : []
-      const action = async (bypassHooks = false) => {
+      const action = async () => {
         begin()
         try {
           const result = await executeTrackedOperation(path, 'commit', {
             ...options,
-            noVerify: bypassHooks || options.noVerify === true,
             files: selectedFiles.filter(
               file => !state.partialFilePatches.has(file)
             ),
@@ -2394,7 +2114,7 @@ export function createWebApplicationStore(
             trailers: requestedTrailers,
           })
           if (!result) return
-          await refreshRepository(path)
+          await refreshRepository(path, true)
           update({
             commitDraft: '',
             commitTrailerText: '',
@@ -2406,12 +2126,7 @@ export function createWebApplicationStore(
             },
           })
         } catch (error) {
-          const hookFailed =
-            error &&
-            typeof error === 'object' &&
-            'hookFailure' in error &&
-            error.hookFailure !== null
-          fail(error, hookFailed ? () => action(true) : () => action())
+          fail(error, action)
         } finally {
           update({ loading: false })
         }
@@ -2432,7 +2147,7 @@ export function createWebApplicationStore(
             allowPermanentOnTrashFailure: !permanently,
           })
           if (!result) return
-          await refreshRepository(path)
+          await refreshRepository(path, true)
         } catch (error) {
           fail(error, action)
         } finally {
@@ -2444,6 +2159,25 @@ export function createWebApplicationStore(
 
     async selectSection(section) {
       update({ selectedSection: section })
+      if (section !== 'repository-tools' || !state.selectedRepositoryPath)
+        return
+      const path = state.selectedRepositoryPath
+      try {
+        const branches = await git.getBranches(path, true)
+        if (
+          state.selectedRepositoryPath === path &&
+          state.selectedSection === section
+        )
+          update({ branches })
+      } catch (error) {
+        if (
+          state.selectedRepositoryPath === path &&
+          state.selectedSection === section
+        )
+          update({
+            error: error instanceof Error ? error.message : String(error),
+          })
+      }
     },
 
     async loadMoreHistory() {
@@ -2472,13 +2206,10 @@ export function createWebApplicationStore(
     },
 
     async refresh() {
-      await refreshRepository(selectedPath())
+      await refreshRepository(selectedPath(), true)
     },
 
     removeRepository(path) {
-      const removingListedRepository = state.repositories.some(
-        repository => repository.path === path
-      )
       const repositories = state.repositories.filter(
         repository => repository.path !== path
       )
@@ -2487,9 +2218,7 @@ export function createWebApplicationStore(
       )
       const selectedRepositoryPath =
         state.selectedRepositoryPath === path
-          ? removingListedRepository
-            ? repositories[0]?.path || null
-            : null
+          ? repositories[0]?.path || null
           : state.selectedRepositoryPath
       const removingTutorial = state.tutorialRepositoryPath === path
       update({
@@ -2510,14 +2239,6 @@ export function createWebApplicationStore(
         selectedStashFilePath: null,
         stashDiff: null,
         selectedRepositoryInspection: null,
-        error: null,
-        errorCode: null,
-        errorActionURL: null,
-        hookFailure: null,
-        operationOutput: null,
-        operationTask: null,
-        configLockScope: null,
-        canRetry: false,
         tutorialRepositoryPath: removingTutorial
           ? null
           : state.tutorialRepositoryPath,
@@ -2563,7 +2284,7 @@ export function createWebApplicationStore(
             if (!result) return
           }
           if (state.selectedRepositoryPath)
-            await refreshRepository(state.selectedRepositoryPath)
+            await refreshRepository(state.selectedRepositoryPath, true)
         } catch (error) {
           fail(error, action)
         } finally {
@@ -2593,7 +2314,7 @@ export function createWebApplicationStore(
             if (!result) return
           }
           if (state.selectedRepositoryPath)
-            await refreshRepository(state.selectedRepositoryPath)
+            await refreshRepository(state.selectedRepositoryPath, true)
         } catch (error) {
           fail(error, action)
         } finally {
@@ -2743,7 +2464,7 @@ export function createWebApplicationStore(
           path,
           pullRequest
         )
-        await refreshRepository(path)
+        await refreshRepository(path, true)
       } catch (error) {
         fail(error, () => dispatcher.checkoutPullRequest(pullRequest))
       } finally {
@@ -2902,7 +2623,7 @@ export function createWebApplicationStore(
           ),
           pullRequestDetails: details,
         })
-        await refreshRepository(path)
+        await refreshRepository(path, true)
       } catch (error) {
         fail(error, () => dispatcher.checkoutNotification(notification))
       } finally {
@@ -2913,21 +2634,6 @@ export function createWebApplicationStore(
     async retryLastAction() {
       const action = retryLastAction
       if (action) await action()
-    },
-
-    async retryLastActionWithCredentials(username, password) {
-      const action = retryLastAction
-      if (!action) return
-      retryGenericCredentials = { username, password }
-      await action()
-    },
-
-    dismissHistoryRewriteUndo() {
-      update({ historyRewriteUndo: null })
-    },
-
-    dismissCherryPickUndo() {
-      update({ cherryPickUndo: null })
     },
 
     async loadLfsStatus() {
@@ -3065,15 +2771,13 @@ export function createWebApplicationStore(
       }
     },
 
-    async launchIntegration(kind, name, custom = null, requestedTarget) {
-      const target = requestedTarget || selectedPath()
+    async launchIntegration(kind, name, custom = null) {
+      const target = selectedPath()
       begin()
       try {
         await platform.launchIntegration(kind, target, name, custom)
       } catch (error) {
-        fail(error, () =>
-          dispatcher.launchIntegration(kind, name, custom, requestedTarget)
-        )
+        fail(error, () => dispatcher.launchIntegration(kind, name, custom))
       } finally {
         update({ loading: false })
       }
@@ -3116,7 +2820,7 @@ export function createWebApplicationStore(
           repository,
           branch
         )
-        await refreshRepository(path)
+        await refreshRepository(path, true)
       } catch (error) {
         fail(error, () => dispatcher.pushRepository(owner, repository))
       } finally {
@@ -3191,6 +2895,9 @@ export function createWebApplicationStore(
       update({ loading: false })
     },
   }
+
+  if (state.selectedRepositoryPath)
+    void refreshRepository(state.selectedRepositoryPath, true)
 
   return {
     getState: () => state,
