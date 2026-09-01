@@ -3,6 +3,7 @@ import * as ReactDOM from 'react-dom'
 import { Grid, AutoSizer, Index } from 'react-virtualized'
 import { shallowEquals, structuralEquals } from '../../../lib/equality'
 import { FocusContainer } from '../../lib/focus-container'
+import { isMacPlatform, isPrimaryModifier } from '../keyboard'
 import { ListRow } from './list-row'
 import {
   findNextSelectableRow,
@@ -607,10 +608,10 @@ export class SectionList extends React.Component<
 
     // Home is Cmd+ArrowUp on macOS, end is Cmd+ArrowDown, see
     // https://github.com/desktop/desktop/pull/8644#issuecomment-645965884
-    const isHomeKey = __DARWIN__
+    const isHomeKey = isMacPlatform()
       ? event.metaKey && event.key === 'ArrowUp'
       : event.key === 'Home'
-    const isEndKey = __DARWIN__
+    const isEndKey = isMacPlatform()
       ? event.metaKey && event.key === 'ArrowDown'
       : event.key === 'End'
 
@@ -635,12 +636,15 @@ export class SectionList extends React.Component<
         this.moveSelection(direction, source)
       }
       event.preventDefault()
-    } else if (!__DARWIN__ && event.key === 'a' && event.ctrlKey) {
-      // On Windows Chromium will steal the Ctrl+A shortcut before
-      // Electron gets its hands on it meaning that the Select all
-      // menu item can't be invoked by means of keyboard shortcuts
-      // on Windows. Clicking on the menu item still emits the
-      // 'select-all' custom DOM event.
+    } else if (
+      event.key.toLowerCase() === 'a' &&
+      isPrimaryModifier(event) &&
+      !event.altKey &&
+      !event.shiftKey
+    ) {
+      // Desktop macOS delegates Cmd+A to the native Edit menu, but the web
+      // build has no native menu dispatch. Handle both primary modifiers here
+      // so Cmd+A/Ctrl+A selects the list rows in every browser.
       this.onSelectAll(event)
     } else if (event.key === 'PageUp' || event.key === 'PageDown') {
       const direction = event.key === 'PageUp' ? 'up' : 'down'
@@ -1589,7 +1593,7 @@ export class SectionList extends React.Component<
       // performing a "normal" click.
       const isRightClick =
         event.button === 2 ||
-        (__DARWIN__ && event.button === 0 && event.ctrlKey)
+        (isMacPlatform() && event.button === 0 && event.ctrlKey)
 
       // prevent the right-click event from changing the selection if not necessary
       if (
@@ -1599,7 +1603,7 @@ export class SectionList extends React.Component<
         return
       }
 
-      const multiSelectKey = __DARWIN__ ? event.metaKey : event.ctrlKey
+      const multiSelectKey = isPrimaryModifier(event)
 
       if (
         event.shiftKey &&
@@ -1689,7 +1693,8 @@ export class SectionList extends React.Component<
     // macOS allow emulating a right click by holding down the ctrl key while
     // performing a "normal" click.
     const isRightClick =
-      event.button === 2 || (__DARWIN__ && event.button === 0 && event.ctrlKey)
+      event.button === 2 ||
+      (isMacPlatform() && event.button === 0 && event.ctrlKey)
 
     // prevent the right-click event from changing the selection if not necessary
     if (
@@ -1699,7 +1704,7 @@ export class SectionList extends React.Component<
       return
     }
 
-    const multiSelectKey = __DARWIN__ ? event.metaKey : event.ctrlKey
+    const multiSelectKey = isPrimaryModifier(event)
 
     if (
       !event.shiftKey &&
