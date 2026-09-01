@@ -82,6 +82,16 @@ module.exports = {
         'src',
         'desktop-preferences-git-config-stub.js'
       ),
+      [path.join(root, 'app', 'src', 'lib', 'git', 'gitignore.ts')]: path.join(
+        __dirname,
+        'src',
+        'desktop-gitignore-stub.js'
+      ),
+      [path.join(root, 'app', 'src', 'lib', 'git', 'gitignore')]: path.join(
+        __dirname,
+        'src',
+        'desktop-gitignore-stub.js'
+      ),
       [path.join(root, 'app', 'src', 'lib', 'shells', 'index.ts')]: path.join(
         __dirname,
         'src',
@@ -237,14 +247,6 @@ module.exports = {
         'src',
         'desktop-branch-name-rule-validation-stub.js'
       ),
-      [path.join(
-        root,
-        'app',
-        'src',
-        'ui',
-        'repository-settings',
-        'repository-settings.tsx'
-      )]: path.join(__dirname, 'src', 'desktop-repository-settings-stub.js'),
       [path.join(
         root,
         'app',

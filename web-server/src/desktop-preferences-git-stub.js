@@ -1,6 +1,10 @@
 const config = require('./desktop-preferences-git-config-stub')
 const { request } = require('./desktop-preferences-runtime')
 const { git } = require('./desktop-git-core-stub')
+const {
+  readGitIgnoreAtRoot,
+  saveGitIgnore,
+} = require('./desktop-gitignore-stub')
 
 function isConfigFileLockError() {
   return false
@@ -149,5 +153,7 @@ module.exports = {
   initGitRepository,
   isConfigFileLockError,
   parseConfigLockFilePathFromError,
+  readGitIgnoreAtRoot,
   revSymmetricDifference,
+  saveGitIgnore,
 }
