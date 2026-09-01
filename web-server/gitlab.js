@@ -50,10 +50,17 @@ function authenticatedGitLabEnvironment(remoteURL, token) {
   const authorization = Buffer.from(`oauth2:${token}`).toString('base64')
   return {
     ...process.env,
-    GIT_CONFIG_COUNT: '1',
-    GIT_CONFIG_KEY_0: `http.${remote.origin}/.extraHeader`,
-    GIT_CONFIG_VALUE_0: `Authorization: Basic ${authorization}`,
+    GIT_CONFIG_PARAMETERS: '',
+    GIT_CONFIG_COUNT: '3',
+    GIT_CONFIG_KEY_0: 'credential.helper',
+    GIT_CONFIG_VALUE_0: '',
+    GIT_CONFIG_KEY_1: 'core.askPass',
+    GIT_CONFIG_VALUE_1: '',
+    GIT_CONFIG_KEY_2: `http.${remote.origin}/.extraHeader`,
+    GIT_CONFIG_VALUE_2: `Authorization: Basic ${authorization}`,
     GIT_TERMINAL_PROMPT: '0',
+    GIT_ASKPASS: process.execPath,
+    SSH_ASKPASS: process.execPath,
   }
 }
 

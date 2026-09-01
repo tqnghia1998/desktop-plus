@@ -3,6 +3,7 @@ import * as React from 'react'
 import { NoRepositoriesView } from './no-repositories/no-repositories-view'
 import { MissingRepository } from './missing-repository'
 import { AppError } from './app-error'
+import { GenericGitAuthentication } from './generic-git-auth'
 import { HookFailed } from './hook-failed/hook-failed'
 import { AppContents, FocusedAppChrome } from './app-chrome'
 import { DialogStackContext } from './dialog/dialog'
@@ -1372,9 +1373,32 @@ function DesktopAppError(props: {
   )
   if (!error) return null
 
+  const remoteURL =
+    props.state.repositories.find(
+      repository => repository.path === props.state.selectedRepositoryPath
+    )?.remoteURL ||
+    props.state.branches?.remotes?.find(remote => remote.name === 'origin')
+      ?.url ||
+    null
+  const needsWebCredentials =
+    (props.state.errorCode === 'authentication-required' ||
+      props.state.errorCode === 'credential-helper-failed') &&
+    Boolean(remoteURL && /^https?:\/\//i.test(remoteURL))
+
   return (
     <DialogStackContext.Provider value={{ isTopMost: true }}>
-      {hookFailure ? (
+      {needsWebCredentials && remoteURL ? (
+        <GenericGitAuthentication
+          remoteUrl={remoteURL}
+          onDismiss={() => props.dispatcher.dismissError()}
+          onSave={(username, password) =>
+            void props.dispatcher.retryLastActionWithCredentials(
+              username,
+              password
+            )
+          }
+        />
+      ) : hookFailure ? (
         <HookFailed
           hookName={hookFailure.hookName}
           onDismissed={() => props.dispatcher.dismissError()}
