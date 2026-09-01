@@ -69,8 +69,8 @@ not full feature-for-feature desktop parity. The remaining local gaps include:
   execution. Repository and worktree folder pickers are available, while the
   broader native open/save-dialog surface is Partial. Native notifications,
   hosted providers, Pull Requests, Copilot, repository rules, and push
-  protection remain Deferred; interactive SSH trust and credential dialogs and
-  desktop About/legal/release surfaces are Missing, as documented in
+  protection remain Deferred; desktop About/legal/release surfaces remain
+  Missing, as documented in
   [PARITY-GAPS.md](PARITY-GAPS.md).
 
 ## HTTP(S) Git credentials
@@ -82,8 +82,9 @@ not own the authentication UI. If lookup or authentication fails, the renderer
 shows a generic username/password dialog and retries the operation once. The
 credentials are held only for that request and are not persisted by the
 browser or stored back into the credential helper. This is generic Git
-authentication, not hosted-account sign-in. SSH host trust and interactive SSH
-credentials remain missing.
+authentication, not hosted-account sign-in. SSH prompts are handled by the
+shared Desktop dialogs while the task is paused; remembered passwords and key
+passphrases use the companion's operating-system credential store.
 
 ## Hosting providers
 
