@@ -2213,7 +2213,11 @@ export function createWebApplicationStore(
     },
 
     async openIntegration(kind, filePath, selection) {
-      await platform.openIntegration(kind, filePath, selection)
+      try {
+        await platform.openIntegration(kind, filePath, selection)
+      } catch (error) {
+        fail(error)
+      }
     },
 
     async runOperation(
