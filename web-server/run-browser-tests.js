@@ -5,6 +5,7 @@ const { selectedBrowserName } = require('./test-browser')
 const suites = {
   integration: [
     'test-source-renderer.js',
+    'test-source-changes-selection.js',
     'test-source-commit-options.js',
     'test-source-history-workflows.js',
     'test-source-compare-workflows.js',

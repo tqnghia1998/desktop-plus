@@ -1021,6 +1021,10 @@ export class SideBySideDiffRow extends React.Component<
   }
 
   private onContextMenuLineNumber = (evt: React.MouseEvent) => {
+    // The web companion supplies its own contextual menu. Prevent the browser
+    // menu from appearing alongside it.
+    evt.preventDefault()
+
     if (this.props.hideWhitespaceInDiff) {
       const column = this.getDiffColumn(evt.currentTarget)
       if (column !== null) {
@@ -1035,7 +1039,9 @@ export class SideBySideDiffRow extends React.Component<
     }
   }
 
-  private onContextMenuHunk = () => {
+  private onContextMenuHunk = (evt: React.MouseEvent) => {
+    evt.preventDefault()
+
     if (this.props.hideWhitespaceInDiff) {
       const { row } = this.props
       // Prefer left hand side popovers when clicking hunk except for when

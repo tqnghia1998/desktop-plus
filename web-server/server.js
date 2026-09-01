@@ -3620,9 +3620,11 @@ async function getBranches(repoPath, includeRemoteTags = false) {
   const tagsToPush = includeRemoteTags
     ? tagRows.filter(tag => tag.pushedRemotes.length === 0).map(tag => tag.name)
     : []
+  const lastFetched = await getLastFetchedAt(repoPath)
   return {
     branch,
     defaultBranch,
+    lastFetched,
     recentBranches,
     tip: head,
     aheadBehind,
@@ -3637,6 +3639,16 @@ async function getBranches(repoPath, includeRemoteTags = false) {
     pullWithRebase,
     localCommitSHAs,
     ...(includeRemoteTags ? { tagsToPush } : {}),
+  }
+}
+
+async function getLastFetchedAt(repoPath) {
+  const fetchHeadPath = await gitPath(repoPath, 'FETCH_HEAD')
+  try {
+    return (await fs.promises.stat(fetchHeadPath)).mtime.toISOString()
+  } catch (error) {
+    if (error.code === 'ENOENT') return null
+    throw error
   }
 }
 
