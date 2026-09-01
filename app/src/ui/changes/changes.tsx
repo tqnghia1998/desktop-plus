@@ -11,6 +11,7 @@ import { Repository } from '../../models/repository'
 import { Dispatcher } from '../dispatcher'
 import { SeamlessDiffSwitcher } from '../diff/seamless-diff-switcher'
 import { PopupType } from '../../models/popup'
+import { IFileContents } from '../diff/syntax-highlighting'
 import {
   DiffPresentationStateComponent,
   IDiffPresentationState,
@@ -20,6 +21,7 @@ interface IChangesProps {
   readonly repository: Repository
   readonly file: WorkingDirectoryFileChange
   readonly diff: IDiff | null
+  readonly externalFileContents?: IFileContents | null
   readonly dispatcher: Dispatcher
   readonly imageDiffType: ImageDiffType
 
@@ -160,6 +162,7 @@ export class Changes extends DiffPresentationStateComponent<
           repository={this.props.repository}
           imageDiffType={this.props.imageDiffType}
           file={this.props.file}
+          externalFileContents={this.props.externalFileContents}
           readOnly={false}
           onIncludeChanged={this.onDiffLineIncludeChanged}
           onDiscardChanges={this.onDiscardChanges}
