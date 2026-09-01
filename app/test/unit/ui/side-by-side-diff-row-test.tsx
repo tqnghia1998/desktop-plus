@@ -256,12 +256,17 @@ describe('SideBySideDiffRow', () => {
     ])
   })
 
-  it('dispatches context menus from line number labels with diff line numbers', () => {
+  it('dispatches line context menus and suppresses the browser menu', () => {
     const { contextMenuLines } = renderSideBySideDiffRow()
+    const event = new MouseEvent('contextmenu', {
+      bubbles: true,
+      cancelable: true,
+    })
 
-    fireEvent.contextMenu(getLineNumberLabel('10'))
+    getLineNumberLabel('10').dispatchEvent(event)
 
     assert.deepEqual(contextMenuLines, [1])
+    assert.equal(event.defaultPrevented, true)
   })
 
   it('dispatches hunk checkbox changes with the hunk start line', () => {
@@ -289,17 +294,22 @@ describe('SideBySideDiffRow', () => {
     assert.deepEqual(hunkClicks, [{ hunkStartLine: 1, select: false }])
   })
 
-  it('dispatches context menus from hunk handles with the hunk start line', () => {
+  it('dispatches hunk context menus and suppresses the browser menu', () => {
     const { contextMenuHunks } = renderSideBySideDiffRow({
       rowSelectableGroup: createSelectableGroup(),
     })
-
-    fireEvent.contextMenu(
+    const event = new MouseEvent('contextmenu', {
+      bubbles: true,
+      cancelable: true,
+    })
+    const hunkHandle =
       screen.getByText(/Lines 10 to 11 added/).closest('.hunk-handle') ??
-        screen.getByText(/Lines 10 to 11 added/)
-    )
+      screen.getByText(/Lines 10 to 11 added/)
+
+    hunkHandle.dispatchEvent(event)
 
     assert.deepEqual(contextMenuHunks, [1])
+    assert.equal(event.defaultPrevented, true)
   })
 
   it('dispatches hunk expansion clicks with the expansion type', () => {
