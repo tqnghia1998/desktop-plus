@@ -73,6 +73,7 @@ import { findDOMNode } from 'react-dom'
 import escapeRegExp from 'lodash/escapeRegExp'
 import ReactDOM from 'react-dom'
 import { AriaLiveContainer } from '../accessibility/aria-live-container'
+import { isPrimaryModifier } from '../lib/keyboard'
 import { DiffMinimap } from './diff-minimap'
 import { getNumber, setNumber } from '../../lib/local-storage'
 
@@ -1644,14 +1645,18 @@ export class SideBySideDiff extends React.Component<
   }
 
   private onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    const modifiers = event.altKey || event.metaKey || event.shiftKey
-    const { ctrlKey, key } = event
     const { isSearching } = this.state
 
-    // On macOS the Cmd+A works only selects the text in the diff but on Windows
-    // it selects text outside of the diff as well so we capture it here and
-    // explicitly only select the contents of the diff.
-    if (!__DARWIN__ && key === 'a' && ctrlKey && !modifiers && !isSearching) {
+    // Desktop macOS delegates Cmd+A to the native Edit menu. The web build has
+    // no native menu dispatch, so capture either browser primary modifier and
+    // limit selection to this diff instead of the whole page.
+    if (
+      event.key.toLowerCase() === 'a' &&
+      isPrimaryModifier(event) &&
+      !event.altKey &&
+      !event.shiftKey &&
+      !isSearching
+    ) {
       this.onSelectAll(event)
     }
   }
@@ -1843,6 +1848,9 @@ export class SideBySideDiff extends React.Component<
     ) {
       return
     }
+
+    // The web companion renders this contextual menu itself.
+    evt.preventDefault()
 
     const items: IMenuItem[] = [
       {
@@ -2053,9 +2061,7 @@ export class SideBySideDiff extends React.Component<
       return
     }
 
-    const isCmdOrCtrl = __DARWIN__
-      ? event.metaKey && !event.ctrlKey
-      : event.ctrlKey
+    const isCmdOrCtrl = isPrimaryModifier(event)
 
     if (isCmdOrCtrl && !event.shiftKey && !event.altKey && event.key === 'f') {
       event.preventDefault()
