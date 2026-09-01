@@ -473,6 +473,8 @@
       }
 
       &.selectable {
+        cursor: pointer;
+
         input:focus-visible + label {
           outline: 2px solid var(--diff-linenumber-focus-color);
           outline-offset: -3px;
