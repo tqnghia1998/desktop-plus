@@ -25,6 +25,8 @@ module.exports = {
   resolve: {
     extensions: ['.ts', '.tsx', '.js'],
     alias: {
+      react: path.join(root, 'app', 'node_modules', 'react'),
+      'react-dom': path.join(root, 'app', 'node_modules', 'react-dom'),
       [path.join(root, 'app', 'src', 'lib', 'path.ts')]: path.join(
         __dirname,
         'src',
@@ -50,16 +52,199 @@ module.exports = {
         'src',
         'desktop-account-stub.js'
       ),
+      [path.join(root, 'app', 'src', 'models', 'repository.ts')]: path.join(
+        __dirname,
+        'src',
+        'desktop-repository-model-stub.js'
+      ),
+      [path.join(root, 'app', 'src', 'lib', 'git', 'worktree.ts')]: path.join(
+        __dirname,
+        'src',
+        'desktop-worktree-stub.js'
+      ),
+      [path.join(root, 'app', 'src', 'lib', 'git', 'index.ts')]: path.join(
+        __dirname,
+        'src',
+        'desktop-preferences-git-stub.js'
+      ),
+      [path.join(root, 'app', 'src', 'lib', 'git', 'index')]: path.join(
+        __dirname,
+        'src',
+        'desktop-preferences-git-stub.js'
+      ),
+      [path.join(root, 'app', 'src', 'lib', 'git', 'config.ts')]: path.join(
+        __dirname,
+        'src',
+        'desktop-preferences-git-config-stub.js'
+      ),
+      [path.join(root, 'app', 'src', 'lib', 'git', 'config')]: path.join(
+        __dirname,
+        'src',
+        'desktop-preferences-git-config-stub.js'
+      ),
+      [path.join(root, 'app', 'src', 'lib', 'shells', 'index.ts')]: path.join(
+        __dirname,
+        'src',
+        'desktop-preferences-shells-stub.js'
+      ),
+      [path.join(root, 'app', 'src', 'lib', 'shells')]: path.join(
+        __dirname,
+        'src',
+        'desktop-preferences-shells-stub.js'
+      ),
+      [path.join(root, 'app', 'src', 'lib', 'editors', 'lookup.ts')]: path.join(
+        __dirname,
+        'src',
+        'desktop-preferences-editors-stub.js'
+      ),
+      [path.join(root, 'app', 'src', 'lib', 'editors', 'lookup')]: path.join(
+        __dirname,
+        'src',
+        'desktop-preferences-editors-stub.js'
+      ),
+      [path.join(root, 'app', 'src', 'lib', 'custom-integration.ts')]:
+        path.join(
+          __dirname,
+          'src',
+          'desktop-preferences-custom-integration-stub.js'
+        ),
+      [path.join(root, 'app', 'src', 'lib', 'custom-integration')]: path.join(
+        __dirname,
+        'src',
+        'desktop-preferences-custom-integration-stub.js'
+      ),
+      [path.join(root, 'app', 'src', 'lib', 'ssh', 'ssh.ts')]: path.join(
+        __dirname,
+        'src',
+        'desktop-preferences-ssh-stub.js'
+      ),
+      [path.join(root, 'app', 'src', 'lib', 'ssh', 'ssh')]: path.join(
+        __dirname,
+        'src',
+        'desktop-preferences-ssh-stub.js'
+      ),
+      [path.join(root, 'app', 'src', 'lib', 'stores', 'app-store.ts')]:
+        path.join(__dirname, 'src', 'desktop-preferences-app-store-stub.js'),
+      [path.join(root, 'app', 'src', 'lib', 'stores', 'app-store')]: path.join(
+        __dirname,
+        'src',
+        'desktop-preferences-app-store-stub.js'
+      ),
+      [`${path.join(root, 'app', 'src', 'lib', 'stores')}$`]: path.join(
+        __dirname,
+        'src',
+        'desktop-changes-stores-stub.js'
+      ),
+      [`${path.join(root, 'app', 'src', 'lib', 'stores', 'index.ts')}$`]:
+        path.join(__dirname, 'src', 'desktop-changes-stores-stub.js'),
+      [path.join(root, 'app', 'src', 'lib', 'stores', 'ahead-behind-store.ts')]:
+        path.join(__dirname, 'src', 'desktop-ahead-behind-store-stub.js'),
+      [path.join(root, 'app', 'src', 'lib', 'git', 'lfs.ts')]: path.join(
+        __dirname,
+        'src',
+        'desktop-changes-lfs-stub.js'
+      ),
+      [path.join(root, 'app', 'src', 'lib', 'git', 'lfs')]: path.join(
+        __dirname,
+        'src',
+        'desktop-changes-lfs-stub.js'
+      ),
+      [path.join(root, 'app', 'src', 'lib', 'large-files.ts')]: path.join(
+        __dirname,
+        'src',
+        'desktop-changes-large-files-stub.js'
+      ),
+      [path.join(root, 'app', 'src', 'lib', 'large-files')]: path.join(
+        __dirname,
+        'src',
+        'desktop-changes-large-files-stub.js'
+      ),
+      [path.join(root, 'app', 'src', 'lib', 'stats')]: path.join(
+        __dirname,
+        'src',
+        'desktop-preferences-stats-stub.js'
+      ),
+      [path.join(root, 'app', 'src', 'lib', 'stats', 'index.ts')]: path.join(
+        __dirname,
+        'src',
+        'desktop-preferences-stats-stub.js'
+      ),
+      [path.join(root, 'app', 'src', 'lib', 'stores', 'copilot-store')]:
+        path.join(
+          __dirname,
+          'src',
+          'desktop-preferences-copilot-store-stub.js'
+        ),
+      [path.join(root, 'app', 'src', 'lib', 'stores', 'copilot-store.ts')]:
+        path.join(
+          __dirname,
+          'src',
+          'desktop-preferences-copilot-store-stub.js'
+        ),
+      [path.join(root, 'app', 'src', 'lib', 'copilot', 'byok')]: path.join(
+        __dirname,
+        'src',
+        'desktop-preferences-byok-stub.js'
+      ),
+      [path.join(root, 'app', 'src', 'lib', 'copilot', 'byok.ts')]: path.join(
+        __dirname,
+        'src',
+        'desktop-preferences-byok-stub.js'
+      ),
+      [path.join(root, 'app', 'src', 'lib', 'git', 'worktree-include.ts')]:
+        path.join(__dirname, 'src', 'desktop-worktree-include-stub.js'),
       [path.join(root, 'app', 'src', 'ui', 'main-process-proxy.ts')]: path.join(
         __dirname,
         'src',
         'desktop-main-process-proxy-stub.js'
       ),
+      [path.join(root, 'app', 'src', 'ui', 'main-process-proxy')]: path.join(
+        __dirname,
+        'src',
+        'desktop-main-process-proxy-stub.js'
+      ),
+      [path.join(root, 'app', 'src', 'ui', 'app.tsx')]: path.join(
+        __dirname,
+        'src',
+        'desktop-app-error-app-stub.js'
+      ),
+      [path.join(root, 'app', 'src', 'lib', 'git', 'core.ts')]: path.join(
+        __dirname,
+        'src',
+        'desktop-git-core-stub.js'
+      ),
+      [path.join(root, 'app', 'src', 'lib', 'git', 'core')]: path.join(
+        __dirname,
+        'src',
+        'desktop-git-core-stub.js'
+      ),
+      [path.join(root, 'app', 'src', 'ui', 'dispatcher', 'index.ts')]:
+        path.join(__dirname, 'src', 'desktop-commit-graph-dispatcher-stub.js'),
       [path.join(root, 'app', 'src', 'ui', 'account-picker.tsx')]: path.join(
         __dirname,
         'src',
         'desktop-account-picker-stub.js'
       ),
+      [path.join(
+        root,
+        'app',
+        'src',
+        'ui',
+        'lib',
+        'branch-name-rule-validation.tsx'
+      )]: path.join(
+        __dirname,
+        'src',
+        'desktop-branch-name-rule-validation-stub.js'
+      ),
+      [path.join(
+        root,
+        'app',
+        'src',
+        'ui',
+        'repository-settings',
+        'repository-settings.tsx'
+      )]: path.join(__dirname, 'src', 'desktop-repository-settings-stub.js'),
       [path.join(
         root,
         'app',
@@ -72,6 +257,14 @@ module.exports = {
         'src',
         'desktop-cloneable-repository-filter-list-stub.js'
       ),
+      [path.join(root, 'app', 'src', 'ui', 'preferences', 'notifications.tsx')]:
+        path.join(
+          __dirname,
+          'src',
+          'desktop-preferences-notifications-stub.js'
+        ),
+      [path.join(root, 'app', 'src', 'ui', 'preferences', 'copilot.tsx')]:
+        path.join(__dirname, 'src', 'desktop-preferences-copilot-stub.js'),
       electron: path.join(__dirname, 'src', 'desktop-electron-stub.js'),
       [path.join(
         root,
@@ -97,6 +290,48 @@ module.exports = {
         'syntax-highlighting',
         'index.ts'
       )]: path.join(__dirname, 'src', 'web-diff-syntax-highlighting.js'),
+      [path.join(root, 'app', 'src', 'lib', 'directory-exists.ts')]: path.join(
+        __dirname,
+        'src',
+        'desktop-directory-stub.js'
+      ),
+      [path.join(root, 'app', 'src', 'lib', 'path-exists.ts')]: path.join(
+        __dirname,
+        'src',
+        'desktop-directory-stub.js'
+      ),
+      [path.join(
+        root,
+        'app',
+        'src',
+        'ui',
+        'add-repository',
+        'write-default-readme.ts'
+      )]: path.join(
+        __dirname,
+        'src',
+        'desktop-create-repository-files-stub.js'
+      ),
+      [path.join(
+        root,
+        'app',
+        'src',
+        'ui',
+        'add-repository',
+        'git-attributes.ts'
+      )]: path.join(
+        __dirname,
+        'src',
+        'desktop-create-repository-files-stub.js'
+      ),
+      [path.join(root, 'app', 'src', 'ui', 'add-repository', 'gitignores.ts')]:
+        path.join(__dirname, 'src', 'desktop-create-repository-files-stub.js'),
+      [path.join(root, 'app', 'src', 'ui', 'add-repository', 'licenses.ts')]:
+        path.join(__dirname, 'src', 'desktop-create-repository-files-stub.js'),
+      [path.join(root, 'app', 'src', 'lib', 'git', 'description.ts')]:
+        path.join(__dirname, 'src', 'desktop-create-repository-files-stub.js'),
+      'fs/promises': path.join(__dirname, 'src', 'desktop-fs-promises-stub.js'),
+      os: path.join(__dirname, 'src', 'desktop-node-os-stub.js'),
       path: path.join(__dirname, 'src', 'desktop-node-path-stub.js'),
     },
     fallback: {
@@ -167,10 +402,7 @@ module.exports = {
   },
   performance: {
     hints: 'error',
-    // The web renderer now carries the desktop list stack in addition to the
-    // shared desktop stylesheet so repository, changes, and history surfaces
-    // render with the desktop components rather than parallel web copies.
-    maxEntrypointSize: 1600 * 1024,
-    maxAssetSize: 1200 * 1024,
+    maxEntrypointSize: 4600 * 1024,
+    maxAssetSize: 4300 * 1024,
   },
 }
