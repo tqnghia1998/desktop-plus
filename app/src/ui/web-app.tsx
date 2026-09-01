@@ -347,11 +347,22 @@ const webApplicationMenu: IMenu = {
       webMenuItem('open-external-editor', 'Open in External Editor'),
       webMenuItem('open-in-shell', 'Open in Terminal'),
       webMenuItem('open-working-directory', 'Show in File Manager'),
+      webMenuItem('manage-remotes', 'Manage Remotes…'),
       webMenuItem('remove-repository', 'Remove Repository…'),
     ]),
     webSubmenu('branch', 'Branch', [
+      webMenuItem('create-branch', 'New Branch…'),
+      webMenuItem('rename-branch', 'Rename…'),
+      webMenuItem('delete-branch', 'Delete…'),
+      { type: 'separator', id: 'branch-separator', visible: true },
       webMenuItem('update-from-default', 'Update from Default Branch'),
       webMenuItem('compare-to-branch', 'Compare to Branch'),
+      webMenuItem('merge-branch', 'Merge into Current Branch…'),
+      webMenuItem(
+        'squash-and-merge-branch',
+        'Squash and Merge into Current Branch…'
+      ),
+      webMenuItem('rebase-branch', 'Rebase Current Branch…'),
     ]),
   ],
 }
@@ -2239,6 +2250,15 @@ function DesktopToolbar(props: {
   readonly onPullAllRepositories: () => void
   readonly onPullRepositoryGroup: (group: string | null) => void
   readonly onRenameRepositoryGroup: (group: string) => void
+  readonly toolbarMenuRequests: {
+    readonly createBranch: number
+    readonly renameBranch: number
+    readonly deleteBranch: number
+    readonly manageRemotes: number
+    readonly mergeBranch: number
+    readonly squashMergeBranch: number
+    readonly rebaseBranch: number
+  }
   readonly uncommittedChangesStrategy: UncommittedChangesStrategy
   readonly confirmForcePush: boolean
   readonly confirmWorktreeRemoval: boolean
@@ -2386,6 +2406,7 @@ function DesktopToolbar(props: {
   const [rebaseDialog, setRebaseDialog] = React.useState<{
     readonly initialBranch?: Branch
   } | null>(null)
+  const lastToolbarMenuRequests = React.useRef(props.toolbarMenuRequests)
   const [checkoutTarget, setCheckoutTarget] = React.useState<{
     readonly options: WebOperationOptions
     readonly branch: Branch
@@ -2707,6 +2728,29 @@ function DesktopToolbar(props: {
     desktopCurrentBranch !== null &&
     defaultBranch !== null &&
     desktopCurrentBranch.name !== defaultBranch
+  React.useEffect(() => {
+    const requests = props.toolbarMenuRequests
+    const previous = lastToolbarMenuRequests.current
+    lastToolbarMenuRequests.current = requests
+    if (requests.createBranch !== previous.createBranch) {
+      setBranchInitialName('')
+      setBranchToRename(null)
+      setBranchDialog('create')
+    }
+    if (requests.renameBranch !== previous.renameBranch && currentWebBranch) {
+      setBranchToRename(currentWebBranch)
+      setBranchDialog('rename')
+    }
+    if (requests.deleteBranch !== previous.deleteBranch && currentWebBranch)
+      setBranchToDelete(currentWebBranch)
+    if (requests.manageRemotes !== previous.manageRemotes)
+      setManageRemotesOpen(true)
+    if (requests.mergeBranch !== previous.mergeBranch)
+      setMergeOperation({ squash: false })
+    if (requests.squashMergeBranch !== previous.squashMergeBranch)
+      setMergeOperation({ squash: true })
+    if (requests.rebaseBranch !== previous.rebaseBranch) setRebaseDialog({})
+  }, [currentWebBranch, props.toolbarMenuRequests])
   const repositoryActionItems = React.useMemo<
     ReadonlyArray<ToolbarActionMenuItem>
   >(
@@ -6548,6 +6592,15 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
     AppMenuState.fromMenu(webApplicationMenu)
   )
   const [webAppMenuOpen, setWebAppMenuOpen] = React.useState(false)
+  const [toolbarMenuRequests, setToolbarMenuRequests] = React.useState({
+    createBranch: 0,
+    renameBranch: 0,
+    deleteBranch: 0,
+    manageRemotes: 0,
+    mergeBranch: 0,
+    squashMergeBranch: 0,
+    rebaseBranch: 0,
+  })
   const [browserNotificationsEnabled, setBrowserNotificationsEnabled] =
     React.useState(() =>
       getBoolean(webBrowserNotificationsEnabledStorageKey, true)
@@ -7019,6 +7072,15 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
   const openRepositoryRelocation = (path: string) => {
     setRepositoryRelocationPath(path)
   }
+  const requestToolbarMenu = React.useCallback(
+    (menu: keyof typeof toolbarMenuRequests) => {
+      setToolbarMenuRequests(requests => ({
+        ...requests,
+        [menu]: requests[menu] + 1,
+      }))
+    },
+    []
+  )
   const executeWebMenuItem = React.useCallback(
     (item: MenuItem) => {
       if (item.type !== 'menuItem') return
@@ -7055,6 +7117,27 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
         case 'fetch':
           if (path) void dispatcher.runOperation('fetch')
           break
+        case 'create-branch':
+          requestToolbarMenu('createBranch')
+          break
+        case 'rename-branch':
+          requestToolbarMenu('renameBranch')
+          break
+        case 'delete-branch':
+          requestToolbarMenu('deleteBranch')
+          break
+        case 'manage-remotes':
+          requestToolbarMenu('manageRemotes')
+          break
+        case 'merge-branch':
+          requestToolbarMenu('mergeBranch')
+          break
+        case 'squash-and-merge-branch':
+          requestToolbarMenu('squashMergeBranch')
+          break
+        case 'rebase-branch':
+          requestToolbarMenu('rebaseBranch')
+          break
         case 'update-from-default':
           if (path)
             void dispatcher.runOperation('update-from-default', {
@@ -7083,6 +7166,7 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
       openCloneDialog,
       openInitDialog,
       requestRepositoryRemoval,
+      requestToolbarMenu,
       shellIntegration,
       state.branches?.defaultBranch,
       state.selectedRepositoryPath,
@@ -7210,6 +7294,7 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
                 onRenameRepositoryGroup={group =>
                   setRepositoryGroupToRename(group)
                 }
+                toolbarMenuRequests={toolbarMenuRequests}
                 confirmWorktreeRemoval={confirmWorktreeRemoval}
                 onConfirmWorktreeRemovalChanged={updateConfirmWorktreeRemoval}
                 confirmForcePush={confirmForcePush}
