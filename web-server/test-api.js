@@ -1971,7 +1971,7 @@ async function main() {
     assert.equal(result.response.status, 200, JSON.stringify(result.data))
 
     for (const body of [
-      { operation: 'tag-create', values: ['web-v1'] },
+      { operation: 'tag-create', values: ['web-v1'], message: '' },
       { operation: 'create-branch', values: ['rename-me'] },
       { operation: 'remote-add', values: ['backup', remote] },
       { operation: 'remote-set-url', values: ['backup', remote] },
