@@ -4,6 +4,9 @@ import { NoRepositoriesView } from './no-repositories/no-repositories-view'
 import { MissingRepository } from './missing-repository'
 import { AppError } from './app-error'
 import { GenericGitAuthentication } from './generic-git-auth'
+import { AddSSHHost } from './ssh/add-ssh-host'
+import { SSHKeyPassphrase } from './ssh/ssh-key-passphrase'
+import { SSHUserPassword } from './ssh/ssh-user-password'
 import { HookFailed } from './hook-failed/hook-failed'
 import { AppContents, FocusedAppChrome } from './app-chrome'
 import { DialogStackContext } from './dialog/dialog'
@@ -1454,6 +1457,46 @@ function useApplicationState(store: WebApplicationStore) {
     [store]
   )
   return state
+}
+
+function DesktopOperationAuthPrompt(props: {
+  readonly task: WebOperationTask | null
+  readonly dispatcher: WebDispatcher
+}) {
+  const task = props.task
+  const prompt = task?.authPrompt
+  if (!prompt || !task) return null
+  const respond = (response: string, remember = false) =>
+    void props.dispatcher.respondOperationAuth(task.id, response, remember)
+
+  return (
+    <DialogStackContext.Provider value={{ isTopMost: true }}>
+      {prompt.type === 'host' ? (
+        <AddSSHHost
+          fingerprint={prompt.fingerprint}
+          host={prompt.host}
+          ip={prompt.ip}
+          keyType={prompt.keyType}
+          onDismissed={() => undefined}
+          onSubmit={addHost => respond(addHost ? 'yes' : 'no')}
+        />
+      ) : prompt.type === 'passphrase' ? (
+        <SSHKeyPassphrase
+          keyPath={prompt.keyPath}
+          onDismissed={() => undefined}
+          onSubmit={(passphrase, remember) =>
+            respond(passphrase || '', remember)
+          }
+        />
+      ) : (
+        <SSHUserPassword
+          onDismissed={() => undefined}
+          onSubmit={(password, remember) => respond(password || '', remember)}
+          username={prompt.username}
+        />
+      )}
+    </DialogStackContext.Provider>
+  )
 }
 
 function DesktopAppError(props: {
@@ -7360,6 +7403,10 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
                 commitSummaryLengthWarningThreshold={
                   commitSummaryLengthWarningThreshold
                 }
+              />
+              <DesktopOperationAuthPrompt
+                dispatcher={dispatcher}
+                task={state.operationTask}
               />
               <DesktopAppError dispatcher={dispatcher} state={state} />
             </DesktopAppChrome>
