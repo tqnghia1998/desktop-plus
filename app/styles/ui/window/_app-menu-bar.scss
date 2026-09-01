@@ -56,14 +56,6 @@
     pointer-events: none;
 
     .menu-pane {
-      --background-color: var(--app-menu-pane-background-color);
-      background: var(--background-color);
-
-      --text-color: var(--app-menu-pane-color);
-      color: var(--text-color);
-
-      --text-secondary-color: var(--app-menu-pane-secondary-color);
-
       pointer-events: all;
     }
   }
