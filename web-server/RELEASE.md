@@ -71,6 +71,12 @@ execution evidence. The browser application menu and keyboard shortcuts are
 covered as a Partial parity surface because the native macOS menu bar remains
 outside web renderer ownership.
 
+`yarn test:web` also verifies generic HTTP(S) credential lookup through Git's
+configured credential helper. The companion must suppress editor askpass and
+terminal prompts; when lookup or authentication fails, the browser-owned
+one-time credential dialog is the only fallback. Do not describe this as
+hosted account sign-in or persist the dialog credentials.
+
 Do not promote a deferred or partial workflow to Supported until it has a
 visible source-renderer control, companion support, automated evidence, and the
 required in-scope provider or platform execution evidence.
