@@ -1,8 +1,8 @@
 # Desktop parity gap inventory
 
 This is the exhaustive implementation-gap inventory for the source-owned web
-renderer, audited against the desktop renderer on August 30, 2026. The target
-for this release is branded Google Chrome with the local companion on macOS.
+renderer. The target for this release is branded Google Chrome with the local
+companion on macOS.
 
 Status meanings:
 
@@ -21,18 +21,14 @@ the harness verifies loopback binding, an unprivileged companion process,
 changed-file state, paginated history, and a clean browser console. Those
 checks are release evidence rather than remaining implementation gaps.
 
-The August 30, 2026 Chrome source-renderer audit and its follow-up local
-evidence fixture closed the stale rows for repository aliases, groups and group
-renaming, recent-repository visibility and ordering, repository indicators,
-repository settings, relocation and disk deletion, clone/init validation,
-tutorial onboarding, file actions, commit options and amend, diff preferences
-and file actions, graph history and ref groups, history inspection actions,
-branch sorting and lifecycle actions, pull-all and group sync, stash options
-and stash context actions, remote validation and context actions, tag/worktree
-lifecycle and recovery, worktree removal preferences and `.worktreeinclude`,
-and submodule update/open controls. The rows below are the remaining concrete
-desktop differences after that audit; hosted and native integrations remain
-explicitly deferred.
+The rows below are the remaining concrete desktop differences. Hosted and
+native integrations remain explicitly deferred.
+
+Some GitHub and GitLab companion endpoints and typed client methods already
+exist. They do not establish feature parity: the source renderer provides no
+hosting sign-in entry point and passes empty account and Pull Request data to
+the reused desktop controls. A companion API is therefore not counted as a
+visible web feature until its source-renderer UI is wired.
 
 ## Repository management
 
@@ -140,11 +136,12 @@ explicitly deferred.
 | SYNC-04 | Pull all repositories | Supported | The sync menu exposes Pull all repositories and the store runs guarded pulls across remembered regular repositories. |
 | SYNC-05 | Reset-and-pull warning and uncommitted-change strategy preferences | Supported | Source reset-and-pull warns about discarded commits, offers stash-or-cancel recovery, and persists the selected dirty-change strategy. |
 | SYNC-06 | Fetch/pull/push progress and cancellation | Supported | Fetch, pull, and push use the shared visible operation-progress region with captured output and cancellation; branded Chrome evidence covers cancellation and completion. |
-| SYNC-07 | Authentication, certificate, SAML, workflow, and credential-helper recovery | Supported | Source remote errors classify authentication, credential-helper, SSH host-key, certificate, proxy, network, and generic failures, then show sanitized output and actionable retry guidance; hosted account flows remain deferred. |
+| SYNC-07 | Authentication, certificate, SAML, workflow, and credential-helper recovery | Supported | For HTTP(S) remotes, the companion first reuses the configured Git credential helper without editor prompts. Authentication or helper failures open a one-time in-app username/password retry dialog; credentials are not persisted by the browser. Source remote errors also classify SSH host-key, certificate, proxy, network, and generic failures and show sanitized recovery guidance. Hosted account flows remain deferred. |
 | SYNC-08 | Selective tag push and pushed-tag state | Supported | Repository Tools shows local versus pushed tag state and exposes a visible Push tag action for each local-only tag. |
 | SYNC-09 | Push rejection, pull-before-push, and force-push decision dialogs | Supported | Push rejection exposes sanitized remote output and retry, while force-push requires an explicit lease confirmation; branded Chrome evidence covers both paths. |
 | SYNC-10 | Update the current branch from its contribution/default branch | Supported | The sync menu exposes Update from the configured default branch with persisted merge/rebase strategy selection. |
 | SYNC-11 | Pull all repositories in a selected repository group | Supported | Repository picker group headers expose Pull and the store scopes the guarded pull loop to that group. |
+| SYNC-12 | Interactive SSH credentials and host trust | Missing | The web companion deliberately suppresses terminal prompts and the source renderer has no dialogs for adding a host, accepting a host key, or entering an SSH key passphrase or username/password. It can only show recovery guidance. |
 
 ## Stashes
 
@@ -164,7 +161,7 @@ explicitly deferred.
 | --- | --- | --- | --- |
 | REM-01 | Validate remote names and URLs with field-level errors | Supported | The source remote dialog validates names and URL forms inline before submission, and the companion revalidates the operation payload. |
 | REM-02 | Manage remotes through a dedicated dialog with context actions | Supported | The source renderer provides dedicated add/set dialogs and visible remote context actions for copy, browser opening, URL editing, and removal. |
-| REM-03 | SSH/HTTPS credential and host-key guidance | Supported | Source remote failures provide macOS Keychain/credential-helper, SSH host-key, certificate, proxy, network, sanitized-output, and retry guidance without storing credentials in browser state. |
+| REM-03 | SSH/HTTPS credential and host-key guidance | Supported | HTTP(S) operations reuse configured Git credentials and can retry once through the in-app dialog without browser persistence. SSH host-key, certificate, proxy, network, and generic failures provide sanitized recovery guidance. |
 | TAG-01 | Annotated tag dialog with separate name, target, and message | Supported | The source tag dialog exposes separate validated name, target, and message fields and creates an annotated tag through the companion. |
 | TAG-02 | Delete pushed-tag warning and optional remote deletion | Supported | Pushed tags are detected, local deletion is confirmed, and a second confirmation offers remote deletion. |
 | TAG-03 | Push selected tags and display unpushed tag indicators | Supported | Repository Tools displays local-only tags and exposes a visible Push tag control. |
@@ -195,14 +192,16 @@ explicitly deferred.
 | ID | Desktop behavior | Web status | Evidence and disposition |
 | --- | --- | --- | --- |
 | PLATFORM-01 | Application menu and desktop keyboard shortcut system | Partial | The source renderer provides File, View, Repository, and Preferences menus plus macOS keyboard equivalents in the browser; the native macOS menu bar and Electron-owned menu lifecycle remain unavailable to web content. |
-| PLATFORM-02 | Theme, font, tab-size, title-bar, and appearance preferences | Deferred | Theme, diff font, tab size, and related browser appearance settings are source-owned; native title-bar controls remain platform-owned and are outside the web release. |
+| PLATFORM-02 | Theme, font, tab-size, title-bar, and appearance preferences | Partial | Theme, diff font, tab size, and related browser appearance settings are source-owned; the remaining gap is Electron-owned native title-bar controls and lifecycle. |
 | PLATFORM-03 | External editor discovery, configuration, and launch | Partial | Repository Tools discovers editors and exposes visible Open repository actions through the companion contract; the browser fixture verifies selection and payloads, but native editor process execution evidence remains open. |
 | PLATFORM-04 | Shell discovery, configuration, and launch | Partial | Repository Tools discovers shells and exposes visible Open repository actions through the companion contract; the browser fixture verifies selection and payloads, but native shell process execution evidence remains open. |
 | PLATFORM-05 | Reveal in file manager, default-open, and trash integration | Partial | Source file, repository, and worktree actions call the macOS companion contract for default-open, Finder reveal, and Trash; injected browser services verify normal and Trash-failure recovery, but real native filesystem execution evidence remains open. |
-| PLATFORM-06 | Native folder and save dialogs | Deferred | Native interactive dialogs are not part of the local-only promise. |
+| PLATFORM-06 | Native folder and save dialogs | Partial | Repository setup and worktree flows use the companion folder picker, but there is no full desktop-equivalent open/save-dialog surface or evidence for the broader native-dialog variants. |
 | PLATFORM-07 | Native desktop notifications | Deferred | No native notification surface is exposed. |
 | PLATFORM-08 | Browser notification preferences and permission guidance | Supported | Preferences expose a persisted browser-notification toggle, permission status, and browser site-settings guidance; provider notification feeds remain deferred. |
 | PLATFORM-09 | Automatic update discovery, download, verification, and installer handoff | Partial | Repository Tools exposes on-demand signed update checks, verified download progress, cancellation, and explicit installer-open confirmation; the browser fixture verifies the state machine with an injected update service, while real signed artifact and installer execution evidence remains open. |
+| PLATFORM-10 | Desktop About, legal, release, CLI, and app-install surfaces | Missing | The source renderer does not expose the desktop About, acknowledgements, terms, release notes, CLI-installed confirmation, Move to Applications, or thank-you dialogs. |
+| PLATFORM-11 | Effective external credential-helper and Windows OpenSSH preferences | Partial | Both preferences are persisted and rendered, but neither value is transported to the companion's Git invocation. Generic HTTP(S) credential lookup independently uses the configured Git credential helper; the preference does not control it, and the Windows OpenSSH setting has no web execution effect. |
 
 ## Hosted providers and advanced integrations
 
