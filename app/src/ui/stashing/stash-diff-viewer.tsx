@@ -8,6 +8,7 @@ import { IDiff, ImageDiffType } from '../../models/diff'
 import { Resizable } from '../resizable'
 import { StashDiffHeader } from './stash-diff-header'
 import { SeamlessDiffSwitcher } from '../diff/seamless-diff-switcher'
+import type { IFileContents } from '../diff/syntax-highlighting'
 import { IConstrainedValue } from '../../lib/app-state'
 import { clamp } from '../../lib/clamp'
 import { getFolderPathMenuItems } from '../lib/file-tree-folder'
@@ -21,6 +22,8 @@ interface IStashDiffViewerProps {
 
   /** Diff to be displayed */
   readonly stashedFileDiff: IDiff | null
+  /** Contents supplied by the web companion with the selected stash diff. */
+  readonly externalFileContents?: IFileContents | null
   readonly imageDiffType: ImageDiffType
 
   /** width to use for the files list pane */
@@ -135,6 +138,7 @@ export class StashDiffViewer extends React.PureComponent<IStashDiffViewerProps> 
           readOnly={true}
           file={selectedStashedFile}
           diff={stashedFileDiff}
+          externalFileContents={this.props.externalFileContents}
           imageDiffType={imageDiffType}
           hideWhitespaceInDiff={false}
           showDiffCheckMarks={false}
