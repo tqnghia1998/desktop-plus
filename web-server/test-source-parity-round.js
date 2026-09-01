@@ -381,9 +381,11 @@ async function main() {
     await waitForVisibleOption(page, 'deleted.txt')
 
     const openFileMenu = async pathPattern => {
-      await page
-        .getByRole('option', { name: pathPattern })
-        .click({ button: 'right' })
+      const option = page.getByRole('option', { name: pathPattern })
+      // Clear the prior multi-selection so this helper exercises a single-file
+      // context action, matching the menu labels asserted below.
+      await option.click()
+      await option.click({ button: 'right' })
       const menu = page.locator('#web-context-menu')
       await menu.waitFor()
       return menu
