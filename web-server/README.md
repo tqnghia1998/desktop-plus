@@ -115,7 +115,10 @@ kept only in memory for that retry and are never written to browser storage or
 approved into a credential helper.
 
 Interactive SSH host trust, SSH key passphrases, and SSH username/password
-prompts remain unsupported. On Linux, the folder picker additionally requires
+prompts are routed through the shared Desktop dialogs while the operation is
+paused; optionally remembered SSH passwords and key passphrases use the
+companion's operating-system credential store. On Linux, the folder picker
+additionally requires
 `zenity`; reveal, trash, and default-open require `xdg-open` and `gio`. The
 companion reports missing Linux dependencies with installation guidance.
 
