@@ -21,6 +21,7 @@ async function waitForGit(cwd, args, expected) {
 }
 
 async function addRepository(page, repository) {
+  const canonicalRepository = fs.realpathSync(repository)
   await closeError(page)
   await closeBranchMenu(page)
   const homeAdd = page.getByRole('button', {
@@ -35,28 +36,76 @@ async function addRepository(page, repository) {
       .first()
       .evaluate(button => button.click())
     await page.getByRole('button', { name: 'Add', exact: true }).click()
+    await page
+      .getByRole('menuitem', { name: 'Add Existing Repository…' })
+      .click()
   }
   await page.getByLabel('Local path').fill(repository)
+  await page.waitForResponse(
+    response =>
+      response.url().includes('/api/repository/inspect') &&
+      response.status() === 200
+  )
   await page.getByRole('button', { name: 'Add repository' }).click()
+  await page.waitForFunction(expectedPath => {
+    const state = JSON.parse(
+      localStorage.getItem('desktop-plus-web-source-state') || '{}'
+    )
+    return state.selectedRepositoryPath === expectedPath
+  }, canonicalRepository)
+  await page.locator('.branch-toolbar-button').waitFor()
+  await page.waitForFunction(() => {
+    const title = document
+      .querySelector('.branch-toolbar-button .title')
+      ?.textContent?.trim()
+    return Boolean(title && !title.includes('No branch'))
+  })
+  await page.waitForFunction(() => {
+    const title = document.querySelector(
+      '.push-pull-button .title'
+    )?.textContent
+    return Boolean(title && !title.includes('Publish repository'))
+  })
 }
 
 async function openBranchMenu(page) {
   await closeError(page)
   const branchDropdown = page.locator('.branch-toolbar-button')
-  await branchDropdown.getByRole('button').last().click()
-  const menu = branchDropdown.locator('.foldout')
-  await menu.getByRole('button', { name: 'Reset and pull' }).waitFor()
+  const picker = page.locator('.branches-container')
+  if (await picker.isVisible().catch(() => false)) return picker
+  await branchDropdown.locator('> button').click()
+  await picker.getByPlaceholder('Filter').waitFor()
+  return picker
+}
+
+async function openBranchContextMenu(page, branch) {
+  const picker = await openBranchMenu(page)
+  const branchRow = picker.getByRole('option', {
+    name: new RegExp(`^${branch}(?:\\s|,|$)`),
+  })
+  await branchRow.click({ button: 'right', position: { x: 24, y: 16 } })
+  const menu = page.locator('#web-context-menu')
+  await menu.waitFor()
   return menu
 }
 
 async function openSyncMenu(page) {
   const syncDropdown = page.locator('.push-pull-button')
   await syncDropdown.getByRole('button').click()
-  await syncDropdown
-    .locator('.foldout')
-    .getByRole('button', { name: 'Fetch', exact: true })
-    .waitFor()
-  return syncDropdown.locator('.foldout')
+  await page.getByText(/^Fetch /).waitFor()
+  return page.locator('.push-pull-dropdown')
+}
+
+async function fetchOrigin(page) {
+  const directFetch = page
+    .getByRole('button', { name: /^Fetch origin/ })
+    .first()
+  if (await directFetch.isVisible().catch(() => false)) {
+    await directFetch.click()
+    return
+  }
+  await openSyncMenu(page)
+  await page.getByText(/^Fetch /).click()
 }
 
 async function closeError(page) {
@@ -64,6 +113,7 @@ async function closeError(page) {
   if (await errorDialog.isVisible().catch(() => false)) {
     await errorDialog
       .getByRole('button', { name: 'Close', exact: true })
+      .last()
       .click()
     await errorDialog.waitFor({ state: 'hidden' })
   }
@@ -71,7 +121,7 @@ async function closeError(page) {
 
 async function closeBranchMenu(page) {
   const branchDropdown = page.locator('.branch-toolbar-button')
-  const menu = branchDropdown.locator('.foldout')
+  const menu = page.locator('#foldout-container > .foldout')
   if (await menu.isVisible().catch(() => false)) {
     await branchDropdown
       .getByRole('button')
@@ -134,95 +184,78 @@ async function main() {
     })
     await addRepository(page, repository)
 
-    let branchMenu = await openBranchMenu(page)
+    let branchMenu = await openBranchContextMenu(page, 'default-target')
     await branchMenu
-      .getByRole('button', {
-        name: 'Set default-target as default branch',
+      .getByRole('menuitem', {
+        name: 'Set as Default Branch',
         exact: true,
       })
       .click()
     branchMenu = await openBranchMenu(page)
     await branchMenu
-      .getByRole('button', {
-        name: 'Switch to default-target, default branch',
-        exact: true,
-      })
+      .getByRole('option', { name: /^default-target(?:\s|,|$)/ })
       .waitFor()
     await page.keyboard.press('Escape')
     await page.reload({ waitUntil: 'networkidle' })
     branchMenu = await openBranchMenu(page)
     await branchMenu
-      .getByRole('button', {
-        name: 'Switch to default-target, default branch',
-        exact: true,
-      })
+      .getByRole('option', { name: /^default-target(?:\s|,|$)/ })
       .waitFor()
     await page.keyboard.press('Escape')
 
-    await openBranchMenu(page)
-    await page.getByRole('button', { name: 'Create branch' }).click()
+    branchMenu = await openBranchMenu(page)
+    await branchMenu.getByRole('button', { name: 'New Branch' }).click()
     const invalidBranchDialog = page.getByRole('dialog').filter({
       hasText: 'Create branch',
     })
-    await invalidBranchDialog.getByLabel('Branch name').fill('bad..branch')
+    await invalidBranchDialog.getByLabel('Name').fill('bad..branch')
     await invalidBranchDialog
-      .getByRole('alert')
-      .filter({ hasText: 'Branch name' })
+      .getByText(/Will be created as bad-branch/i)
       .waitFor()
-    assert.equal(
-      await invalidBranchDialog
-        .getByRole('button', { name: 'Create branch', exact: true })
-        .isDisabled(),
-      true
-    )
+    await new Promise(resolve => setTimeout(resolve, 400))
     await invalidBranchDialog.getByRole('button', { name: 'Cancel' }).click()
     await invalidBranchDialog.waitFor({ state: 'hidden' })
 
-    await openBranchMenu(page)
-    const contextBranch = branchMenu
-      .locator('button')
-      .filter({ hasText: /^Switch to default-target/ })
-      .first()
-    await contextBranch.waitFor()
-    await contextBranch.dispatchEvent('contextmenu')
-    const branchContextMenu = page.locator('#web-context-menu')
+    const branchContextMenu = await openBranchContextMenu(
+      page,
+      'default-target'
+    )
     await branchContextMenu
       .getByRole('menuitem', {
-        name: 'Copy branch name',
+        name: 'Copy Branch Name',
       })
       .waitFor()
     await branchContextMenu
-      .getByRole('menuitem', { name: 'Checkout in new worktree' })
+      .getByRole('menuitem', { name: 'Checkout in New Worktree…' })
       .waitFor()
     await branchContextMenu
       .getByRole('menuitem', {
-        name: 'Copy branch name',
+        name: 'Copy Branch Name',
       })
       .click()
     await page.keyboard.press('Escape')
     await branchContextMenu.waitFor({ state: 'hidden' })
 
-    const syncMenu = await openSyncMenu(page)
-    await syncMenu.getByRole('button', { name: 'Fetch', exact: true }).click()
-    branchMenu = await openBranchMenu(page)
+    await fetchOrigin(page)
+    branchMenu = await openBranchContextMenu(page, 'pull-target')
     await branchMenu
-      .getByRole('button', { name: 'Pull pull-target', exact: true })
+      .getByRole('menuitem', { name: 'Pull Branch', exact: true })
       .click()
     await waitForGit(repository, ['rev-parse', 'pull-target'], advancedMainTip)
     assert.equal(git(repository, 'branch', '--show-current'), 'main')
 
-    branchMenu = await openBranchMenu(page)
+    branchMenu = await openBranchContextMenu(page, 'default-target')
     await branchMenu
-      .getByRole('button', {
-        name: 'Checkout default-target in new worktree',
+      .getByRole('menuitem', {
+        name: 'Checkout in New Worktree…',
         exact: true,
       })
       .click()
-    const localDialog = page
-      .getByRole('dialog')
-      .filter({ hasText: 'Create a linked worktree from default-target' })
-    await localDialog.getByLabel('Worktree path').fill(localWorktree)
-    assert.equal(await localDialog.getByLabel('Branch').isEditable(), false)
+    const localDialog = page.locator('#add-worktree')
+    await localDialog
+      .getByLabel('Worktree name')
+      .fill(path.basename(localWorktree))
+    await localDialog.getByLabel('Local path').fill(path.dirname(localWorktree))
     await localDialog.getByRole('button', { name: 'Create worktree' }).click()
     await closeError(page)
     await localDialog.waitFor({ state: 'hidden' })
@@ -234,23 +267,23 @@ async function main() {
     )
 
     await addRepository(page, repository)
-    const remoteSyncMenu = await openSyncMenu(page)
-    await remoteSyncMenu
-      .getByRole('button', { name: 'Fetch', exact: true })
-      .click()
-    branchMenu = await openBranchMenu(page)
+    await fetchOrigin(page)
+    branchMenu = await openBranchContextMenu(page, 'origin/remote-worktree')
     await branchMenu
-      .getByRole('button', {
-        name: 'Checkout origin/remote-worktree in new worktree',
+      .getByRole('menuitem', {
+        name: 'Checkout in New Worktree…',
         exact: true,
       })
       .click()
-    const remoteDialog = page.getByRole('dialog').filter({
-      hasText: 'Create a linked worktree from origin/remote-worktree',
-    })
-    await remoteDialog.getByLabel('Worktree path').fill(remoteWorktree)
+    const remoteDialog = page.locator('#add-worktree')
+    await remoteDialog
+      .getByLabel('Worktree name')
+      .fill(path.basename(remoteWorktree))
+    await remoteDialog
+      .getByLabel('Local path')
+      .fill(path.dirname(remoteWorktree))
     assert.equal(
-      await remoteDialog.getByLabel('Branch').inputValue(),
+      await remoteDialog.getByLabel('Branch name').inputValue(),
       'remote-worktree'
     )
     await remoteDialog.getByRole('button', { name: 'Create worktree' }).click()
