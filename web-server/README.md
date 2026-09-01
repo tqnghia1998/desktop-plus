@@ -68,10 +68,10 @@ provider/platform behavior, is in
 [CAPABILITIES.md](CAPABILITIES.md) is the single source of truth for the
 current status totals.
 
-The browser renderer exposes the important Repository and Branch actions in
-shared toolbar menus and keeps the Preferences keyboard shortcut. The full
-Electron application menu and native macOS menu-bar lifecycle remain outside
-web-renderer ownership.
+The browser renderer reuses the shared application menu component for File,
+View, Repository, and Branch actions, in addition to the toolbar menus, and
+keeps the Preferences keyboard shortcut. The full Electron application menu
+and native macOS menu-bar lifecycle remain outside web-renderer ownership.
 
 Editor and shell launch, filesystem actions, verified updates, and Git LFS
 controls are also Partial: the source renderer and typed companion contracts
