@@ -108,6 +108,52 @@ async function main() {
     await addRepository(page, repository)
     await waitForChanges(page)
 
+    const toolbar = page.locator('#desktop-app-toolbar')
+    const branchButton = toolbar.locator('.branch-toolbar-button > button')
+    const pushPullButton = toolbar.locator('.push-pull-button > button')
+    assert.equal(
+      await branchButton.evaluate(button => getComputedStyle(button).cursor),
+      'pointer'
+    )
+    assert.equal(
+      await pushPullButton.evaluate(button => getComputedStyle(button).cursor),
+      'pointer'
+    )
+    const toolbarResizeHandles = toolbar.locator('.resize-handle')
+    assert.equal(await toolbarResizeHandles.count(), 2)
+    assert.equal(
+      await toolbarResizeHandles
+        .first()
+        .evaluate(handle => getComputedStyle(handle).cursor),
+      'ew-resize'
+    )
+    for (const [index, key] of [
+      'branch-dropdown-width',
+      'push-pull-button-width',
+    ].entries()) {
+      const handle = toolbarResizeHandles.nth(index)
+      const resizeBox = await handle.boundingBox()
+      assert.ok(resizeBox)
+      await page.mouse.move(resizeBox.x + 2, resizeBox.y + 2)
+      await page.mouse.down()
+      await page.mouse.move(resizeBox.x + 52, resizeBox.y + 2)
+      await page.mouse.up()
+      await page.waitForFunction(
+        key => Number(localStorage.getItem(key)) > 230,
+        key
+      )
+    }
+    await page.reload({ waitUntil: 'networkidle' })
+    await waitForChanges(page)
+    assert.equal(
+      await page.evaluate(() => localStorage.getItem('branch-dropdown-width')),
+      '280'
+    )
+    assert.equal(
+      await page.evaluate(() => localStorage.getItem('push-pull-button-width')),
+      '280'
+    )
+
     const sidebar = page.locator('#repository-sidebar')
     await sidebar.getByRole('button', { name: /^Filter Options/ }).click()
     let newFilesFilter = sidebar.getByRole('checkbox', {
@@ -176,6 +222,10 @@ async function main() {
     await sidebar.getByRole('button', { name: /state stash/ }).waitFor()
 
     const resizeHandle = sidebar.getByRole('button', { name: 'Resize handle' })
+    assert.equal(
+      await resizeHandle.evaluate(handle => getComputedStyle(handle).cursor),
+      'ew-resize'
+    )
     const resizeBox = await resizeHandle.boundingBox()
     assert.ok(resizeBox)
     await page.mouse.move(resizeBox.x + 2, resizeBox.y + 2)
