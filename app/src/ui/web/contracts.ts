@@ -160,6 +160,10 @@ export interface WebGitIgnoreRequest {
   readonly kind: 'file' | 'pattern'
 }
 
+export interface WebGitIgnore {
+  readonly text: string | null
+}
+
 export interface WebWorktree {
   readonly path: string
   readonly head: string
@@ -846,6 +850,8 @@ export interface WebDispatcher {
   setCommitSpellcheckEnabled(enabled: boolean): void
   appendIgnoreFile(paths: ReadonlyArray<string>): Promise<void>
   appendIgnorePattern(patterns: ReadonlyArray<string>): Promise<void>
+  readGitIgnore(): Promise<string | null>
+  saveGitIgnore(text: string): Promise<void>
   copyPaths(paths: ReadonlyArray<string>, relative: boolean): Promise<void>
   copyText(text: string): Promise<void>
   openPath(path: string, reveal?: boolean): Promise<void>
@@ -1014,6 +1020,8 @@ export interface WebGitClient {
     scope: WebGitConfigScope,
     confirmed: boolean
   ): Promise<void>
+  readGitIgnore(path: string): Promise<WebGitIgnore>
+  saveGitIgnore(path: string, text: string): Promise<WebStatus>
   appendIgnore(path: string, request: WebGitIgnoreRequest): Promise<WebStatus>
   getLfsStatus(path: string): Promise<WebLfsStatus>
   installLfs(
