@@ -2,6 +2,7 @@ import * as React from 'react'
 import classNames from 'classnames'
 import { DialogHeader } from './header'
 import { createUniqueId, releaseUniqueId } from '../lib/id-pool'
+import { isPrimaryModifier } from '../lib/keyboard'
 import { getTitleBarHeight } from '../window/title-bar'
 import { isTopMostDialog } from './is-top-most'
 import { isMacOSSonomaOrLater, isMacOSVentura } from '../../lib/get-os'
@@ -784,7 +785,7 @@ export class Dialog extends React.Component<DialogProps, IDialogState> {
       return
     }
 
-    const shortcutKey = __DARWIN__ ? event.metaKey : event.ctrlKey
+    const shortcutKey = isPrimaryModifier(event)
     if ((shortcutKey && event.key === 'w') || event.key === 'Escape') {
       this.onDialogCancel(event)
     }

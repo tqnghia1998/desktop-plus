@@ -14,8 +14,30 @@ body {
   min-height: 0;
 }
 
+button:not(:disabled):not([aria-disabled='true']) {
+  cursor: pointer;
+}
+
+button:disabled,
+button[aria-disabled='true'] {
+  cursor: default;
+}
+
+button.resize-handle {
+  cursor: ew-resize !important;
+}
+
 /* The menu UI itself is rendered by the shared desktop AppMenu components. */
 #web-context-menu {
   position: fixed;
   z-index: 2147483647;
+}
+
+/* Reuse the shared AppMenu markup, with the same visual elevation as desktop
+ * popovers so it remains distinct over a diff or other dark surfaces. */
+#web-context-menu .menu-pane {
+  background: var(--app-menu-pane-background-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--base-box-shadow);
+  color: var(--app-menu-pane-color);
 }
