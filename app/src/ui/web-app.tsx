@@ -4034,6 +4034,13 @@ function DesktopChangesView(props: {
           ),
         generateCommitMessage: () => undefined,
         incrementMetric: () => undefined,
+        applyStash: (
+          _repository: Repository,
+          entry: { readonly name: string }
+        ) =>
+          props.dispatcher.runOperation('stash-apply', {
+            values: [entry.name],
+          }),
         popStash: (_repository: Repository, entry: { readonly name: string }) =>
           props.dispatcher.runOperation('stash-pop', {
             values: [entry.name],
@@ -4514,6 +4521,15 @@ function StashDiffView(props: {
   )
   const selectedStashedFile =
     desktopFiles.find(file => file.path === props.selectedFilePath) || null
+  const externalFileContents =
+    selectedStashedFile && props.diff?.fileContents
+      ? {
+          file: selectedStashedFile,
+          oldContents: props.diff.fileContents.oldContents,
+          newContents: props.diff.fileContents.newContents,
+          canBeExpanded: props.diff.fileContents.canBeExpanded,
+        }
+      : null
   const desktopStash = React.useMemo(
     () => ({
       name: props.stash.name,
@@ -4533,6 +4549,10 @@ function StashDiffView(props: {
   const desktopDispatcher = React.useMemo(
     () =>
       ({
+        applyStash: () =>
+          props.dispatcher.runOperation('stash-apply', {
+            values: [props.stash.name],
+          }),
         dropStash: () =>
           props.dispatcher.runOperation('stash-drop', {
             values: [props.stash.name],
@@ -4611,6 +4631,7 @@ function StashDiffView(props: {
         }
         repository={getDesktopRepository(props.repositoryPath)}
         selectedStashedFile={selectedStashedFile}
+        externalFileContents={externalFileContents}
         showDiffMinimap={preferences.showDiffMinimap}
         showSideBySideDiff={preferences.showSideBySideDiff}
         stashedFileDiff={getDesktopDiff(props.diff)}
@@ -4683,6 +4704,15 @@ function DesktopSelectedCommits(props: {
     selectedFile && webSelectedFile?.status.submoduleStatus
       ? getDesktopSubmoduleDiff(webSelectedFile, props.state.historyDiff)
       : getDesktopDiff(props.state.historyDiff)
+  const externalFileContents =
+    selectedFile && props.state.historyDiff?.fileContents
+      ? {
+          file: selectedFile,
+          oldContents: props.state.historyDiff.fileContents.oldContents,
+          newContents: props.state.historyDiff.fileContents.newContents,
+          canBeExpanded: props.state.historyDiff.fileContents.canBeExpanded,
+        }
+      : null
   const desktopDispatcher = React.useMemo(
     () =>
       ({
@@ -4737,6 +4767,7 @@ function DesktopSelectedCommits(props: {
         max: Math.max(100, window.innerWidth - 150),
       }}
       currentDiff={currentDiff}
+      externalFileContents={externalFileContents}
       dispatcher={desktopDispatcher}
       emoji={props.state.emoji}
       externalEditorLabel={undefined}
