@@ -1152,6 +1152,7 @@ export function createWebApplicationStore(
           await git.trustRepository(path)
         } catch (error) {
           fail(error, action)
+          throw error
         } finally {
           update({ loading: false })
         }
@@ -2189,6 +2190,27 @@ export function createWebApplicationStore(
           await refreshRepository(path)
         } catch (error) {
           fail(error, action)
+        } finally {
+          update({ loading: false })
+        }
+      }
+      await action()
+    },
+
+    async readGitIgnore() {
+      return (await git.readGitIgnore(selectedPath())).text
+    },
+
+    async saveGitIgnore(text) {
+      const path = selectedPath()
+      const action = async () => {
+        begin()
+        try {
+          await git.saveGitIgnore(path, text)
+          await refreshRepository(path)
+        } catch (error) {
+          fail(error, action)
+          throw error
         } finally {
           update({ loading: false })
         }
