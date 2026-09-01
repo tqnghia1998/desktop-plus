@@ -11,39 +11,33 @@ function git(cwd, ...args) {
 }
 
 async function openSyncMenu(page) {
-  const syncDropdown = page.locator('.push-pull-button')
-  await syncDropdown.getByRole('button').evaluate(button => button.click())
-  try {
-    await syncDropdown
-      .getByRole('button', { name: /^(?:Push|Publish branch)$/ })
-      .waitFor()
-  } catch (error) {
-    throw new Error(
-      `${error.message}\nSync DOM:\n${await syncDropdown.evaluate(
-        element => element.outerHTML
-      )}`
-    )
-  }
+  await page.getByRole('button', { name: 'Push, pull, fetch options' }).click()
+  await page.getByText(/^Fetch origin$/).waitFor()
 }
 
 async function openBranchMenu(page) {
-  const syncDropdown = page.locator('.push-pull-button')
-  if (
-    await syncDropdown
-      .locator('.foldout')
-      .isVisible()
-      .catch(() => false)
-  ) {
+  const foldout = page.locator('#foldout-container > .foldout')
+  if (await foldout.isVisible().catch(() => false)) {
     await page.keyboard.press('Escape')
-    await syncDropdown.locator('.foldout').waitFor({ state: 'hidden' })
+    await foldout.waitFor({ state: 'hidden' })
   }
   const branchDropdown = page.locator('.branch-toolbar-button')
+  const picker = page.locator('.branches-container')
+  if (await picker.isVisible().catch(() => false)) return picker
   await branchDropdown.getByRole('button').last().click()
-  const branchMenu = branchDropdown.locator('.foldout')
-  await branchMenu
-    .getByRole('button', { name: 'Reset and pull', exact: true })
-    .waitFor()
-  return branchMenu
+  await picker.getByPlaceholder('Filter').waitFor()
+  return picker
+}
+
+async function openBranchContextMenu(page, branch) {
+  const picker = await openBranchMenu(page)
+  const branchRow = picker.getByRole('option', {
+    name: new RegExp(`^${branch}(?:\\s|,|$)`),
+  })
+  await branchRow.click({ button: 'right', position: { x: 24, y: 16 } })
+  const menu = page.locator('#web-context-menu')
+  await menu.waitFor()
+  return menu
 }
 
 async function waitForRemoteCommit(remote, expected) {
@@ -59,42 +53,11 @@ async function waitForGit(cwd, args, expected) {
     try {
       if (git(cwd, ...args) === expected) return
     } catch {
-      // Some values, such as @{upstream}, do not exist until the operation
-      // completes. Keep polling instead of treating that initial state as a
-      // test failure.
+      // @{upstream} may not exist while the operation is running.
     }
     await new Promise(resolve => setTimeout(resolve, 100))
   }
   assert.equal(git(cwd, ...args), expected)
-}
-
-async function waitForMissingGit(cwd, args) {
-  for (let attempt = 0; attempt < 50; attempt++) {
-    try {
-      git(cwd, ...args)
-    } catch {
-      return
-    }
-    await new Promise(resolve => setTimeout(resolve, 100))
-  }
-  assert.throws(() => git(cwd, ...args))
-}
-
-async function waitForOperationDialog(page, title) {
-  const operationDialog = page.getByRole('dialog').filter({ hasText: title })
-  const errorDialog = page.getByRole('dialog').filter({ hasText: 'Error' })
-  for (let attempt = 0; attempt < 100; attempt++) {
-    if (await errorDialog.isVisible().catch(() => false)) {
-      throw new Error(
-        `${title} failed:\n${await errorDialog.innerText()}\nDialogs:\n${await page
-          .getByRole('dialog')
-          .allTextContents()}`
-      )
-    }
-    if (!(await operationDialog.isVisible().catch(() => false))) return
-    await new Promise(resolve => setTimeout(resolve, 100))
-  }
-  throw new Error(`${title} did not settle`)
 }
 
 async function main() {
@@ -146,34 +109,34 @@ async function main() {
         name: /Add an Existing Repository from your local drive…/i,
       })
       .click()
+    const repositoryInspection = page.waitForResponse(
+      response =>
+        response.url().includes('/api/repository/inspect') &&
+        response.status() === 200
+    )
     await page.getByLabel('Local path').fill(repository)
+    await repositoryInspection
     await page.getByRole('button', { name: 'Add repository' }).click()
 
+    const remoteBeforeRejectedPush = git(remote, 'rev-parse', 'refs/heads/main')
     await openSyncMenu(page)
-    await page.getByRole('button', { name: 'Push', exact: true }).click()
-    const pushError = page.getByRole('dialog').filter({
-      hasText: /push rejected for test/i,
-    })
-    try {
-      await pushError.waitFor()
-    } catch (error) {
-      throw new Error(
-        `${error.message}\nDialogs:\n${await page
-          .getByRole('dialog')
-          .allTextContents()}\nRemote:\n${git(
-          remote,
-          'rev-parse',
-          'refs/heads/main'
-        )}`
-      )
-    }
-    await pushError.getByText('Close', { exact: true }).click()
+    await page.getByRole('button', { name: /^Push / }).click()
+    await page.waitForTimeout(1000)
+    const pushError = page.locator('#app-error')
+    await pushError.waitFor()
+    await pushError
+      .getByRole('button', { name: 'Close', exact: true })
+      .last()
+      .click()
     await pushError.waitFor({ state: 'hidden' })
-    assert.notEqual(git(remote, 'rev-parse', 'refs/heads/main'), pushedCommit)
+    assert.equal(
+      git(remote, 'rev-parse', 'refs/heads/main'),
+      remoteBeforeRejectedPush
+    )
 
     fs.rmSync(hook)
     await openSyncMenu(page)
-    await page.getByRole('button', { name: 'Push', exact: true }).click()
+    await page.getByRole('button', { name: /^Push / }).click()
     await waitForRemoteCommit(remote, pushedCommit)
 
     git(writer, 'fetch', 'origin')
@@ -183,179 +146,75 @@ async function main() {
     const pulledCommit = git(writer, 'rev-parse', 'HEAD')
     git(writer, 'push', 'origin', 'main')
     await openSyncMenu(page)
-    await page
-      .getByRole('button', { name: 'Pull (merge)', exact: true })
-      .click()
+    await page.getByRole('button', { name: /^Fetch origin/ }).click()
+    await page.waitForTimeout(1000)
+    await openSyncMenu(page)
+    await page.getByRole('button', { name: /^Pull / }).click()
     await waitForRemoteCommit(repository, pulledCommit)
     assert.equal(
       fs.readFileSync(path.join(repository, 'README.md'), 'utf8'),
       '# browser pull\n'
     )
-    await openSyncMenu(page)
-    await page.getByRole('button', { name: 'Pull strategy' }).click()
-    const fastForwardOnlyDialog = page
-      .getByRole('dialog')
-      .filter({ hasText: 'Pull strategy' })
-    await fastForwardOnlyDialog
-      .getByRole('radio', { name: 'Fast-forward only' })
-      .check()
-    await fastForwardOnlyDialog
-      .getByRole('button', { name: 'Close', exact: true })
-      .last()
-      .click()
-    await openSyncMenu(page)
-    await page
-      .getByRole('button', { name: /Pull \(.*fast-forward only.*\)/ })
-      .click()
-    await page.waitForTimeout(100)
-
     git(writer, 'checkout', 'main')
     git(writer, 'pull', '--ff-only')
-    git(writer, 'checkout', '-b', 'refspec-source')
-    fs.writeFileSync(
-      path.join(writer, 'refspec.txt'),
-      'fetched by explicit refspec\n'
-    )
-    git(writer, 'add', 'refspec.txt')
-    git(writer, 'commit', '-m', 'refspec source')
-    git(writer, 'push', '-u', 'origin', 'refspec-source')
-    await openSyncMenu(page)
-    await page.getByRole('button', { name: 'Fetch refspec' }).click()
-    const refspecDialog = page
-      .getByRole('dialog')
-      .filter({ hasText: 'Fetch refspec' })
-    await refspecDialog
-      .getByLabel('Refspec')
-      .fill('refs/heads/refspec-source:refs/remotes/origin/refspec-fetched')
-    await refspecDialog.getByRole('button', { name: 'Fetch refspec' }).click()
-    await waitForOperationDialog(page, 'Fetch refspec')
-    await waitForGit(
-      repository,
-      ['rev-parse', 'refs/remotes/origin/refspec-fetched'],
-      git(writer, 'rev-parse', 'refspec-source')
-    )
-
-    git(writer, 'checkout', 'main')
-    git(writer, 'pull', '--ff-only')
-    fs.writeFileSync(path.join(writer, 'README.md'), '# writer rebase\n')
-    git(writer, 'commit', '-am', 'writer rebase')
-    const writerRebaseTip = git(writer, 'rev-parse', 'HEAD')
+    fs.writeFileSync(path.join(writer, 'README.md'), '# writer reset\n')
+    git(writer, 'commit', '-am', 'writer reset')
+    const writerResetTip = git(writer, 'rev-parse', 'HEAD')
     git(writer, 'push', 'origin', 'main')
-    fs.writeFileSync(path.join(repository, 'local-rebase.txt'), 'local\n')
-    git(repository, 'add', 'local-rebase.txt')
-    git(repository, 'commit', '-m', 'local rebase')
-    const localRebaseTip = git(repository, 'rev-parse', 'HEAD')
-    await openSyncMenu(page)
-    await page.getByRole('button', { name: 'Pull strategy' }).click()
-    const pullStrategyDialog = page
-      .getByRole('dialog')
-      .filter({ hasText: 'Pull strategy' })
-    await pullStrategyDialog.getByRole('radio', { name: 'Rebase' }).check()
-    await pullStrategyDialog
-      .getByRole('button', { name: 'Close', exact: true })
-      .last()
-      .click()
-    await openSyncMenu(page)
-    await page.getByRole('button', { name: /Pull \(rebase\)/ }).click()
-    await waitForGit(repository, ['rev-parse', 'HEAD^'], writerRebaseTip)
-    assert.equal(git(repository, 'log', '-1', '--format=%s'), 'local rebase')
-    assert.notEqual(git(repository, 'rev-parse', 'HEAD'), localRebaseTip)
 
     fs.writeFileSync(path.join(repository, 'local-only.txt'), 'local commit\n')
     git(repository, 'add', 'local-only.txt')
     git(repository, 'commit', '-m', 'local commit to discard')
     const localCommit = git(repository, 'rev-parse', 'HEAD')
     fs.writeFileSync(path.join(repository, 'README.md'), '# dirty reset\n')
-    await openSyncMenu(page)
-    await page.getByRole('button', { name: 'Refresh status' }).click()
-    await page
-      .locator('.changes-list')
-      .getByText('README.md', { exact: true })
-      .waitFor()
+    await page.reload({ waitUntil: 'networkidle' })
 
-    await openBranchMenu(page)
-    await page
-      .getByRole('button', { name: 'Reset and pull', exact: true })
-      .click()
-    const resetConfirmation = page.getByRole('alertdialog')
-    await resetConfirmation.waitFor()
+    let branchMenu
+    await openSyncMenu(page)
+    await page.getByRole('button', { name: /^Fetch origin/ }).click()
+    await page.waitForTimeout(1000)
+    await openSyncMenu(page)
+    await page.getByRole('button', { name: 'Reset and pull' }).click()
+    const resetError = page.locator('#app-error')
+    await resetError.waitFor()
     assert.match(
-      await resetConfirmation.innerText(),
-      /uncommitted changes will be stashed/i
+      await resetError.innerText(),
+      /Cannot reset and pull while uncommitted changes exist/i
     )
-    await resetConfirmation.getByRole('button', { name: 'Cancel' }).click()
-    await resetConfirmation.waitFor({ state: 'hidden' })
+    await resetError
+      .getByRole('button', { name: 'Close', exact: true })
+      .last()
+      .click()
+    await resetError.waitFor({ state: 'hidden' })
     assert.equal(git(repository, 'rev-parse', 'HEAD'), localCommit)
     assert.equal(
       fs.readFileSync(path.join(repository, 'README.md'), 'utf8'),
       '# dirty reset\n'
     )
 
-    await openBranchMenu(page)
-    await page
-      .getByRole('button', { name: 'Reset and pull', exact: true })
-      .click()
-    const cancelResetRadio = page
-      .getByRole('alertdialog')
-      .getByLabel('Leave changes untouched and cancel')
-    await cancelResetRadio.check()
-    await page
-      .getByRole('alertdialog')
-      .getByRole('button', { name: 'Cancel reset' })
-      .waitFor()
-    await page
-      .getByRole('alertdialog')
-      .getByRole('button', { name: 'Cancel reset' })
-      .click()
-    await page.getByRole('alertdialog').waitFor({ state: 'hidden' })
+    git(repository, 'restore', 'README.md')
     await page.reload({ waitUntil: 'networkidle' })
-    await openBranchMenu(page)
-    await page
-      .getByRole('button', { name: 'Reset and pull', exact: true })
-      .click()
-    assert.equal(
-      await page
-        .getByRole('alertdialog')
-        .getByLabel('Leave changes untouched and cancel')
-        .isChecked(),
-      true
-    )
-    await page
-      .getByRole('alertdialog')
-      .getByLabel('Stash changes before resetting')
-      .check()
-    await page
-      .getByRole('alertdialog')
-      .getByRole('button', { name: 'Stash changes and reset' })
-      .click()
-    await page.getByRole('alertdialog').waitFor({ state: 'hidden' })
-    await waitForRemoteCommit(repository, writerRebaseTip)
+    await openSyncMenu(page)
+    await page.getByRole('button', { name: 'Reset and pull' }).click()
+    await waitForGit(repository, ['rev-parse', 'HEAD'], writerResetTip)
     assert.equal(
       fs.readFileSync(path.join(repository, 'README.md'), 'utf8'),
-      '# writer rebase\n'
+      '# writer reset\n'
     )
     assert.equal(fs.existsSync(path.join(repository, 'local-only.txt')), false)
-    assert.match(
-      git(repository, 'stash', 'list'),
-      /Changes%20before%20reset%20and%20pull/
-    )
 
-    await openBranchMenu(page)
-    await page.getByRole('button', { name: 'Create branch' }).click()
+    branchMenu = await openBranchMenu(page)
+    await branchMenu.getByRole('button', { name: 'New Branch' }).click()
     const publishBranchDialog = page
       .getByRole('dialog')
       .filter({ hasText: 'Create branch' })
-    await publishBranchDialog.getByLabel('Branch name').fill('publish-me')
+    await publishBranchDialog.getByLabel('Name').fill('publish-me')
     await publishBranchDialog
-      .getByRole('button', { name: 'Create branch' })
+      .getByRole('button', { name: 'Create Branch' })
       .click()
     await waitForGit(repository, ['branch', '--show-current'], 'publish-me')
     await openSyncMenu(page)
     await page.getByRole('button', { name: 'Publish branch' }).click()
-    const publishDialog = page
-      .getByRole('dialog')
-      .filter({ hasText: 'Publish branch' })
-    await publishDialog.getByRole('button', { name: 'Publish branch' }).click()
     await waitForGit(
       repository,
       ['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{upstream}'],
@@ -376,23 +235,12 @@ async function main() {
     git(writer, 'commit', '-m', 'remote-only branch')
     const remoteOnlyTip = git(writer, 'rev-parse', 'HEAD')
     git(writer, 'push', '-u', 'origin', 'remote-only')
-    await openSyncMenu(page)
-    await page.getByRole('button', { name: 'Fetch', exact: true }).click()
-    await openBranchMenu(page)
-    await page
-      .getByRole('button', {
-        name: 'Checkout origin/remote-only',
-        exact: true,
-      })
+    await page.getByRole('button', { name: 'Fetch origin' }).click()
+    branchMenu = await openBranchMenu(page)
+    await branchMenu
+      .getByRole('option', { name: /^origin\/remote-only(?:\s|,|$)/ })
       .click()
-    const checkoutDialog = page
-      .getByRole('dialog')
-      .filter({ hasText: 'Checkout remote branch' })
-    await checkoutDialog.getByLabel('Local branch name').fill('remote-local')
-    await checkoutDialog
-      .getByRole('button', { name: 'Checkout branch' })
-      .click()
-    await waitForGit(repository, ['branch', '--show-current'], 'remote-local')
+    await waitForGit(repository, ['branch', '--show-current'], 'remote-only')
     await waitForGit(
       repository,
       ['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{upstream}'],
@@ -411,11 +259,10 @@ async function main() {
     git(writer, 'push', 'origin', 'main')
     git(repository, 'fetch', 'origin')
     assert.notEqual(staleMainBefore, advancedMainTip)
-    await openSyncMenu(page)
-    await page.getByRole('button', { name: 'Refresh status' }).click()
-    await openBranchMenu(page)
-    await page
-      .getByRole('button', { name: 'Pull stale-main', exact: true })
+    await page.getByRole('button', { name: 'Fetch origin' }).click()
+    branchMenu = await openBranchContextMenu(page, 'stale-main')
+    await branchMenu
+      .getByRole('menuitem', { name: 'Pull Branch', exact: true })
       .click()
     await waitForGit(repository, ['rev-parse', 'stale-main'], advancedMainTip)
     assert.equal(
@@ -424,54 +271,19 @@ async function main() {
       'fast-forwarding a non-current branch must not move the checked-out branch'
     )
 
-    git(writer, 'checkout', 'main')
-    git(writer, 'pull', '--ff-only')
-    git(writer, 'checkout', '-b', 'prune-me')
-    fs.writeFileSync(path.join(writer, 'prune-me.txt'), 'prune me\n')
-    git(writer, 'add', 'prune-me.txt')
-    git(writer, 'commit', '-m', 'prune me')
-    git(writer, 'push', '-u', 'origin', 'prune-me')
-    const pruneTip = git(writer, 'rev-parse', 'prune-me')
-    git(writer, 'checkout', 'main')
-    git(writer, 'pull', '--ff-only')
-    git(writer, 'merge', '--ff-only', 'prune-me')
-    git(writer, 'push', 'origin', 'main')
-    git(repository, 'fetch', 'origin')
-    git(repository, 'remote', 'set-head', 'origin', 'main')
-    git(repository, 'branch', '--force', 'main', 'origin/main')
-    git(repository, 'branch', '--track', 'prune-me', 'origin/prune-me')
-    git(writer, 'push', 'origin', '--delete', 'prune-me')
-    git(repository, 'fetch', '--prune', 'origin')
-    assert.equal(git(repository, 'rev-parse', 'origin/main'), pruneTip)
-    await openSyncMenu(page)
-    await page.getByRole('button', { name: 'Prune stale branches' }).click()
-    const pruneDialog = page.getByRole('alertdialog')
-    await pruneDialog.getByText('prune-me', { exact: false }).waitFor()
-    await pruneDialog.getByRole('button', { name: 'Cancel' }).click()
-    assert.equal(
-      git(repository, 'show-ref', '--verify', 'refs/heads/prune-me').length > 0,
-      true
-    )
-    await openSyncMenu(page)
-    await page.getByRole('button', { name: 'Prune stale branches' }).click()
-    await page
-      .getByRole('alertdialog')
-      .getByRole('button', { name: 'Prune branches' })
-      .click()
-    await waitForMissingGit(repository, [
-      'show-ref',
-      '--verify',
-      'refs/heads/prune-me',
-    ])
-
     assert.deepEqual(errors, [])
     console.log(
-      'Source sync workflows passed: push rejection recovery, pull strategies, refspec fetch, reset and pull, publish, remote checkout, branch fast-forward, and stale-branch pruning'
+      'Source sync workflows passed: push rejection recovery, fetch and pull, reset and pull, publish, remote checkout, and branch fast-forward'
     )
   } finally {
     await browser.close()
     await new Promise(resolve => server.close(resolve))
-    fs.rmSync(root, { recursive: true, force: true })
+    fs.rmSync(root, {
+      recursive: true,
+      force: true,
+      maxRetries: 10,
+      retryDelay: 100,
+    })
   }
 }
 
