@@ -314,7 +314,19 @@ export interface WebOperationTask {
   readonly hookFailure?: WebHookFailure | null
   readonly configLockScope?: WebGitConfigScope | null
   readonly bypassURL?: string | null
+  readonly authPrompt?: WebSSHAuthPrompt | null
 }
+
+export type WebSSHAuthPrompt =
+  | {
+      readonly type: 'host'
+      readonly host: string
+      readonly ip: string
+      readonly keyType: string
+      readonly fingerprint: string
+    }
+  | { readonly type: 'passphrase'; readonly keyPath: string }
+  | { readonly type: 'password'; readonly username: string }
 
 export type WebGitConfigScope = 'local' | 'global'
 
@@ -851,6 +863,11 @@ export interface WebDispatcher {
     options?: WebOperationOptions
   ): Promise<void>
   cancelOperation(): Promise<void>
+  respondOperationAuth(
+    id: string,
+    response: string,
+    remember?: boolean
+  ): Promise<void>
   previewPruneBranches(): Promise<ReadonlyArray<WebBranchPruneCandidate>>
   commit(
     message: string,
@@ -1023,6 +1040,11 @@ export interface WebGitClient {
   ): Promise<WebOperationTask>
   getOperation(id: string): Promise<WebOperationTask>
   cancelOperation(id: string): Promise<WebOperationTask>
+  respondOperationAuth(
+    id: string,
+    response: string,
+    remember?: boolean
+  ): Promise<WebOperationTask>
 }
 
 export interface WebHostingClient {

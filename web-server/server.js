@@ -41,6 +41,9 @@ const MAX_FILE_CONTENT_BYTES = 1024 * 1024
 const MAX_ARGUMENT_LENGTH = 64 * 1024
 const MAX_PATH_LENGTH = 32 * 1024
 const STALE_GIT_CONFIG_LOCK_AGE_MS = 5 * 60 * 1000
+const SSH_AUTH_PROMPT_TIMEOUT_MS = 120_000
+const SSH_ASKPASS_SCRIPT_PATH = path.join(__dirname, 'ssh-askpass.js')
+const SSH_CREDENTIAL_SERVICE = 'desktop-plus-web-ssh'
 const EMPTY_TREE_SHA = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
 const operationContext = new AsyncLocalStorage()
 const IMAGE_MEDIA_TYPES = Object.freeze({
@@ -2203,6 +2206,33 @@ function operationTaskError(error) {
   }
 }
 
+function parseSSHAuthPrompt(prompt) {
+  const text = String(prompt || '')
+  const host =
+    /^The authenticity of host '([^ ]+) \(([^)]+)\)' can't be established[^.]*\.\s*([^ ]+) key fingerprint is ([^.]+)\./s.exec(
+      text
+    )
+  if (host)
+    return {
+      type: 'host',
+      host: host[1],
+      ip: host[2],
+      keyType: host[3],
+      fingerprint: host[4],
+    }
+  const passphrase = /^Enter passphrase for key '(.+?)':\s*$/s.exec(text)
+  if (passphrase) return { type: 'passphrase', keyPath: passphrase[1] }
+  const password = /^(.+@.+)'s password:\s*$/s.exec(text)
+  if (password) return { type: 'password', username: password[1] }
+  return null
+}
+
+function sshCredentialAccount(prompt) {
+  if (prompt.type === 'passphrase') return `passphrase:${prompt.keyPath}`
+  if (prompt.type === 'password') return `password:${prompt.username}`
+  return null
+}
+
 function createOperationTaskManager(services) {
   const tasks = new Map()
   const retentionMs = 5 * 60 * 1000
@@ -2240,6 +2270,7 @@ function createOperationTaskManager(services) {
       : null,
     configLockScope: task.configLockScope,
     bypassURL: task.bypassURL,
+    authPrompt: task.authPrompt,
   })
   const get = id => {
     const task = tasks.get(id)
@@ -2291,6 +2322,10 @@ function createOperationTaskManager(services) {
       hookFailure: null,
       configLockScope: null,
       bypassURL: null,
+      authToken: crypto.randomBytes(24).toString('base64url'),
+      authPrompt: null,
+      authWaiter: null,
+      authStoredAccounts: new Set(),
       processes: new Set(),
       cancelled: false,
       beginCommand(args) {
@@ -2315,6 +2350,72 @@ function createOperationTaskManager(services) {
           )
         }
         if (currentCommit) task.currentCommit = currentCommit
+      },
+      async requestAuth(prompt) {
+        const parsed = parseSSHAuthPrompt(prompt)
+        if (!parsed) return Promise.resolve('')
+        const account = sshCredentialAccount(parsed)
+        if (account && typeof services?.keytar?.getPassword === 'function') {
+          try {
+            const stored = await services.keytar.getPassword(
+              SSH_CREDENTIAL_SERVICE,
+              account
+            )
+            if (stored) {
+              task.authStoredAccounts.add(account)
+              return stored
+            }
+          } catch {}
+        }
+        if (task.authWaiter) return Promise.resolve('')
+        task.authPrompt = parsed
+        task.phase = 'Waiting for SSH credentials'
+        return new Promise(resolve => {
+          const timeout = setTimeout(() => {
+            if (!task.authWaiter) return
+            task.authWaiter = null
+            task.authPrompt = null
+            resolve('')
+          }, SSH_AUTH_PROMPT_TIMEOUT_MS)
+          timeout.unref?.()
+          task.authWaiter = response => {
+            clearTimeout(timeout)
+            task.authWaiter = null
+            task.authPrompt = null
+            resolve(response)
+          }
+        })
+      },
+      async respondAuth(token, response, remember = false) {
+        if (token !== task.authToken)
+          throw Object.assign(new Error('Invalid SSH authentication token'), {
+            statusCode: 403,
+          })
+        if (!task.authWaiter || !task.authPrompt)
+          throw Object.assign(
+            new Error('No SSH authentication prompt is pending'),
+            {
+              statusCode: 409,
+            }
+          )
+        const answer = typeof response === 'string' ? response : ''
+        const account = sshCredentialAccount(task.authPrompt)
+        if (
+          remember &&
+          account &&
+          answer &&
+          typeof services?.keytar?.setPassword === 'function'
+        ) {
+          try {
+            await services.keytar.setPassword(
+              SSH_CREDENTIAL_SERVICE,
+              account,
+              answer
+            )
+          } catch {}
+        }
+        task.authWaiter(answer)
+        return snapshot(task)
       },
       attachProcess(child) {
         task.processes.add(child)
@@ -2383,8 +2484,21 @@ function createOperationTaskManager(services) {
         clearInterval(monitor)
         scheduleEviction(id)
       })
-      .catch(error => {
+      .catch(async error => {
+        if (task.authWaiter) task.authWaiter('')
         const details = operationTaskError(error)
+        if (
+          details.errorCode === 'authentication-required' &&
+          typeof services?.keytar?.deletePassword === 'function'
+        ) {
+          await Promise.all(
+            [...task.authStoredAccounts].map(account =>
+              services.keytar
+                .deletePassword(SSH_CREDENTIAL_SERVICE, account)
+                .catch(() => false)
+            )
+          )
+        }
         task.status = task.cancelled ? 'cancelled' : 'failed'
         task.phase = task.cancelled ? 'Cancelled' : 'Failed'
         task.error = task.cancelled ? null : details.error
@@ -2413,10 +2527,32 @@ function createOperationTaskManager(services) {
     }
     return get(id)
   }
+  const requestAuth = async (id, token, prompt) => {
+    const task = tasks.get(id)
+    if (!task)
+      throw Object.assign(new Error('Git operation was not found'), {
+        statusCode: 404,
+      })
+    if (token !== task.authToken)
+      throw Object.assign(new Error('Invalid SSH authentication token'), {
+        statusCode: 403,
+      })
+    return task.requestAuth(prompt)
+  }
+  const respondAuth = (id, response, remember = false) => {
+    const task = tasks.get(id)
+    if (!task)
+      throw Object.assign(new Error('Git operation was not found'), {
+        statusCode: 404,
+      })
+    return task.respondAuth(task.authToken, response, remember)
+  }
   return {
     start,
     get,
     cancel,
+    requestAuth,
+    respondAuth,
     cancelAll: () => {
       for (const task of tasks.values()) {
         if (task.status !== 'running') continue
@@ -2795,6 +2931,22 @@ function nonInteractiveGitEnvironment() {
     GIT_CONFIG_VALUE_0: '',
     GIT_CONFIG_KEY_1: 'core.askPass',
     GIT_CONFIG_VALUE_1: '',
+  }
+}
+
+function interactiveSSHEnvironment(environment, task, services) {
+  if (!task || !services?.getServerURL) return environment
+  const serverURL = services.getServerURL()
+  if (!serverURL) return environment
+  return {
+    ...environment,
+    SSH_ASKPASS: SSH_ASKPASS_SCRIPT_PATH,
+    SSH_ASKPASS_REQUIRE: 'force',
+    DISPLAY: '.',
+    DESKTOP_PLUS_AUTH_URL: serverURL,
+    DESKTOP_PLUS_AUTH_OPERATION: task.id,
+    DESKTOP_PLUS_AUTH_TOKEN: task.authToken,
+    DESKTOP_PLUS_SESSION_TOKEN: services.sessionToken,
   }
 }
 
@@ -5295,6 +5447,11 @@ async function runOperation(repoPath, body, services = null) {
     operation,
     values
   )
+  gitEnvironment = interactiveSSHEnvironment(
+    gitEnvironment,
+    operationContext.getStore(),
+    services
+  )
   switch (operation) {
     case 'prune-branches':
       return pruneBranches(repoPath, body)
@@ -6849,6 +7006,33 @@ async function routeApi(req, res, url, services) {
     )
   if (operationMatch && req.method === 'POST') {
     const body = await parseJsonBody(req)
+    const operationID = decodeURIComponent(operationMatch[1])
+    if (body.action === 'auth-prompt') {
+      const prompt = requireString(body.prompt, 'SSH authentication prompt')
+      if (prompt.length > 4096)
+        return sendJson(res, 400, {
+          error: 'SSH authentication prompt is too long',
+        })
+      return sendJson(res, 200, {
+        response: await services.operationTasks.requestAuth(
+          operationID,
+          body.token,
+          prompt
+        ),
+      })
+    }
+    if (body.action === 'auth-response') {
+      const response = typeof body.response === 'string' ? body.response : ''
+      return sendJson(
+        res,
+        200,
+        await services.operationTasks.respondAuth(
+          operationID,
+          response,
+          body.remember === true
+        )
+      )
+    }
     if (body.action !== 'cancel')
       return sendJson(res, 400, { error: 'Unsupported operation task action' })
     return sendJson(
@@ -8548,6 +8732,7 @@ async function serveStatic(req, res, pathname, sessionToken) {
 function createServer(options = {}) {
   const sessionToken =
     options.sessionToken || crypto.randomBytes(32).toString('base64url')
+  let server = null
   const services = {
     selectDirectory: options.selectDirectory || platform.selectDirectory,
     selectSavePath: options.selectSavePath || platform.selectSavePath,
@@ -8574,10 +8759,17 @@ function createServer(options = {}) {
         openArtifact: options.openUpdateArtifact || platform.openPath,
       }),
     lfsTasks: options.lfsTasks || createLfsTaskManager(),
+    sessionToken,
+    getServerURL: () => {
+      const address = server?.address()
+      return address && typeof address === 'object'
+        ? `http://127.0.0.1:${address.port}`
+        : null
+    },
   }
   services.operationTasks =
     options.operationTasks || createOperationTaskManager(services)
-  const server = http.createServer(async (req, res) => {
+  server = http.createServer(async (req, res) => {
     if (!parseLoopbackHost(req.headers.host))
       return sendJson(res, 403, { error: 'Invalid Host header' })
     const url = new URL(req.url, `http://${req.headers.host}`)
