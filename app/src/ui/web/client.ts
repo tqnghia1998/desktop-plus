@@ -193,6 +193,18 @@ export const webGitClient: WebGitClient = {
     return request('/api/git/global-config-path')
   },
 
+  readGitIgnore(path): Promise<{ readonly text: string | null }> {
+    return request(`/api/gitignore${repositoryQuery(path)}`)
+  },
+
+  saveGitIgnore(path, text): Promise<WebStatus> {
+    return request('/api/gitignore', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path, text }),
+    })
+  },
+
   appendIgnore(path, body): Promise<WebStatus> {
     return request('/api/gitignore', {
       method: 'POST',
