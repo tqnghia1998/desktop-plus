@@ -15,6 +15,7 @@ class Repository {
     this.alias = alias
     this.groupName = groupName
     this.defaultBranch = defaultBranch
+    this.workflowPreferences = {}
     this.name = path.split(/[\\/]/).filter(Boolean).pop() || path
     this.customEditorOverride = null
     this._url = null
@@ -33,6 +34,14 @@ function isRepositoryWithForkedGitHubRepository() {
   return false
 }
 
+function getForkContributionTarget(repository) {
+  return repository.workflowPreferences.forkContributionTarget || 'parent'
+}
+
+function getUpdateBranchStrategy(repository) {
+  return repository.workflowPreferences.updateBranchStrategy || 'merge'
+}
+
 function hasDefaultRemoteUrl(repository) {
   return Boolean(repository.url)
 }
@@ -48,5 +57,7 @@ module.exports = {
   hasDefaultRemoteUrl,
   isRepositoryWithGitHubRepository,
   isRepositoryWithForkedGitHubRepository,
+  getForkContributionTarget,
+  getUpdateBranchStrategy,
   nameOf,
 }
