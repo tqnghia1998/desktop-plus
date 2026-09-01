@@ -19,6 +19,8 @@ import {
   BranchDropdown,
   PushPullButton,
   RepositoryToolbarDropdown,
+  ToolbarActionMenu,
+  ToolbarActionMenuItem,
 } from './toolbar'
 import * as octicons from './octicons/octicons.generated'
 import { Changes, ChangesSidebar } from './changes'
@@ -2166,6 +2168,8 @@ function DesktopToolbar(props: {
   readonly onConfirmDiscardChangesChanged: (value: boolean) => void
   readonly underlineLinks: boolean
 }) {
+  const editorIntegration = useWebIntegrationSelection('editor')
+  const shellIntegration = useWebIntegrationSelection('shell')
   const [branchDropdownWidth, setBranchDropdownWidth] = React.useState(() =>
     Math.min(
       webToolbarButtonWidth.max,
@@ -2207,10 +2211,23 @@ function DesktopToolbar(props: {
     setPushPullButtonWidth(webToolbarButtonWidth.default)
   }, [])
   const [toolbarDropdown, setToolbarDropdown] = React.useState<
-    'repository' | 'branch' | 'sync' | null
+    | 'repository'
+    | 'branch'
+    | 'sync'
+    | 'repository-actions'
+    | 'branch-actions'
+    | null
   >(null)
   const setToolbarDropdownState = React.useCallback(
-    (dropdown: 'repository' | 'branch' | 'sync', state: 'open' | 'closed') => {
+    (
+      dropdown:
+        | 'repository'
+        | 'branch'
+        | 'sync'
+        | 'repository-actions'
+        | 'branch-actions',
+      state: 'open' | 'closed'
+    ) => {
       setToolbarDropdown(current =>
         state === 'open' ? dropdown : current === dropdown ? null : current
       )
@@ -2220,6 +2237,8 @@ function DesktopToolbar(props: {
   const repositoryPickerOpen = toolbarDropdown === 'repository'
   const branchMenuOpen = toolbarDropdown === 'branch'
   const syncMenuOpen = toolbarDropdown === 'sync'
+  const repositoryActionsOpen = toolbarDropdown === 'repository-actions'
+  const branchActionsOpen = toolbarDropdown === 'branch-actions'
   React.useEffect(() => {
     if (props.state.selectedRepositoryPath !== null) return
     const frame = window.requestAnimationFrame(() =>
@@ -2256,8 +2275,9 @@ function DesktopToolbar(props: {
     readonly squash: boolean
     readonly initialBranch?: Branch
   } | null>(null)
-  const [rebaseInitialBranch, setRebaseInitialBranch] =
-    React.useState<Branch | null>(null)
+  const [rebaseDialog, setRebaseDialog] = React.useState<{
+    readonly initialBranch?: Branch
+  } | null>(null)
   const [checkoutTarget, setCheckoutTarget] = React.useState<{
     readonly options: WebOperationOptions
     readonly branch: Branch
@@ -2540,6 +2560,14 @@ function DesktopToolbar(props: {
     desktopBranchDropdownState.branchesState,
     aheadBehind
   )
+  const pushCurrentBranch = React.useCallback(() => {
+    if (aheadBehind === null && desktopCurrentBranch && remoteName) {
+      return props.dispatcher.runOperation('publish-branch', {
+        values: [remoteName, desktopCurrentBranch.name],
+      })
+    }
+    return props.dispatcher.runOperation('push')
+  }, [aheadBehind, desktopCurrentBranch, props.dispatcher, remoteName])
   const desktopPushPullDispatcher = React.useMemo(
     () =>
       ({
@@ -2547,27 +2575,180 @@ function DesktopToolbar(props: {
         confirmOrForcePush: () => setForcePushOpen(true),
         fetch: () => props.dispatcher.runOperation('fetch'),
         pull: () => props.dispatcher.runOperation('pull'),
-        push: () => {
-          if (aheadBehind === null && desktopCurrentBranch && remoteName) {
-            return props.dispatcher.runOperation('publish-branch', {
-              values: [remoteName, desktopCurrentBranch.name],
-            })
-          }
-          return props.dispatcher.runOperation('push')
-        },
+        push: pushCurrentBranch,
         resetAndPull: () =>
           props.dispatcher.runOperation('reset-upstream', { confirmed: true }),
         setPushPullButtonWidth: updatePushPullButtonWidth,
         resetPushPullButtonWidth,
       } as unknown as Dispatcher),
     [
-      aheadBehind,
-      desktopCurrentBranch,
-      props.dispatcher,
-      remoteName,
+      pushCurrentBranch,
       resetPushPullButtonWidth,
       setToolbarDropdownState,
       updatePushPullButtonWidth,
+    ]
+  )
+  const currentWebBranch = props.state.branches?.branch || null
+  const canUpdateFromDefault =
+    desktopCurrentBranch !== null &&
+    defaultBranch !== null &&
+    desktopCurrentBranch.name !== defaultBranch
+  const repositoryActionItems = React.useMemo<
+    ReadonlyArray<ToolbarActionMenuItem>
+  >(
+    () => [
+      {
+        id: 'push',
+        type: 'item',
+        label: 'Push',
+        disabled: !desktopCurrentBranch,
+        action: () => void pushCurrentBranch(),
+      },
+      {
+        id: 'pull',
+        type: 'item',
+        label: 'Pull',
+        disabled: !desktopCurrentBranch,
+        action: () => void props.dispatcher.runOperation('pull'),
+      },
+      {
+        id: 'fetch',
+        type: 'item',
+        label: 'Fetch',
+        disabled: !repository,
+        action: () => void props.dispatcher.runOperation('fetch'),
+      },
+      { id: 'repository-integrations', type: 'separator' },
+      {
+        id: 'open-in-editor',
+        type: 'item',
+        label: `Open in ${editorIntegration.name || 'Visual Studio Code'}`,
+        disabled: !repository,
+        action: () => {
+          if (!repository) return
+          void props.dispatcher.openIntegration(
+            'editor',
+            repository.path,
+            editorIntegration
+          )
+        },
+      },
+      {
+        id: 'open-in-terminal',
+        type: 'item',
+        label: 'Open in Terminal',
+        disabled: !repository,
+        action: () => {
+          if (!repository) return
+          void props.dispatcher.openIntegration(
+            'shell',
+            repository.path,
+            shellIntegration
+          )
+        },
+      },
+      {
+        id: 'show-in-file-manager',
+        type: 'item',
+        label: 'Show in File Manager',
+        disabled: !repository,
+        action: () => {
+          if (repository) props.onOpenPath(repository.path, true)
+        },
+      },
+      { id: 'repository-settings', type: 'separator' },
+      {
+        id: 'manage-remotes',
+        type: 'item',
+        label: 'Manage Remotes…',
+        disabled: !repository,
+        action: () => setManageRemotesOpen(true),
+      },
+    ],
+    [
+      desktopCurrentBranch,
+      editorIntegration,
+      props.dispatcher,
+      props.onOpenPath,
+      pushCurrentBranch,
+      repository,
+      shellIntegration,
+    ]
+  )
+  const branchActionItems = React.useMemo<ReadonlyArray<ToolbarActionMenuItem>>(
+    () => [
+      {
+        id: 'new-branch',
+        type: 'item',
+        label: 'New Branch…',
+        disabled: !repository,
+        action: () => {
+          setBranchInitialName('')
+          setBranchToRename(null)
+          setBranchDialog('create')
+        },
+      },
+      {
+        id: 'rename-branch',
+        type: 'item',
+        label: 'Rename…',
+        disabled: !currentWebBranch,
+        action: () => setBranchToRename(currentWebBranch),
+      },
+      {
+        id: 'delete-branch',
+        type: 'item',
+        label: 'Delete…',
+        disabled: !currentWebBranch,
+        action: () => setBranchToDelete(currentWebBranch),
+      },
+      { id: 'branch-history', type: 'separator' },
+      {
+        id: 'update-from-default',
+        type: 'item',
+        label: `Update from ${defaultBranch || 'default branch'}`,
+        disabled: !canUpdateFromDefault,
+        action: () =>
+          void props.dispatcher.runOperation('update-from-default', {
+            defaultBranch: defaultBranch || undefined,
+          }),
+      },
+      {
+        id: 'compare-to-branch',
+        type: 'item',
+        label: 'Compare to Branch',
+        disabled: !desktopCurrentBranch,
+        action: () => void props.dispatcher.selectSection('compare'),
+      },
+      {
+        id: 'merge-into-current',
+        type: 'item',
+        label: 'Merge into Current Branch…',
+        disabled: !desktopCurrentBranch,
+        action: () => setMergeOperation({ squash: false }),
+      },
+      {
+        id: 'squash-merge-into-current',
+        type: 'item',
+        label: 'Squash and Merge into Current Branch…',
+        disabled: !desktopCurrentBranch,
+        action: () => setMergeOperation({ squash: true }),
+      },
+      {
+        id: 'rebase-current',
+        type: 'item',
+        label: 'Rebase Current Branch…',
+        disabled: !desktopCurrentBranch,
+        action: () => setRebaseDialog({}),
+      },
+    ],
+    [
+      canUpdateFromDefault,
+      currentWebBranch,
+      defaultBranch,
+      desktopCurrentBranch,
+      props.dispatcher,
+      repository,
     ]
   )
 
@@ -2692,6 +2873,28 @@ function DesktopToolbar(props: {
             width={props.sidebarWidth}
           />
         }
+        actions={
+          <>
+            <ToolbarActionMenu
+              id="web-repository-actions"
+              isOpen={repositoryActionsOpen}
+              label="Repository"
+              items={repositoryActionItems}
+              onStateChanged={state =>
+                setToolbarDropdownState('repository-actions', state)
+              }
+            />
+            <ToolbarActionMenu
+              id="web-branch-actions"
+              isOpen={branchActionsOpen}
+              label="Branch"
+              items={branchActionItems}
+              onStateChanged={state =>
+                setToolbarDropdownState('branch-actions', state)
+              }
+            />
+          </>
+        }
         sidebarWidth={props.sidebarWidth}
       />
       {discardAllChangesOpen && props.state.selectedRepositoryPath ? (
@@ -2757,7 +2960,7 @@ function DesktopToolbar(props: {
                   initialBranch?: Branch | null
                 ) => {
                   setMergeOperation(null)
-                  setRebaseInitialBranch(initialBranch || null)
+                  setRebaseDialog(initialBranch ? { initialBranch } : {})
                   return Promise.resolve()
                 },
                 startMergeBranchOperation: (
@@ -2791,7 +2994,7 @@ function DesktopToolbar(props: {
           />
         </DialogStackContext.Provider>
       ) : null}
-      {rebaseInitialBranch &&
+      {rebaseDialog &&
       desktopCurrentBranch &&
       props.state.selectedRepositoryPath ? (
         <DialogStackContext.Provider value={{ isTopMost: true }}>
@@ -2803,15 +3006,15 @@ function DesktopToolbar(props: {
             dispatcher={
               {
                 startRebase: (_repository: Repository, baseBranch: Branch) => {
-                  setRebaseInitialBranch(null)
+                  setRebaseDialog(null)
                   return props.dispatcher.runOperation('rebase', {
                     values: [baseBranch.name],
                   })
                 },
               } as unknown as Dispatcher
             }
-            initialBranch={rebaseInitialBranch}
-            onDismissed={() => setRebaseInitialBranch(null)}
+            initialBranch={rebaseDialog.initialBranch}
+            onDismissed={() => setRebaseDialog(null)}
             operation={MultiCommitOperationKind.Rebase}
             recentBranches={desktopBranches.filter(
               candidate =>
