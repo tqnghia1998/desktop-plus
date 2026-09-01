@@ -3,8 +3,6 @@ import {
   WebPlatform,
   WebUpdateOperation,
   WebUpdateStatus,
-  WebIntegrationSelection,
-  WebCustomIntegration,
 } from './contracts'
 
 interface IWebRuntime {
