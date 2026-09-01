@@ -97,6 +97,8 @@ export type WebSubmoduleUpdateStrategy = 'checkout' | 'merge' | 'rebase'
 export interface WebBranches {
   readonly branch: WebBranch | null
   readonly defaultBranch: string | null
+  /** Timestamp of the most recent successful fetch, derived from FETCH_HEAD. */
+  readonly lastFetched: string | null
   readonly recentBranches: ReadonlyArray<string>
   readonly pullWithRebase?: boolean
   readonly branches?: ReadonlyArray<WebBranch>
