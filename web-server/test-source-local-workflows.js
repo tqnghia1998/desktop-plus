@@ -257,9 +257,7 @@ async function main() {
     })
     assert.match(await stashViewer.innerText(), /stashed work/)
     await stashViewer.getByRole('button', { name: 'Restore options' }).click()
-    await page
-      .getByRole('menuitem', { name: 'Apply Changes', exact: true })
-      .click()
+    await page.getByRole('menuitemradio', { name: /^Apply Changes/ }).click()
     await stashViewer.getByRole('button', { name: 'Apply Changes' }).click()
     await waitForFile(path.join(repository, 'README.md'), '# stashed work\n')
     assert.match(git(repository, 'stash', 'list'), /renamed%20stash/)
@@ -272,9 +270,7 @@ async function main() {
     await confirm(page, 'Discard changes')
     stashViewer = await openOnlyStash(page)
     await stashViewer.getByRole('button', { name: 'Restore options' }).click()
-    await page
-      .getByRole('menuitem', { name: 'Restore Changes', exact: true })
-      .click()
+    await page.getByRole('menuitemradio', { name: /^Restore Changes/ }).click()
     await stashViewer.getByRole('button', { name: 'Restore Changes' }).click()
     await waitForFile(path.join(repository, 'README.md'), '# stashed work\n')
     assert.equal(git(repository, 'stash', 'list'), '')
