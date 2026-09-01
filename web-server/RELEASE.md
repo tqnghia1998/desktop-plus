@@ -74,9 +74,12 @@ ownership.
 
 `yarn test:web` also verifies generic HTTP(S) credential lookup through Git's
 configured credential helper. The companion must suppress editor askpass and
-terminal prompts; when lookup or authentication fails, the browser-owned
-one-time credential dialog is the only fallback. Do not describe this as
-hosted account sign-in or persist the dialog credentials.
+terminal prompts; HTTP(S) lookup failures use the browser-owned one-time
+credential dialog, and SSH prompts use the shared Desktop SSH dialogs while
+the task is paused; the existing SSH dialog's Remember option stores only
+passwords/passphrases in the companion's operating-system credential store.
+Do not describe this as hosted account sign-in or persist dialog credentials in
+browser storage.
 
 Do not promote a deferred or partial workflow to Supported until it has a
 visible source-renderer control, companion support, automated evidence, and the
