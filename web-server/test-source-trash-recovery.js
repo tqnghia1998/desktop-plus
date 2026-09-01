@@ -10,7 +10,10 @@ function git(cwd, ...args) {
   return execFileSync('git', args, { cwd, encoding: 'utf8' }).trim()
 }
 
-function createRepository(root) {
+async function main() {
+  const root = await fs.promises.mkdtemp(
+    path.join(os.tmpdir(), 'desktop-plus-trash-recovery-')
+  )
   const repository = path.join(root, 'trash-failure-repository')
   fs.mkdirSync(repository)
   git(repository, 'init', '-q', '-b', 'main')
@@ -19,14 +22,7 @@ function createRepository(root) {
   fs.writeFileSync(path.join(repository, 'tracked.txt'), 'tracked\n')
   git(repository, 'add', 'tracked.txt')
   git(repository, 'commit', '-q', '-m', 'Initial commit')
-  return repository
-}
 
-async function main() {
-  const root = await fs.promises.mkdtemp(
-    path.join(os.tmpdir(), 'desktop-plus-trash-recovery-')
-  )
-  const repository = createRepository(root)
   const server = createServer({
     getDesktopRepositories: async () => [],
     moveToTrash: async () => {
@@ -49,44 +45,41 @@ async function main() {
         name: /Add an Existing Repository from your local drive…/i,
       })
       .click()
+    const repositoryInspection = page.waitForResponse(
+      response =>
+        response.url().includes('/api/repository/inspect') &&
+        response.status() === 200
+    )
     await page.getByLabel('Local path').fill(repository)
+    await repositoryInspection
     await page.getByRole('button', { name: 'Add repository' }).click()
-    await page.getByRole('tab', { name: 'Changes' }).waitFor()
+    await page.locator('.branch-toolbar-button').waitFor()
 
-    await page.locator('.sidebar-section').getByRole('button').first().click()
+    await page.getByRole('button', { name: /Current repository/i }).click()
+    const row = page
+      .getByRole('option', { name: /trash-failure-repository/i })
+      .first()
+    await row.click({ button: 'right' })
     await page
-      .getByRole('button', {
-        name: 'Delete trash-failure-repository from disk',
-      })
-      .click()
-    await page
-      .getByRole('alertdialog')
-      .getByRole('button', { name: 'Move to Trash' })
+      .locator('#web-context-menu')
+      .getByRole('menuitem', { name: 'Remove…' })
       .click()
 
-    const errorDialog = page.getByRole('dialog').filter({
-      hasText: 'could not be moved to the macOS Trash',
+    const removeDialog = page.locator('dialog').filter({
+      hasText: 'Remove Repository',
     })
-    await errorDialog.waitFor()
-    await errorDialog
-      .getByRole('button', { name: 'Delete permanently' })
-      .click()
+    await removeDialog.getByLabel(/Also move this repository to Trash/i).check()
+    await removeDialog.getByRole('button', { name: 'Remove' }).click()
 
-    const recoveryDialog = page.getByRole('alertdialog').filter({
-      hasText: 'Moving it to the macOS Trash failed',
-    })
-    await recoveryDialog.waitFor()
-    await recoveryDialog
-      .getByRole('button', { name: 'Delete permanently' })
-      .click()
     await page
-      .locator('.repository-list-item')
-      .filter({ hasText: 'trash-failure-repository' })
-      .waitFor({ state: 'hidden' })
-    assert.equal(fs.existsSync(repository), false)
+      .locator('dialog')
+      .filter({ hasText: /could not be moved to the macOS Trash/i })
+      .waitFor()
+    await page.getByText(/could not be moved to the macOS Trash/i).waitFor()
+    assert.equal(fs.existsSync(repository), true)
     assert.deepEqual(errors, [])
     console.log(
-      'Source Trash recovery passed: failed macOS Trash move offers guarded permanent deletion'
+      'Source Trash recovery passed: the desktop remove dialog uses the browser Trash adapter and preserves the repository after a failed move'
     )
   } finally {
     await browser.close()
