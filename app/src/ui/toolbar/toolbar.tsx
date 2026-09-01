@@ -9,7 +9,6 @@ interface IToolbarSidebarSectionProps {
 }
 
 interface IApplicationToolbarProps {
-  readonly actions?: React.ReactNode
   readonly branch: React.ReactNode
   readonly pushPull: React.ReactNode
   readonly repository: React.ReactNode
@@ -47,7 +46,6 @@ export function ApplicationToolbar(props: IApplicationToolbarProps) {
       {props.worktree}
       {props.branch}
       {props.pushPull}
-      {props.actions}
     </Toolbar>
   )
 }
