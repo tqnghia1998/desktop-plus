@@ -6,6 +6,7 @@ const sourceSuites = Object.freeze({
   local: 'test-source-local-workflows.js',
   sync: 'test-source-sync-workflows.js',
   sshAuth: 'test-source-ssh-auth.js',
+  applicationMenu: 'test-source-application-menu.js',
   advanced: 'test-source-advanced-workflows.js',
   parity: 'test-source-parity-round.js',
   recovery: 'test-source-repository-recovery.js',
