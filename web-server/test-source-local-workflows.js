@@ -234,11 +234,47 @@ async function main() {
     await page
       .getByRole('button', { name: '1 stash (renamed stash)' })
       .waitFor()
+    await stashButton.click({ button: 'right' })
+    await page
+      .locator('#web-context-menu')
+      .getByRole('menuitem', { name: 'Apply Changes', exact: true })
+      .click()
+    await waitForFile(path.join(repository, 'README.md'), '# stashed work\n')
+    assert.match(git(repository, 'stash', 'list'), /renamed%20stash/)
+    await reloadRepository(page)
+    await page.locator('.filter-field-row').first().dispatchEvent('contextmenu')
+    await page
+      .locator('#web-context-menu')
+      .getByRole('menuitem', { name: 'Discard All Changes…', exact: true })
+      .click()
+    await confirm(page, 'Discard changes')
     let stashViewer = await openOnlyStash(page)
     await stashViewer.getByRole('option', { name: 'README.md' }).waitFor()
     await stashViewer.getByRole('option', { name: 'README.md' }).click()
     await stashViewer.getByText('stashed work', { exact: false }).waitFor()
+    await stashViewer.locator('.loading-indicator').waitFor({
+      state: 'detached',
+    })
     assert.match(await stashViewer.innerText(), /stashed work/)
+    await stashViewer.getByRole('button', { name: 'Restore options' }).click()
+    await page
+      .getByRole('menuitem', { name: 'Apply Changes', exact: true })
+      .click()
+    await stashViewer.getByRole('button', { name: 'Apply Changes' }).click()
+    await waitForFile(path.join(repository, 'README.md'), '# stashed work\n')
+    assert.match(git(repository, 'stash', 'list'), /renamed%20stash/)
+    await reloadRepository(page)
+    await page.locator('.filter-field-row').first().dispatchEvent('contextmenu')
+    await page
+      .locator('#web-context-menu')
+      .getByRole('menuitem', { name: 'Discard All Changes…', exact: true })
+      .click()
+    await confirm(page, 'Discard changes')
+    stashViewer = await openOnlyStash(page)
+    await stashViewer.getByRole('button', { name: 'Restore options' }).click()
+    await page
+      .getByRole('menuitem', { name: 'Restore Changes', exact: true })
+      .click()
     await stashViewer.getByRole('button', { name: 'Restore Changes' }).click()
     await waitForFile(path.join(repository, 'README.md'), '# stashed work\n')
     assert.equal(git(repository, 'stash', 'list'), '')
