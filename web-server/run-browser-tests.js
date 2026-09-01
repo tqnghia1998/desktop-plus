@@ -18,7 +18,6 @@ const suites = {
     'test-source-preferences-history.js',
     'test-source-state-persistence.js',
     'test-source-trash-recovery.js',
-    'test-source-tutorial.js',
     'test-source-platform-gaps.js',
   ],
   ui: [

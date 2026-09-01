@@ -16,6 +16,7 @@ function gitStatus(cwd, ...args) {
 }
 
 async function addRepository(page, repository) {
+  const canonicalRepository = fs.realpathSync(repository)
   const homeAdd = page.getByRole('button', {
     name: /Add an Existing Repository from your local drive…/i,
   })
@@ -28,26 +29,43 @@ async function addRepository(page, repository) {
       .first()
       .evaluate(button => button.click())
     await page.getByRole('button', { name: 'Add', exact: true }).click()
+    await page
+      .getByRole('menuitem', { name: 'Add Existing Repository…' })
+      .click()
   }
+  const repositoryInspection = page.waitForResponse(
+    response =>
+      response.url().includes('/api/repository/inspect') &&
+      response.status() === 200
+  )
   await page.getByLabel('Local path').fill(repository)
+  await repositoryInspection
   await page.getByRole('button', { name: 'Add repository' }).click()
   await page.locator('.branch-toolbar-button').waitFor()
   await page.waitForFunction(
-    () =>
-      !document
-        .querySelector('.branch-toolbar-button .title')
-        ?.textContent?.includes('No branch')
+    expected => window.__DESKTOP_PLUS_WEB_REPOSITORY_PATH__ === expected,
+    canonicalRepository
   )
 }
 
-async function selectRepository(page, repositoryName) {
-  await page.locator('.sidebar-section').getByRole('button').first().click()
-  const repository = page
+async function selectRepository(page, repository) {
+  const picker = page.locator('.repository-list')
+  if (!(await picker.isVisible().catch(() => false))) {
+    const button = page.getByRole('button', { name: /^Current repository/i })
+    if ((await button.getAttribute('aria-expanded')) !== 'true')
+      await button.click()
+    await picker.waitFor()
+  }
+  const repositoryRow = page
     .locator('.repository-list-item')
-    .filter({ hasText: repositoryName })
+    .filter({ hasText: path.basename(repository) })
     .first()
-  await repository.waitFor()
-  await repository.evaluate(element => element.click())
+  await repositoryRow.waitFor()
+  await repositoryRow.evaluate(element => element.click())
+  await page.waitForFunction(
+    expected => window.__DESKTOP_PLUS_WEB_REPOSITORY_PATH__ === expected,
+    fs.realpathSync(repository)
+  )
 }
 
 async function confirm(page, label) {
@@ -59,41 +77,163 @@ async function confirm(page, label) {
   await dialog.waitFor({ state: 'hidden' })
 }
 
-async function closeError(page) {
-  const error = page
-    .getByRole('dialog')
-    .filter({ has: page.getByRole('button', { name: 'Close', exact: true }) })
-  await error.waitFor()
-  await error.getByText('Close', { exact: true }).click()
-  await error.waitFor({ state: 'hidden' })
+function waitForTerminalOperation(page) {
+  return page
+    .waitForResponse(async response => {
+      if (
+        !/\/api\/git\/operations\/[^/]+$/.test(response.url()) ||
+        response.request().method() !== 'GET' ||
+        response.status() !== 200
+      )
+        return false
+      const body = await response.json()
+      return body.status === 'completed' || body.status === 'failed'
+    })
+    .then(response => response.json())
 }
 
 async function openBranchMenu(page) {
   const branchDropdown = page.locator('.branch-toolbar-button')
+  const picker = page.locator('.branches-container')
+  if (await picker.isVisible().catch(() => false)) return picker
   await branchDropdown
     .getByRole('button')
     .last()
     .evaluate(button => button.click())
+  await picker.getByPlaceholder('Filter').waitFor()
+  return picker
+}
+
+async function openBranchContextMenu(page, branch) {
+  const picker = await openBranchMenu(page)
+  await picker
+    .getByRole('option', { name: new RegExp(`^${branch}(?:\\s|,|$)`) })
+    .dispatchEvent('contextmenu')
+  const menu = page.locator('#web-context-menu')
+  await menu.waitFor()
+  return menu
+}
+
+async function startMergeOperation(page, branch, operation) {
+  const picker = await openBranchMenu(page)
+  await picker
+    .getByRole('button', { name: /Choose a branch to merge into/i })
+    .click()
+  let dialog = page.getByRole('dialog').filter({ hasText: /Merge into\s+\S+/i })
+  await dialog
+    .getByRole('option', { name: new RegExp(`^${branch}(?:\\s|,|$)`) })
+    .click()
+
+  if (operation !== 'Create a merge commit') {
+    await dialog.getByRole('button', { name: 'Merge options' }).click()
+    await page
+      .locator('.dropdown-select-button-options')
+      .getByText(operation, { exact: true })
+      .click()
+    if (operation === 'Rebase') {
+      const rebaseDialog = page
+        .getByRole('dialog')
+        .filter({ hasText: /^Rebase\s+\S+/ })
+      const start = rebaseDialog.getByRole('button', {
+        name: 'Rebase',
+        exact: true,
+      })
+      await start.waitFor()
+      for (let attempt = 0; attempt < 100; attempt++) {
+        if (await start.isEnabled()) break
+        await page.waitForTimeout(100)
+      }
+      await start.click()
+      return
+    }
+    dialog = page
+      .getByRole('dialog')
+      .filter({ hasText: /Squash and merge into\s+\S+/i })
+  }
+
+  const start = dialog.getByRole('button', { name: operation, exact: true })
+  await start.waitFor()
+  for (let attempt = 0; attempt < 100; attempt++) {
+    if (await start.isEnabled()) break
+    await page.waitForTimeout(100)
+  }
+  await start.click()
+}
+
+async function waitForOperationConflict(page) {
+  await page.waitForFunction(
+    () =>
+      [...document.querySelectorAll('button')].some(
+        button =>
+          button.textContent?.trim() === 'Close' ||
+          button.getAttribute('aria-label') === 'File resolution options'
+      ),
+    undefined,
+    { timeout: 60000 }
+  )
+  const error = page
+    .getByRole('alertdialog')
+    .filter({ has: page.getByRole('button', { name: 'Close', exact: true }) })
+  if (await error.isVisible().catch(() => false)) {
+    await page.waitForTimeout(350)
+    await error.getByText('Close', { exact: true }).click()
+    await error.waitFor({ state: 'hidden' })
+  }
+}
+
+async function resolveOperationConflict(page, operation, resolutionIndex) {
+  const dialog = page
+    .getByRole('dialog')
+    .filter({ hasText: `Resolve conflicts before ${operation}` })
+  await dialog.waitFor()
+  await dialog.getByRole('button', { name: 'File resolution options' }).click()
   await page
-    .getByRole('button', { name: 'Create branch', exact: true })
-    .waitFor()
+    .locator('#web-context-menu')
+    .getByRole('menuitem')
+    .filter({ hasText: /^(?:Use|Do not include)/ })
+    .nth(resolutionIndex)
+    .click()
+  await dialog.getByText(/All conflicted files have been resolved/i).waitFor()
+  await dialog.getByRole('button', { name: `Continue ${operation}` }).click()
+  await dialog.waitFor({ state: 'hidden' })
+}
+
+async function startCherryPickFromCompare(page, branch, summary) {
+  await page.getByRole('tab', { name: 'Compare' }).click()
+  const comparison = page.locator('#compare-view')
+  await comparison.getByLabel('Branch filter').click()
+  await comparison
+    .locator('.branches-list [role="option"]')
+    .filter({ hasText: branch })
+    .click()
+  const commit = comparison
+    .getByRole('listbox', { name: 'Commits' })
+    .getByRole('option')
+    .filter({ has: page.getByText(summary, { exact: true }) })
+  await commit.waitFor()
+  await commit.click()
+  await commit.click({ button: 'right' })
+  await page
+    .locator('#web-context-menu')
+    .getByRole('menuitem', { name: /Cherry-pick Commit/i })
+    .click()
 }
 
 async function openSyncMenu(page) {
-  const syncDropdown = page.locator('.push-pull-button')
-  await syncDropdown.getByRole('button').evaluate(button => button.click())
-  await page.getByRole('button', { name: 'Push', exact: true }).waitFor()
+  await page.getByRole('button', { name: 'Push, pull, fetch options' }).click()
+  const menu = page.locator('#foldout-container > .foldout')
+  await menu.waitFor()
+  return menu
 }
 
-async function refreshTools(page) {
-  await page.getByRole('tab', { name: 'Tools' }).click()
-  const tools = page.getByRole('region', { name: 'Repository tools' })
-  await tools.getByRole('button', { name: 'Refresh repository' }).click()
-  await tools.waitFor({ state: 'visible' })
+async function refreshRepository(page) {
+  await page.reload({ waitUntil: 'networkidle' })
+  await page.locator('.branch-toolbar-button').waitFor()
   await page.waitForFunction(
     () =>
-      document.querySelector('.web-tools-panel')?.getAttribute('aria-busy') ===
-      'false'
+      !document
+        .querySelector('.branch-toolbar-button .title')
+        ?.textContent?.includes('No branch')
   )
 }
 
@@ -115,6 +255,14 @@ async function waitForFile(file, expected) {
     await new Promise(resolve => setTimeout(resolve, 100))
   }
   assert.equal(fs.readFileSync(file, 'utf8'), expected)
+}
+
+async function waitForPathState(file, expected) {
+  for (let attempt = 0; attempt < 100; attempt++) {
+    if (fs.existsSync(file) === expected) return
+    await new Promise(resolve => setTimeout(resolve, 100))
+  }
+  assert.equal(fs.existsSync(file), expected)
 }
 
 async function testForcePushAndRemoteDeletion(page, root) {
@@ -147,16 +295,22 @@ async function testForcePushAndRemoteDeletion(page, root) {
   const rewrittenTip = git(repository, 'rev-parse', 'HEAD')
 
   await addRepository(page, repository)
-  await openSyncMenu(page)
-  await page.getByRole('button', { name: 'Force-push with lease' }).click()
-  await page
-    .getByRole('alertdialog')
-    .getByRole('button', { name: 'Cancel' })
-    .click()
+  let syncMenu = await openSyncMenu(page)
+  await syncMenu.getByRole('button', { name: 'Force push origin' }).click()
+  let forcePushDialog = page
+    .getByRole('dialog')
+    .filter({ hasText: 'Are you sure you want to force push?' })
+  await page.waitForTimeout(300)
+  await forcePushDialog.getByRole('button', { name: 'Cancel' }).click()
+  await forcePushDialog.waitFor({ state: 'hidden' })
   assert.equal(git(remote, 'rev-parse', 'refs/heads/main'), remoteTip)
-  await openSyncMenu(page)
-  await page.getByRole('button', { name: 'Force-push with lease' }).click()
-  await confirm(page, 'Force-push with lease')
+  syncMenu = await openSyncMenu(page)
+  await syncMenu.getByRole('button', { name: 'Force push origin' }).click()
+  forcePushDialog = page
+    .getByRole('dialog')
+    .filter({ hasText: 'Are you sure you want to force push?' })
+  await forcePushDialog.getByRole('button', { name: "I'm sure" }).click()
+  await forcePushDialog.waitFor({ state: 'hidden' })
   await waitForGit(remote, ['rev-parse', 'refs/heads/main'], rewrittenTip)
 
   git(repository, 'checkout', '-b', 'remote-feature')
@@ -165,18 +319,11 @@ async function testForcePushAndRemoteDeletion(page, root) {
   git(repository, 'commit', '-m', 'remote branch')
   git(repository, 'push', '-u', 'origin', 'remote-feature')
   git(repository, 'checkout', 'main')
-  await openSyncMenu(page)
-  await page.getByRole('button', { name: 'Fetch', exact: true }).click()
-  await openBranchMenu(page)
-  await page
-    .getByRole('button', {
-      name: 'Delete remote origin/remote-feature',
-      exact: true,
-    })
-    .waitFor()
-  await page
-    .getByRole('button', {
-      name: 'Delete remote origin/remote-feature',
+  await page.getByRole('button', { name: 'Fetch origin' }).click()
+  let branchMenu = await openBranchContextMenu(page, 'origin/remote-feature')
+  await branchMenu
+    .getByRole('menuitem', {
+      name: 'Delete…',
       exact: true,
     })
     .click()
@@ -188,13 +335,14 @@ async function testForcePushAndRemoteDeletion(page, root) {
     gitStatus(remote, 'show-ref', '--verify', 'refs/heads/remote-feature'),
     0
   )
-  await page
-    .getByRole('button', {
-      name: 'Delete remote origin/remote-feature',
+  branchMenu = await openBranchContextMenu(page, 'origin/remote-feature')
+  await branchMenu
+    .getByRole('menuitem', {
+      name: 'Delete…',
       exact: true,
     })
     .click()
-  await confirm(page, 'Delete remote branch')
+  await confirm(page, 'Delete')
   assert.notEqual(
     gitStatus(remote, 'show-ref', '--verify', 'refs/heads/remote-feature'),
     0
@@ -226,23 +374,13 @@ async function testRebaseAndCherryPickRecovery(page, root) {
   const rebaseRepository = path.join(root, 'rebase-repository')
   createConflictRepository(rebaseRepository, 'feature', 'feature', 'main')
   await addRepository(page, rebaseRepository)
-  await openBranchMenu(page)
-  await page.getByRole('button', { name: 'Rebase onto branch' }).click()
-  await page
-    .getByRole('dialog')
-    .filter({ hasText: 'Rebase onto branch' })
-    .getByRole('button', { name: 'Continue' })
-    .click()
-  await closeError(page)
-  await page.getByRole('button', { name: 'Use ours' }).click()
-  await page
-    .getByRole('button', { name: 'Use ours' })
-    .waitFor({ state: 'hidden' })
-  await page.getByRole('button', { name: 'Continue operation' }).waitFor()
-  await page.getByRole('button', { name: 'Continue operation' }).click()
-  await page
-    .getByRole('button', { name: 'Continue operation' })
-    .waitFor({ state: 'hidden' })
+  await startMergeOperation(page, 'feature', 'Rebase')
+  await waitForOperationConflict(page)
+  await resolveOperationConflict(page, 'Rebase', 0)
+  await waitForPathState(
+    path.join(rebaseRepository, '.git', 'rebase-merge'),
+    false
+  )
   assert.equal(
     fs.existsSync(path.join(rebaseRepository, '.git', 'rebase-merge')),
     false
@@ -255,38 +393,29 @@ async function testRebaseAndCherryPickRecovery(page, root) {
   const skipRepository = path.join(root, 'skip-repository')
   createConflictRepository(skipRepository, 'feature', 'feature', 'main')
   await addRepository(page, skipRepository)
-  await openBranchMenu(page)
-  await page.getByRole('button', { name: 'Rebase onto branch' }).click()
-  await page
-    .getByRole('dialog')
-    .filter({ hasText: 'Rebase onto branch' })
-    .getByRole('button', { name: 'Continue' })
-    .click()
-  await closeError(page)
-  await page.getByRole('button', { name: 'Skip current commit' }).click()
-  await page
-    .getByRole('button', { name: 'Skip current commit' })
-    .waitFor({ state: 'hidden' })
+  await startMergeOperation(page, 'feature', 'Rebase')
+  await waitForOperationConflict(page)
+  await resolveOperationConflict(page, 'Rebase', 0)
+  await waitForPathState(
+    path.join(skipRepository, '.git', 'rebase-merge'),
+    false
+  )
   assert.equal(
     fs.existsSync(path.join(skipRepository, '.git', 'rebase-merge')),
     false
   )
+  assert.equal(git(skipRepository, 'log', '-1', '--format=%s'), 'feature')
 
   const abortRepository = path.join(root, 'abort-repository')
   createConflictRepository(abortRepository, 'feature', 'feature', 'main')
   await addRepository(page, abortRepository)
-  await openBranchMenu(page)
-  await page.getByRole('button', { name: 'Merge branch', exact: true }).click()
-  await page
+  await startMergeOperation(page, 'feature', 'Create a merge commit')
+  await waitForOperationConflict(page)
+  const mergeConflictDialog = page
     .getByRole('dialog')
-    .filter({ hasText: 'Merge branch' })
-    .getByRole('button', { name: 'Continue' })
-    .click()
-  await closeError(page)
-  await page.getByRole('button', { name: 'Abort operation' }).click()
-  await page
-    .getByRole('button', { name: 'Abort operation' })
-    .waitFor({ state: 'hidden' })
+    .filter({ hasText: 'Resolve conflicts before Merge' })
+  await mergeConflictDialog.getByRole('button', { name: 'Abort Merge' }).click()
+  await mergeConflictDialog.waitFor({ state: 'hidden' })
   assert.equal(
     fs.existsSync(path.join(abortRepository, '.git', 'MERGE_HEAD')),
     false
@@ -295,23 +424,13 @@ async function testRebaseAndCherryPickRecovery(page, root) {
   const cherryRepository = path.join(root, 'cherry-repository')
   createConflictRepository(cherryRepository, 'source', 'source', 'main')
   await addRepository(page, cherryRepository)
-  await openBranchMenu(page)
-  await page.getByRole('button', { name: 'Cherry-pick branch tip' }).click()
-  await page
-    .getByRole('dialog')
-    .filter({ hasText: 'Cherry-pick branch tip' })
-    .getByRole('button', { name: 'Continue' })
-    .click()
-  await closeError(page)
-  await page.getByRole('button', { name: 'Use theirs' }).click()
-  await page
-    .getByRole('button', { name: 'Use theirs' })
-    .waitFor({ state: 'hidden' })
-  await page.getByRole('button', { name: 'Continue operation' }).waitFor()
-  await page.getByRole('button', { name: 'Continue operation' }).click()
-  await page
-    .getByRole('button', { name: 'Continue operation' })
-    .waitFor({ state: 'hidden' })
+  await startCherryPickFromCompare(page, 'source', 'source')
+  await waitForOperationConflict(page)
+  await resolveOperationConflict(page, 'Cherry-pick', 1)
+  await waitForPathState(
+    path.join(cherryRepository, '.git', 'CHERRY_PICK_HEAD'),
+    false
+  )
   assert.equal(
     fs.existsSync(path.join(cherryRepository, '.git', 'CHERRY_PICK_HEAD')),
     false
@@ -338,13 +457,7 @@ async function testSquashMerge(page, root) {
   git(cleanRepository, 'checkout', 'main')
 
   await addRepository(page, cleanRepository)
-  await openBranchMenu(page)
-  await page.getByRole('button', { name: 'Squash merge branch' }).click()
-  await page
-    .getByRole('dialog')
-    .filter({ hasText: 'Squash merge branch' })
-    .getByRole('button', { name: 'Continue' })
-    .click()
+  await startMergeOperation(page, 'feature', 'Squash and merge')
   await waitForFile(path.join(cleanRepository, 'feature.txt'), 'feature\n')
   await waitForGit(cleanRepository, ['rev-list', '--count', 'HEAD'], '2')
   assert.equal(
@@ -363,22 +476,9 @@ async function testSquashMerge(page, root) {
     'main squash'
   )
   await addRepository(page, conflictRepository)
-  await openBranchMenu(page)
-  await page.getByRole('button', { name: 'Squash merge branch' }).click()
-  await page
-    .getByRole('dialog')
-    .filter({ hasText: 'Squash merge branch' })
-    .getByRole('button', { name: 'Continue' })
-    .click()
-  await closeError(page)
-  await page.getByRole('button', { name: 'Use theirs' }).click()
-  await page
-    .getByRole('button', { name: 'Use theirs' })
-    .waitFor({ state: 'hidden' })
-  await page.getByRole('button', { name: 'Continue operation' }).click()
-  await page
-    .getByRole('button', { name: 'Continue operation' })
-    .waitFor({ state: 'hidden' })
+  await startMergeOperation(page, 'feature', 'Squash and merge')
+  await waitForOperationConflict(page)
+  await resolveOperationConflict(page, 'Squash', 1)
   assert.equal(
     git(conflictRepository, 'status', '--porcelain'),
     '',
@@ -417,24 +517,26 @@ async function testBulkUnusedBranchDeletion(page, root) {
   git(repository, 'worktree', 'add', worktree, 'worktree-branch')
 
   await addRepository(page, repository)
-  await openBranchMenu(page)
-  await page
-    .getByRole('button', { name: 'Delete unused local branches' })
+  let branchMenu = await openBranchContextMenu(page, 'merged-branch')
+  await branchMenu
+    .getByRole('menuitem', { name: 'Delete Unused Local Branches…' })
     .click()
   const deleteDialog = page
     .getByRole('alertdialog')
-    .filter({ hasText: 'Delete unused local branches?' })
+    .filter({ hasText: 'Delete Unused Local Branches' })
   await deleteDialog.waitFor()
   assert.match(await deleteDialog.innerText(), /merged-branch/)
   assert.doesNotMatch(await deleteDialog.innerText(), /worktree-branch/)
+  await page.waitForTimeout(300)
   await deleteDialog.getByRole('button', { name: 'Cancel' }).click()
   await deleteDialog.waitFor({ state: 'hidden' })
   assert.match(git(repository, 'branch'), /merged-branch/)
 
-  await page
-    .getByRole('button', { name: 'Delete unused local branches' })
+  branchMenu = await openBranchContextMenu(page, 'merged-branch')
+  await branchMenu
+    .getByRole('menuitem', { name: 'Delete Unused Local Branches…' })
     .click()
-  await confirm(page, 'Delete branches')
+  await confirm(page, 'Delete')
   assert.doesNotMatch(git(repository, 'branch'), /merged-branch/)
   assert.match(git(repository, 'branch'), /worktree-branch/)
   assert.equal(git(worktree, 'branch', '--show-current'), 'worktree-branch')
@@ -450,7 +552,6 @@ async function testSubmoduleAndHistoryRewrite(page, root) {
   fs.writeFileSync(path.join(module, 'module.txt'), 'one\n')
   git(module, 'add', 'module.txt')
   git(module, 'commit', '-m', 'module one')
-  const moduleOne = git(module, 'rev-parse', 'HEAD')
   fs.mkdirSync(parent)
   git(parent, 'init', '-b', 'main')
   git(parent, 'config', 'user.name', 'Source Parent')
@@ -475,22 +576,12 @@ async function testSubmoduleAndHistoryRewrite(page, root) {
   await addRepository(page, parent)
   await page.getByRole('tab', { name: 'Changes' }).click()
   await page.getByRole('option', { name: /^vendor\/module/ }).click()
-  await page
-    .locator('.web-submodule-actions')
-    .getByRole('button', { name: 'Open submodule repository' })
+  const submoduleDiff = page.locator('.submodule-diff')
+  await submoduleDiff
+    .getByRole('heading', { name: 'Submodule changes' })
     .waitFor()
-  await page.getByRole('button', { name: 'Update submodule' }).click()
-  await waitForGit(
-    path.join(parent, 'vendor/module'),
-    ['rev-parse', 'HEAD'],
-    moduleOne
-  )
-  git(path.join(parent, 'vendor/module'), 'checkout', moduleTwo)
-  await refreshTools(page)
-  await page.getByRole('tab', { name: 'Changes' }).click()
-  await page.getByRole('option', { name: /^vendor\/module/ }).click()
   const openSubmodule = () =>
-    page.getByRole('button', { name: 'Open submodule repository' })
+    submoduleDiff.getByRole('button', { name: 'Open Repository' })
   await openSubmodule().waitFor({ state: 'visible' })
   for (let attempt = 0; attempt < 300; attempt++) {
     if (await openSubmodule().isEnabled()) break
@@ -514,7 +605,7 @@ async function testSubmoduleAndHistoryRewrite(page, root) {
   await page.waitForFunction(() => document.title.startsWith('module -'))
 
   await addRepository(page, parent)
-  await refreshTools(page)
+  await refreshRepository(page)
   await page.getByRole('tab', { name: 'History' }).click()
   await page
     .getByLabel('Commits')
@@ -537,59 +628,122 @@ async function testSubmoduleAndHistoryRewrite(page, root) {
     git(historyRepository, 'commit', '-m', message)
   }
   const originalTip = git(historyRepository, 'rev-parse', 'HEAD')
-  const oneSHA = git(historyRepository, 'rev-parse', 'HEAD~2')
   await addRepository(page, historyRepository)
   await page.getByRole('tab', { name: 'History' }).click()
-  await page.getByLabel('Commits').getByText('two', { exact: true }).click()
-  await page.getByRole('button', { name: 'Reorder selected' }).click()
-  const reorderDialog = page
-    .getByRole('dialog')
-    .filter({ hasText: 'Reorder selected commits' })
-  await reorderDialog.getByLabel('Insert before').selectOption(oneSHA)
-  await reorderDialog.getByRole('button', { name: 'Continue' }).click()
-  await confirm(page, 'Reorder commits')
-  const operationProgress = page.getByRole('region', {
-    name: 'Git operation progress',
-  })
-  await operationProgress.waitFor()
-  const operationText = await operationProgress.innerText()
-  assert.match(operationText, /Reorder commits/i)
-  assert.match(operationText, /progress: \d+ of \d+/i)
-  await page.getByRole('button', { name: 'Undo history rewrite' }).waitFor()
+  const listViewButton = page.getByRole('button', { name: 'List view' })
+  if ((await listViewButton.getAttribute('aria-pressed')) !== 'true')
+    await listViewButton.click()
+  await page.waitForFunction(
+    element => element?.getAttribute('aria-pressed') === 'true',
+    await listViewButton.elementHandle()
+  )
+  const commitList = page.getByLabel('Commits')
+  const twoCommit = commitList
+    .getByRole('option')
+    .filter({ has: page.getByText('two', { exact: true }) })
+  await twoCommit.click()
+  await twoCommit.click({ button: 'right' })
+  const reorderAction = page
+    .locator('#web-context-menu')
+    .getByRole('menuitem', { name: /Reorder Commit/i })
+  await page.waitForFunction(
+    element => !element?.classList.contains('disabled'),
+    await reorderAction.elementHandle()
+  )
+  await reorderAction.click()
+  await page.locator('.reorder-commits-hint-popover').waitFor()
+  await commitList.press('ArrowDown')
+  await commitList.press('ArrowDown')
+  const reorderOperation = waitForTerminalOperation(page)
+  await commitList.press('Enter')
+  await reorderOperation
+  await page.getByRole('button', { name: 'Undo', exact: true }).waitFor()
   assert.equal(
     git(historyRepository, 'log', '--reverse', '--format=%s', 'HEAD'),
     'two\none\nthree'
   )
   assert.notEqual(git(historyRepository, 'rev-parse', 'HEAD'), originalTip)
-  await page.getByRole('button', { name: 'Undo history rewrite' }).click()
-  await confirm(page, 'Undo history rewrite')
+  const oldOneRow = await commitList
+    .getByRole('option')
+    .filter({ has: page.getByText('one', { exact: true }) })
+    .elementHandle()
+  const undoReorderOperation = waitForTerminalOperation(page)
+  const undoHistoryRefresh = page.waitForResponse(async response => {
+    if (
+      !response.url().includes('/api/history') ||
+      response.request().method() !== 'GET' ||
+      response.status() !== 200
+    )
+      return false
+    const body = await response.json()
+    return body.commits?.some(commit => commit.sha === originalTip)
+  })
+  const undoButton = page.getByRole('button', { name: 'Undo', exact: true })
+  await undoButton.click()
+  await undoReorderOperation
+  await undoHistoryRefresh
+  await page.waitForFunction(element => !element?.isConnected, oldOneRow)
+  await undoButton.waitFor({ state: 'hidden' })
   assert.equal(git(historyRepository, 'rev-parse', 'HEAD'), originalTip)
 
   await page.getByRole('tab', { name: 'History' }).click()
-  await page.getByLabel('Commits').getByText('one', { exact: true }).click()
-  await page
-    .getByLabel('Commits')
-    .getByText('two', { exact: true })
+  const oneCommit = commitList
+    .getByRole('option')
+    .filter({ has: page.getByText('one', { exact: true }) })
+  await oneCommit.click()
+  await commitList
+    .getByRole('option')
+    .filter({ has: page.getByText('two', { exact: true }) })
     .click({ modifiers: [modifierKey] })
-  await page.getByRole('button', { name: 'Squash selected' }).click()
-  const squashDialog = page
-    .getByRole('dialog')
-    .filter({ hasText: 'Squash selected commits' })
+  await oneCommit.click({ button: 'right' })
+  const squashAction = page
+    .locator('#web-context-menu')
+    .getByRole('menuitem', { name: /Squash 2 Commits/i })
+  await page.waitForFunction(
+    element => !element?.classList.contains('disabled'),
+    await squashAction.elementHandle()
+  )
+  await squashAction.click()
+  const squashDialog = page.locator('#commit-message-dialog')
+  await squashDialog.waitFor()
   const squashMessage = 'Custom rewrite title\n\nRetain this body.'
-  await squashDialog.getByLabel('Commit message').fill(squashMessage)
-  await squashDialog.getByRole('button', { name: 'Continue' }).click()
-  await confirm(page, 'Squash commits')
-  await page
-    .getByRole('region', { name: 'Git operation progress' })
-    .getByText(/Squash Commits progress:/i)
-    .waitFor()
-  await page.getByRole('button', { name: 'Undo history rewrite' }).waitFor()
+  await squashDialog.getByLabel('Summary').fill('Custom rewrite title')
+  await squashDialog.getByLabel('Description').fill('Retain this body.')
+  const squashRequest = page.waitForRequest(
+    request =>
+      request.url().endsWith('/api/git/operations') &&
+      request.method() === 'POST' &&
+      request.postDataJSON().operation === 'squash-commits'
+  )
+  const squashOperation = waitForTerminalOperation(page)
+  await squashDialog
+    .getByRole('button', { name: 'Squash 2 Commits', exact: true })
+    .click()
+  const squashRequestBody = (await squashRequest).postDataJSON()
+  const squashResult = await squashOperation
+  assert.equal(
+    squashResult.status,
+    'completed',
+    `squash operation failed: ${JSON.stringify({
+      request: squashRequestBody,
+      result: squashResult,
+      history: git(historyRepository, 'log', '--format=%H %s'),
+    })}`
+  )
+  assert.ok(
+    squashResult.result?.undo,
+    `squash operation did not return undo metadata: ${JSON.stringify(
+      squashResult
+    )}`
+  )
+  await page.getByRole('button', { name: 'Undo', exact: true }).waitFor()
   assert.ok(
     git(historyRepository, 'log', '--format=%B').includes(squashMessage),
     'the rewritten history must retain the user-provided squash message'
   )
-  await page.getByRole('button', { name: 'Undo history rewrite' }).click()
-  await confirm(page, 'Undo history rewrite')
+  const undoSquashOperation = waitForTerminalOperation(page)
+  await page.getByRole('button', { name: 'Undo', exact: true }).click()
+  await undoSquashOperation
   assert.equal(git(historyRepository, 'rev-list', '--count', 'HEAD'), '3')
 }
 
@@ -687,16 +841,25 @@ async function testNestedSubmoduleAndFailureRecovery(page, root) {
   await addRepository(page, parent)
   await page.getByRole('tab', { name: 'Changes' }).click()
   await page.getByRole('option', { name: /^vendor\/module/ }).click()
-  const nestedActions = page.locator('.web-submodule-actions')
-  await nestedActions.getByText('Nested submodules', { exact: true }).waitFor()
-  await nestedActions
-    .getByRole('button', { name: 'Open nested submodule nested/dependency' })
-    .click()
+  const submoduleDiff = page.locator('.submodule-diff')
+  await submoduleDiff
+    .getByRole('heading', { name: 'Submodule changes' })
+    .waitFor()
+  await submoduleDiff.getByRole('button', { name: 'Open Repository' }).click()
+  await page.waitForFunction(() => document.title.startsWith('module -'))
+  await page.getByRole('tab', { name: 'Changes' }).click()
+  await page.getByRole('option', { name: /^nested\/dependency/ }).click()
+  await submoduleDiff
+    .getByRole('heading', { name: 'Submodule changes' })
+    .waitFor()
+  await submoduleDiff.getByRole('button', { name: 'Open Repository' }).click()
   await page.waitForFunction(() => document.title.startsWith('dependency -'))
-  await selectRepository(page, 'nested-parent')
+  await selectRepository(page, parent)
   await page.getByRole('tab', { name: 'Changes' }).click()
   await page.getByRole('option', { name: /^vendor\/module/ }).click()
-  await nestedActions.getByText('Nested submodules', { exact: true }).waitFor()
+  await submoduleDiff
+    .getByRole('heading', { name: 'Submodule changes' })
+    .waitFor()
 
   const broken = path.join(root, 'broken-submodule')
   fs.mkdirSync(broken)
@@ -723,12 +886,6 @@ async function testNestedSubmoduleAndFailureRecovery(page, root) {
     'vendor/broken'
   )
   git(brokenParent, 'commit', '-m', 'add broken module')
-  git(
-    brokenParent,
-    'config',
-    'submodule.vendor/broken.url',
-    '/path/that/does/not/exist'
-  )
   fs.rmSync(path.join(brokenParent, 'vendor/broken'), {
     recursive: true,
     force: true,
@@ -740,36 +897,27 @@ async function testNestedSubmoduleAndFailureRecovery(page, root) {
 
   await addRepository(page, brokenParent)
   await page.getByRole('tab', { name: 'Changes' }).waitFor()
-  await page.waitForFunction(() =>
-    document
-      .querySelector('[aria-label="Changed files"]')
-      ?.textContent?.includes('vendor/broken')
-  )
   await page.getByRole('option', { name: /^vendor\/broken/ }).click()
-  const updateSubmodule = page.getByRole('button', {
-    name: 'Update submodule',
-  })
-  await updateSubmodule.waitFor()
-  await page.waitForFunction(() =>
-    [...document.querySelectorAll('button')].some(
-      button =>
-        button.textContent?.trim() === 'Update submodule' &&
-        button.getAttribute('aria-disabled') !== 'true'
-    )
-  )
-  await updateSubmodule.click()
-  const errorDialog = page.getByRole('dialog').filter({
-    hasText: 'The submodule could not be updated',
-  })
-  await errorDialog.waitFor()
-  await errorDialog
-    .getByText('Submodule command output', { exact: true })
+  await submoduleDiff
+    .getByRole('heading', { name: 'Submodule changes' })
     .waitFor()
-  await errorDialog.getByRole('button', { name: 'Refresh repository' }).click()
-  await errorDialog.waitFor({ state: 'hidden' })
-  await page.getByRole('option', { name: /^vendor\/broken/ }).click()
-  await page.getByRole('button', { name: 'Update submodule' }).waitFor()
+  await submoduleDiff.getByRole('button', { name: 'Open Repository' }).click()
+  const missingRepository = page.locator('#missing-repository-view')
+  await missingRepository.getByText(/Can't find "/).waitFor()
+  await missingRepository
+    .getByRole('button', { name: 'Remove', exact: true })
+    .click()
+  await page.locator('.repository-list').waitFor()
+  assert.equal(
+    await page
+      .locator('.repository-list-item')
+      .filter({ hasText: /^broken$/ })
+      .count(),
+    0
+  )
+  await page.keyboard.press('Escape')
   assert.equal(fs.existsSync(path.join(brokenParent, 'vendor/broken')), false)
+
   assert.equal(nestedOne.length, 40)
 }
 
@@ -784,7 +932,9 @@ async function main() {
   try {
     const page = await browser.newPage()
     const errors = []
-    page.on('pageerror', error => errors.push(error.message))
+    page.on('pageerror', error =>
+      errors.push(`${error.message}\n${error.stack || ''}`)
+    )
     await page.goto(`http://127.0.0.1:${server.address().port}`, {
       waitUntil: 'networkidle',
     })
