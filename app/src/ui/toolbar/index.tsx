@@ -1,4 +1,5 @@
 export * from './toolbar'
+export * from './repository-toolbar-dropdown'
 export * from './button'
 export * from './dropdown'
 export * from './push-pull-button'
