@@ -28,6 +28,7 @@ import { showContextualMenu } from '../../lib/menu-item'
 
 import { FileList } from './file-list'
 import { SeamlessDiffSwitcher } from '../diff/seamless-diff-switcher'
+import type { IFileContents } from '../diff/syntax-highlighting'
 import { getDotComAPIEndpoint } from '../../lib/api'
 import { IMenuItem } from '../../lib/menu-item'
 import { IChangesetData } from '../../lib/git'
@@ -57,6 +58,11 @@ interface ISelectedCommitsProps {
   readonly changesetData: IChangesetData
   readonly selectedFile: CommittedFileChange | null
   readonly currentDiff: IDiff | null
+  /**
+   * Optional contents returned with the current web diff. Supplying these
+   * avoids loading the same committed file a second time for highlighting.
+   */
+  readonly externalFileContents?: IFileContents | null
   readonly commitSummaryWidth: IConstrainedValue
   readonly selectedDiffType: ImageDiffType
   /** The name of the currently selected external editor */
@@ -205,6 +211,7 @@ export class SelectedCommits extends DiffPresentationStateComponent<
           imageDiffType={this.props.selectedDiffType}
           file={file}
           diff={diff}
+          externalFileContents={this.props.externalFileContents}
           readOnly={true}
           hideWhitespaceInDiff={this.props.hideWhitespaceInDiff}
           showDiffCheckMarks={false}
