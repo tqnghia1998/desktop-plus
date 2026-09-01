@@ -45,6 +45,8 @@ interface IConflictsDialogProps {
   readonly abortButton: string
   readonly onSubmit: () => Promise<void>
   readonly onAbort: () => Promise<void>
+  readonly onSkip?: () => Promise<void>
+  readonly skipButtonText?: string
   readonly onDismissed: () => void
   readonly openFileInExternalEditor: (path: string) => void
   readonly openRepositoryInShell: (repository: Repository) => void
@@ -72,6 +74,7 @@ interface IConflictsDialogProps {
 interface IConflictsDialogState {
   readonly isCommitting: boolean
   readonly isAborting: boolean
+  readonly isSkipping: boolean
   readonly isFileResolutionOptionsMenuOpen: boolean
 }
 
@@ -92,6 +95,7 @@ export class ConflictsDialog extends React.Component<
     this.state = {
       isCommitting: false,
       isAborting: false,
+      isSkipping: false,
       isFileResolutionOptionsMenuOpen: false,
     }
   }
@@ -156,6 +160,21 @@ export class ConflictsDialog extends React.Component<
       sendNonFatalException('multiCommitOperation', error)
     } finally {
       this.setState({ isAborting: false })
+    }
+  }
+
+  private onSkip = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault()
+    if (this.props.onSkip === undefined) return
+    this.setState({ isSkipping: true })
+    try {
+      await this.props.onSkip()
+    } catch (e) {
+      const error = e instanceof Error ? e : new Error(String(e))
+      log.error('ConflictsDialog: onSkip failed', error)
+      sendNonFatalException('multiCommitOperation', error)
+    } finally {
+      this.setState({ isSkipping: false })
     }
   }
 
@@ -343,7 +362,17 @@ export class ConflictsDialog extends React.Component<
         cancelButtonText={abortButton}
         onCancelButtonClick={this.onAbort}
         cancelButtonDisabled={this.state.isAborting}
-      />
+      >
+        {this.props.onSkip !== undefined ? (
+          <Button
+            onClick={this.onSkip}
+            disabled={this.state.isSkipping || this.state.isAborting}
+            type="button"
+          >
+            {this.props.skipButtonText || 'Skip'}
+          </Button>
+        ) : null}
+      </OkCancelButtonGroup>
     )
 
     if (copilotButton === null) {
