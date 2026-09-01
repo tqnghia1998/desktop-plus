@@ -10,6 +10,26 @@ function git(cwd, ...args) {
   return execFileSync('git', args, { cwd, encoding: 'utf8' }).trim()
 }
 
+async function waitForGit(cwd, args, expected) {
+  for (let attempt = 0; attempt < 100; attempt++) {
+    if (git(cwd, ...args) === expected) return
+    await new Promise(resolve => setTimeout(resolve, 100))
+  }
+  assert.equal(git(cwd, ...args), expected)
+}
+
+async function waitForFile(file, expected) {
+  for (let attempt = 0; attempt < 100; attempt++) {
+    try {
+      if (fs.readFileSync(file, 'utf8') === expected) return
+    } catch (error) {
+      if (error?.code !== 'ENOENT') throw error
+    }
+    await new Promise(resolve => setTimeout(resolve, 100))
+  }
+  assert.equal(fs.readFileSync(file, 'utf8'), expected)
+}
+
 async function addRepository(page, repository) {
   const homeAdd = page.getByRole('button', {
     name: /Add an Existing Repository from your local drive…/i,
@@ -23,8 +43,17 @@ async function addRepository(page, repository) {
       .first()
       .evaluate(button => button.click())
     await page.getByRole('button', { name: 'Add', exact: true }).click()
+    await page
+      .getByRole('menuitem', { name: 'Add Existing Repository…' })
+      .click()
   }
+  const repositoryInspection = page.waitForResponse(
+    response =>
+      response.url().includes('/api/repository/inspect') &&
+      response.status() === 200
+  )
   await page.getByLabel('Local path').fill(repository)
+  await repositoryInspection
   await page.getByRole('button', { name: 'Add repository' }).click()
 }
 
@@ -66,89 +95,77 @@ async function main() {
     await addRepository(page, repository)
     await page.getByRole('tab', { name: 'Compare' }).click()
 
-    const comparison = page.getByRole('region', { name: 'Compare' })
-    await comparison.getByLabel('Branch').selectOption('feature')
-    await comparison.getByText('1 ahead, 2 behind').waitFor()
-    const commits = comparison.getByRole('listbox', {
-      name: 'Comparison commits',
-    })
-    const firstFeatureCommit = commits.getByRole('option', {
-      name: /^feature commit [0-9a-f]+$/,
+    const comparison = page.locator('#compare-view')
+    const branchFilter = comparison.getByLabel('Branch filter')
+    await branchFilter.click()
+    await comparison
+      .locator('.branches-list [role="option"]')
+      .filter({ hasText: 'feature' })
+      .click()
+    await comparison.getByRole('tab', { name: 'Behind (2)' }).waitFor()
+    const commits = comparison.getByRole('listbox', { name: 'Commits' })
+    const firstFeatureCommit = commits.getByRole('option').filter({
+      has: page.getByText('feature commit', { exact: true }),
     })
     await firstFeatureCommit.waitFor()
     await firstFeatureCommit.click()
 
-    const details = page.getByRole('region', { name: 'Commit details' })
-    await details.getByRole('option', { name: 'feature.txt' }).waitFor()
-    await details.getByRole('option', { name: 'feature.txt' }).click()
-    await page.waitForFunction(() =>
-      document
-        .querySelector('.web-history-diff')
-        ?.textContent?.includes('feature')
-    )
+    const details = page.locator('#history')
+    await details.getByRole('option', { name: 'feature.txt New' }).waitFor()
+    await details.getByRole('option', { name: 'feature.txt New' }).click()
+    const historyDiff = page.locator('#history .side-by-side-diff')
+    await historyDiff.filter({ hasText: 'feature' }).waitFor()
     assert.match(await details.innerText(), /feature commit/)
-    assert.match(await page.locator('.web-history-diff').innerText(), /feature/)
+    assert.match(await historyDiff.innerText(), /feature/)
 
-    await comparison.getByRole('button', { name: 'Ahead' }).click()
-    await commits.getByRole('option', { name: /main commit/ }).waitFor()
-    await commits.getByRole('option', { name: /main commit/ }).click()
-    await details.getByRole('option', { name: 'main.txt' }).waitFor()
-    await comparison.getByRole('button', { name: 'Behind' }).click()
-    await comparison.getByText('1 ahead, 2 behind').waitFor()
+    await comparison.getByRole('tab', { name: 'Ahead (1)' }).click()
+    const mainCommit = commits.getByRole('option').filter({
+      has: page.getByText('main commit', { exact: true }),
+    })
+    await mainCommit.waitFor()
+    await mainCommit.click()
+    await details.getByRole('option', { name: 'main.txt New' }).waitFor()
+    await comparison.getByRole('tab', { name: 'Behind (2)' }).click()
+    await comparison.getByRole('tab', { name: 'Ahead (1)' }).waitFor()
     await firstFeatureCommit.click()
     await firstFeatureCommit.getAttribute('aria-selected').then(value => {
       assert.equal(value, 'true')
     })
-    const secondFeatureCommit = commits.getByRole('option', {
-      name: /^feature commit two [0-9a-f]+$/,
+    const secondFeatureCommit = commits.getByRole('option').filter({
+      has: page.getByText('feature commit two', { exact: true }),
     })
     await secondFeatureCommit.waitFor()
     await secondFeatureCommit.click({
       modifiers: ['Meta'],
     })
-    await page.waitForFunction(
-      () =>
-        document.querySelectorAll(
-          '[aria-label="Comparison commits"] [aria-selected="true"]'
-        ).length === 2
-    )
-    const cherryPickMany = comparison.getByRole('button', {
-      name: 'Cherry-pick selected commits',
+    await commits
+      .locator('[role="option"][aria-selected="true"]')
+      .nth(1)
+      .waitFor()
+    await secondFeatureCommit.click({ button: 'right' })
+    const commitMenu = page.getByRole('menu')
+    const cherryPickMany = commitMenu.getByRole('menuitem', {
+      name: 'Cherry-pick 2 Commits…',
     })
-    await cherryPickMany.waitFor()
     await cherryPickMany.click()
-    await page
-      .getByRole('alertdialog')
-      .getByRole('button', { name: 'Cancel' })
-      .click()
-    assert.equal(fs.existsSync(path.join(repository, 'feature.txt')), false)
-    await cherryPickMany.click()
-    const cherryPickDialog = page.getByRole('alertdialog')
-    await cherryPickDialog
-      .getByRole('button', { name: 'Cherry-pick 2 commits' })
-      .click()
-    await cherryPickDialog.waitFor({ state: 'hidden' })
-    assert.equal(
-      fs.readFileSync(path.join(repository, 'feature.txt'), 'utf8'),
-      'feature\n'
-    )
-    assert.equal(
-      fs.readFileSync(path.join(repository, 'feature-two.txt'), 'utf8'),
-      'feature two\n'
-    )
+    await Promise.all([
+      waitForFile(path.join(repository, 'feature.txt'), 'feature\n'),
+      waitForFile(path.join(repository, 'feature-two.txt'), 'feature two\n'),
+      waitForGit(
+        repository,
+        ['log', '-1', '--format=%s'],
+        'feature commit two'
+      ),
+    ])
+    const undoCherryPick = page.getByRole('button', { name: 'Undo' })
+    await undoCherryPick.waitFor()
     assert.equal(
       git(repository, 'log', '-1', '--format=%s'),
       'feature commit two'
     )
-    const undoCherryPick = comparison.getByRole('button', {
-      name: 'Undo cherry-pick',
-    })
-    await undoCherryPick.waitFor()
     await undoCherryPick.click()
-    const undoDialog = page.getByRole('alertdialog')
-    await undoDialog.getByRole('button', { name: 'Undo cherry-pick' }).click()
-    await undoDialog.waitFor({ state: 'hidden' })
     await undoCherryPick.waitFor({ state: 'hidden' })
+    await waitForGit(repository, ['log', '-1', '--format=%s'], 'main commit')
     assert.equal(git(repository, 'log', '-1', '--format=%s'), 'main commit')
     assert.equal(fs.existsSync(path.join(repository, 'feature.txt')), false)
     assert.equal(fs.existsSync(path.join(repository, 'feature-two.txt')), false)
