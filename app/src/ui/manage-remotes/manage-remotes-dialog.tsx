@@ -5,6 +5,7 @@ import { IRemote } from '../../models/remote'
 import { PopupType } from '../../models/popup'
 import { Dispatcher } from '../dispatcher'
 import { Dialog, DialogContent, DefaultDialogFooter } from '../dialog'
+import { DialogStackContext } from '../dialog/dialog'
 import { TextBox } from '../lib/text-box'
 import { Button } from '../lib/button'
 import { Row } from '../lib/row'
@@ -12,6 +13,7 @@ import { Octicon } from '../octicons'
 import * as octicons from '../octicons/octicons.generated'
 import { Loading } from '../lib/loading'
 import { RemoteListItem } from './remote-list-item'
+import { AddRemoteDialog } from './add-remote-dialog'
 
 interface IManageRemotesDialogProps {
   readonly repository: Repository
@@ -25,6 +27,7 @@ interface IManageRemotesDialogState {
   readonly remotes: ReadonlyArray<IRemote>
   readonly filterText: string
   readonly loading: boolean
+  readonly remoteToEdit: IRemote | null
 }
 
 export class ManageRemotesDialog extends React.Component<
@@ -38,6 +41,7 @@ export class ManageRemotesDialog extends React.Component<
       remotes: [],
       filterText: '',
       loading: true,
+      remoteToEdit: null,
     }
   }
 
@@ -111,6 +115,7 @@ export class ManageRemotesDialog extends React.Component<
       <RemoteListItem
         key={remote.name}
         remote={remote}
+        onEditRemote={remoteToEdit => this.setState({ remoteToEdit })}
         onRemoveRemote={this.onRemoveRemote}
       />
     )
@@ -142,43 +147,61 @@ export class ManageRemotesDialog extends React.Component<
 
   public render() {
     return (
-      <Dialog
-        className="manage-remotes"
-        id="manage-remotes"
-        title={
-          __DARWIN__
-            ? 'Manage Remote Repositories'
-            : 'Manage remote repositories'
-        }
-        onSubmit={this.props.onDismissed}
-        onDismissed={this.props.onDismissed}
-      >
-        <DialogContent>
-          <Row className="filter-field-row">
-            <TextBox
-              type="search"
-              autoFocus={true}
-              displayClearButton={true}
-              prefixedIcon={octicons.search}
-              placeholder="Filter remotes"
-              value={this.state.filterText}
-              onValueChanged={this.onFilterTextChanged}
-              onKeyDown={this.onFilterKeyDown}
+      <>
+        <Dialog
+          className="manage-remotes"
+          id="manage-remotes"
+          title={
+            __DARWIN__
+              ? 'Manage Remote Repositories'
+              : 'Manage remote repositories'
+          }
+          onSubmit={this.props.onDismissed}
+          onDismissed={this.props.onDismissed}
+        >
+          <DialogContent>
+            <Row className="filter-field-row">
+              <TextBox
+                type="search"
+                autoFocus={true}
+                displayClearButton={true}
+                prefixedIcon={octicons.search}
+                placeholder="Filter remotes"
+                value={this.state.filterText}
+                onValueChanged={this.onFilterTextChanged}
+                onKeyDown={this.onFilterKeyDown}
+              />
+              <Button
+                className="new-remote-button button-with-icon"
+                onClick={this.onNewRemote}
+              >
+                <Octicon symbol={octicons.plus} className="mr" />
+                {__DARWIN__ ? 'New Remote' : 'New remote'}
+              </Button>
+            </Row>
+
+            {this.renderList()}
+          </DialogContent>
+
+          <DefaultDialogFooter />
+        </Dialog>
+        {this.state.remoteToEdit ? (
+          <DialogStackContext.Provider value={{ isTopMost: true }}>
+            <AddRemoteDialog
+              dispatcher={this.props.dispatcher}
+              existingRemoteNames={this.state.remotes.map(
+                remote => remote.name
+              )}
+              onDismissed={() => {
+                this.setState({ remoteToEdit: null })
+                void this.loadRemotes()
+              }}
+              remote={this.state.remoteToEdit}
+              repository={this.props.repository}
             />
-            <Button
-              className="new-remote-button button-with-icon"
-              onClick={this.onNewRemote}
-            >
-              <Octicon symbol={octicons.plus} className="mr" />
-              {__DARWIN__ ? 'New Remote' : 'New remote'}
-            </Button>
-          </Row>
-
-          {this.renderList()}
-        </DialogContent>
-
-        <DefaultDialogFooter />
-      </Dialog>
+          </DialogStackContext.Provider>
+        ) : null}
+      </>
     )
   }
 }
