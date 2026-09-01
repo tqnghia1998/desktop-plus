@@ -19,6 +19,7 @@ import {
   BranchDropdown,
   PushPullButton,
   RepositoryToolbarDropdown,
+  WorktreeDropdown,
   ToolbarActionMenu,
   ToolbarActionMenuItem,
 } from './toolbar'
@@ -35,6 +36,7 @@ import { AddRemoteDialog } from './manage-remotes/add-remote-dialog'
 import { ManageRemotesDialog } from './manage-remotes/manage-remotes-dialog'
 import { ConfirmCheckoutCommitDialog } from './checkout/confirm-checkout-commit'
 import { ConfirmRemoveRepository } from './remove-repository/confirm-remove-repository'
+import { OpenWithExternalEditor } from './open-with-external-editor/open-with-external-editor'
 import { DiscardChanges } from './discard-changes/discard-changes-dialog'
 import { DiscardSelection } from './discard-changes/discard-selection-dialog'
 import { ConfirmDeletePushedTagDialog } from './tag/confirm-delete-pushed-tag'
@@ -45,6 +47,7 @@ import { RenameBranch } from './rename-branch/rename-branch-dialog'
 import { AddWorktreeDialog } from './worktrees/add-worktree-dialog'
 import { RenameWorktreeDialog } from './worktrees/rename-worktree-dialog'
 import { DeleteWorktreeDialog } from './worktrees/delete-worktree-dialog'
+import { DeleteWorktreeFailedDialog } from './worktrees/delete-worktree-failed-dialog'
 import { TutorialPanel } from './tutorial'
 import { WarnResetToPushedCommit } from './reset/warn-reset-to-pushed-commit'
 import { ConfirmForcePush } from './rebase/confirm-force-push'
@@ -104,6 +107,7 @@ import { Popup, PopupType } from '../models/popup'
 import { BannerType } from '../models/banner'
 import { CloneRepositoryTab } from '../models/clone-repository-tab'
 import { Tip, TipState } from '../models/tip'
+import { FoldoutType } from '../lib/app-state'
 import type { Progress } from '../models/progress'
 import { ShowBranchNameInRepoListSetting } from '../models/show-branch-name-in-repo-list'
 import { defaultCopyPathNormalization } from '../models/copy-path-normalization'
@@ -256,6 +260,7 @@ const webEditorIntegrationStorageKey = 'desktop-plus-web-editor-integration'
 const webShellIntegrationStorageKey = 'desktop-plus-web-shell-integration'
 const webBranchDropdownWidthStorageKey = 'branch-dropdown-width'
 const webPushPullButtonWidthStorageKey = 'push-pull-button-width'
+const webWorktreeDropdownWidthStorageKey = 'worktree-dropdown-width'
 const webToolbarButtonWidth = { min: 180, max: 620, default: 230 }
 
 const webSuggestedActionsMenu: IMenu = {
@@ -1928,7 +1933,7 @@ function DesktopRepositoryPicker(props: {
           else
             void runWorktreeOperation(repository, 'worktree-remove', [
               worktreePath,
-            ])
+            ]).catch(() => undefined)
         },
         selectRepository: (repository: Repository) =>
           Promise.resolve(props.onSelect(repository.path)),
@@ -1998,21 +2003,23 @@ function DesktopRepositoryPicker(props: {
         filterText={filterText}
         localRepositoryStateLookup={localRepositoryStateLookup}
         onFilterTextChanged={setFilterText}
-        onOpenInExternalEditor={(_repository, _path) =>
+        onOpenInExternalEditor={(repository, path) =>
           void props.dispatcher.launchIntegration(
             'editor',
             integrations.name,
-            integrations.custom
+            integrations.custom,
+            path || repository.path
           )
         }
         onOpenInNewWindow={(repository, path) =>
           props.onOpenNewWindow(path || repository.path)
         }
-        onOpenInShell={(_repository, _path) =>
+        onOpenInShell={(repository, path) =>
           void props.dispatcher.launchIntegration(
             'shell',
             shellIntegration.name,
-            shellIntegration.custom
+            shellIntegration.custom,
+            path || repository.path
           )
         }
         onRemoveRepository={repository => props.onRemove(repository.path)}
@@ -2150,6 +2157,7 @@ function DesktopToolbar(props: {
   readonly showBranchName: 'never' | 'always' | 'non-default'
   readonly branchSortOrder: BranchSortOrder
   readonly onBranchSortOrderChanged: (value: BranchSortOrder) => void
+  readonly showWorktrees: boolean
   readonly showWorktreesInRepositoryList: boolean
   readonly repositoryIndicatorsEnabled: boolean
   readonly showRecentRepositories: boolean
@@ -2194,6 +2202,23 @@ function DesktopToolbar(props: {
       )
     )
   )
+  const [worktreeDropdownWidth, setWorktreeDropdownWidth] = React.useState(() =>
+    Math.min(
+      600,
+      Math.max(365, getNumber(webWorktreeDropdownWidthStorageKey, 365))
+    )
+  )
+  const [worktreeToAdd, setWorktreeToAdd] = React.useState(false)
+  const [worktreeToRename, setWorktreeToRename] = React.useState<string | null>(
+    null
+  )
+  const [worktreeToDelete, setWorktreeToDelete] = React.useState<string | null>(
+    null
+  )
+  const [worktreeDeleteFailure, setWorktreeDeleteFailure] = React.useState<{
+    readonly path: string
+    readonly error: Error
+  } | null>(null)
   const updateBranchDropdownWidth = React.useCallback((width: number) => {
     setNumber(webBranchDropdownWidthStorageKey, width)
     setBranchDropdownWidth(width)
@@ -2210,8 +2235,17 @@ function DesktopToolbar(props: {
     localStorage.removeItem(webPushPullButtonWidthStorageKey)
     setPushPullButtonWidth(webToolbarButtonWidth.default)
   }, [])
+  const updateWorktreeDropdownWidth = React.useCallback((width: number) => {
+    setNumber(webWorktreeDropdownWidthStorageKey, width)
+    setWorktreeDropdownWidth(width)
+  }, [])
+  const resetWorktreeDropdownWidth = React.useCallback(() => {
+    localStorage.removeItem(webWorktreeDropdownWidthStorageKey)
+    setWorktreeDropdownWidth(365)
+  }, [])
   const [toolbarDropdown, setToolbarDropdown] = React.useState<
     | 'repository'
+    | 'worktree'
     | 'branch'
     | 'sync'
     | 'repository-actions'
@@ -2222,6 +2256,7 @@ function DesktopToolbar(props: {
     (
       dropdown:
         | 'repository'
+        | 'worktree'
         | 'branch'
         | 'sync'
         | 'repository-actions'
@@ -2235,6 +2270,7 @@ function DesktopToolbar(props: {
     []
   )
   const repositoryPickerOpen = toolbarDropdown === 'repository'
+  const worktreeDropdownOpen = toolbarDropdown === 'worktree'
   const branchMenuOpen = toolbarDropdown === 'branch'
   const syncMenuOpen = toolbarDropdown === 'sync'
   const repositoryActionsOpen = toolbarDropdown === 'repository-actions'
@@ -2270,6 +2306,7 @@ function DesktopToolbar(props: {
     React.useState(false)
   const [manageRemotesOpen, setManageRemotesOpen] = React.useState(false)
   const [addRemoteOpen, setAddRemoteOpen] = React.useState(false)
+  const [openWithEditorOpen, setOpenWithEditorOpen] = React.useState(false)
   const [forcePushOpen, setForcePushOpen] = React.useState(false)
   const [mergeOperation, setMergeOperation] = React.useState<{
     readonly squash: boolean
@@ -2284,10 +2321,16 @@ function DesktopToolbar(props: {
   } | null>(null)
   const [discardAllChangesOpen, setDiscardAllChangesOpen] =
     React.useState(false)
+  const [discardAllChangesPermanently, setDiscardAllChangesPermanently] =
+    React.useState(false)
   const repository =
     props.state.repositories.find(
       item => item.path === props.state.selectedRepositoryPath
     ) || null
+  const worktrees = repository?.worktrees || []
+  const desktopWorktreeRepository = getDesktopRepository(
+    props.state.selectedRepositoryPath || ''
+  )
   const defaultBranch =
     repository?.defaultBranch ?? props.state.branches?.defaultBranch ?? null
   const aheadBehind = props.state.branches?.aheadBehind || null
@@ -2536,7 +2579,7 @@ function DesktopToolbar(props: {
         },
         changesState: { conflictState: null },
         checkoutProgress: null,
-        worktrees: [],
+        worktrees,
       } as unknown as IRepositoryState),
     [
       desktopBranches,
@@ -2618,6 +2661,44 @@ function DesktopToolbar(props: {
         disabled: !repository,
         action: () => void props.dispatcher.runOperation('fetch'),
       },
+      { id: 'repository-changes', type: 'separator' },
+      {
+        id: 'discard-all-changes',
+        type: 'item',
+        label: 'Discard All Changes…',
+        disabled:
+          (props.state.status?.workingDirectory.files.length || 0) === 0,
+        action: () => {
+          setDiscardAllChangesPermanently(false)
+          setDiscardAllChangesOpen(true)
+        },
+      },
+      {
+        id: 'permanently-discard-all-changes',
+        type: 'item',
+        label: 'Permanently Discard All Changes…',
+        disabled:
+          (props.state.status?.workingDirectory.files.length || 0) === 0,
+        action: () => {
+          setDiscardAllChangesPermanently(true)
+          setDiscardAllChangesOpen(true)
+        },
+      },
+      {
+        id: 'stash-all-changes',
+        type: 'item',
+        label: 'Stash All Changes',
+        disabled:
+          (props.state.status?.workingDirectory.files.length || 0) === 0 ||
+          !desktopCurrentBranch,
+        action: () =>
+          void props.dispatcher.runOperation('stash', {
+            values: (props.state.status?.workingDirectory.files || []).map(
+              file => file.path
+            ),
+            includeUntracked: true,
+          }),
+      },
       { id: 'repository-integrations', type: 'separator' },
       {
         id: 'open-in-editor',
@@ -2632,6 +2713,13 @@ function DesktopToolbar(props: {
             editorIntegration
           )
         },
+      },
+      {
+        id: 'open-with-editor',
+        type: 'item',
+        label: 'Open With…',
+        disabled: !repository,
+        action: () => setOpenWithEditorOpen(true),
       },
       {
         id: 'open-in-terminal',
@@ -2656,7 +2744,23 @@ function DesktopToolbar(props: {
           if (repository) props.onOpenPath(repository.path, true)
         },
       },
-      { id: 'repository-settings', type: 'separator' },
+      {
+        id: 'remove-repository',
+        type: 'item',
+        label: 'Remove…',
+        disabled: !repository,
+        action: () => {
+          if (repository) props.onRemoveRepository(repository.path)
+        },
+      },
+      {
+        id: 'new-worktree',
+        type: 'item',
+        label: 'New Worktree…',
+        disabled: !repository || !props.showWorktrees,
+        action: () => setWorktreeToAdd(true),
+      },
+      { id: 'repository-remotes', type: 'separator' },
       {
         id: 'manage-remotes',
         type: 'item',
@@ -2667,12 +2771,14 @@ function DesktopToolbar(props: {
     ],
     [
       desktopCurrentBranch,
+      props.state.status?.workingDirectory.files,
       editorIntegration,
       props.dispatcher,
       props.onOpenPath,
       pushCurrentBranch,
       repository,
       shellIntegration,
+      props.showWorktrees,
     ]
   )
   const branchActionItems = React.useMemo<ReadonlyArray<ToolbarActionMenuItem>>(
@@ -2703,6 +2809,44 @@ function DesktopToolbar(props: {
         action: () => setBranchToDelete(currentWebBranch),
       },
       { id: 'branch-history', type: 'separator' },
+      {
+        id: 'discard-all-changes',
+        type: 'item',
+        label: 'Discard All Changes…',
+        disabled:
+          (props.state.status?.workingDirectory.files.length || 0) === 0,
+        action: () => {
+          setDiscardAllChangesPermanently(false)
+          setDiscardAllChangesOpen(true)
+        },
+      },
+      {
+        id: 'permanently-discard-all-changes',
+        type: 'item',
+        label: 'Permanently Discard All Changes…',
+        disabled:
+          (props.state.status?.workingDirectory.files.length || 0) === 0,
+        action: () => {
+          setDiscardAllChangesPermanently(true)
+          setDiscardAllChangesOpen(true)
+        },
+      },
+      {
+        id: 'stash-all-changes',
+        type: 'item',
+        label: 'Stash All Changes',
+        disabled:
+          (props.state.status?.workingDirectory.files.length || 0) === 0 ||
+          !desktopCurrentBranch,
+        action: () =>
+          void props.dispatcher.runOperation('stash', {
+            values: (props.state.status?.workingDirectory.files || []).map(
+              file => file.path
+            ),
+            includeUntracked: true,
+          }),
+      },
+      { id: 'branch-history-actions', type: 'separator' },
       {
         id: 'update-from-default',
         type: 'item',
@@ -2741,6 +2885,13 @@ function DesktopToolbar(props: {
         disabled: !desktopCurrentBranch,
         action: () => setRebaseDialog({}),
       },
+      {
+        id: 'delete-unused-local-branches',
+        type: 'item',
+        label: 'Delete Unused Local Branches…',
+        disabled: (props.state.branches?.mergedBranches?.length || 0) === 0,
+        action: () => setDeleteUnusedLocalBranchesOpen(true),
+      },
     ],
     [
       canUpdateFromDefault,
@@ -2748,7 +2899,104 @@ function DesktopToolbar(props: {
       defaultBranch,
       desktopCurrentBranch,
       props.dispatcher,
+      props.state.branches?.mergedBranches,
+      props.state.status?.workingDirectory.files,
       repository,
+    ]
+  )
+  const runWorktreeOperation = React.useCallback(
+    async (worktreePath: string, force = false) => {
+      const mainWorktreePath =
+        worktrees.find(worktree => worktree.type === 'main')?.path ||
+        desktopWorktreeRepository.path
+      const repositoryPath =
+        worktreePath === desktopWorktreeRepository.path
+          ? mainWorktreePath
+          : desktopWorktreeRepository.path
+      await props.dispatcher.selectRepository(repositoryPath)
+      await props.dispatcher.runOperationOrThrow('worktree-remove', {
+        values: [worktreePath],
+        ...(force ? { force: true } : {}),
+      })
+      if (worktreePath !== mainWorktreePath) {
+        props.dispatcher.removeRepository(worktreePath)
+      }
+    },
+    [desktopWorktreeRepository.path, props.dispatcher, worktrees]
+  )
+  const desktopWorktreeDispatcher = React.useMemo(
+    () =>
+      ({
+        closeFoldout: (foldout: FoldoutType) => {
+          if (foldout === FoldoutType.Worktree)
+            setToolbarDropdownState('worktree', 'closed')
+        },
+        incrementMetric: () => undefined,
+        moveWorktree: async (
+          _repository: Repository,
+          worktreePath: string,
+          newPath: string
+        ) => {
+          try {
+            const isCurrentWorktree =
+              worktreePath === desktopWorktreeRepository.path
+            const mainWorktreePath =
+              worktrees.find(worktree => worktree.type === 'main')?.path ||
+              desktopWorktreeRepository.path
+            await props.dispatcher.selectRepository(
+              isCurrentWorktree
+                ? mainWorktreePath
+                : desktopWorktreeRepository.path
+            )
+            await props.dispatcher.runOperationOrThrow('worktree-move', {
+              values: [worktreePath, newPath],
+            })
+            if (isCurrentWorktree) {
+              await props.dispatcher.selectRepository(newPath)
+              props.dispatcher.removeRepository(worktreePath)
+            }
+            return true
+          } catch {
+            return false
+          }
+        },
+        requestDeleteWorktree: (
+          _repository: Repository,
+          worktreePath: string
+        ) => {
+          if (props.confirmWorktreeRemoval) setWorktreeToDelete(worktreePath)
+          else
+            void runWorktreeOperation(worktreePath).catch(error =>
+              setWorktreeDeleteFailure({ path: worktreePath, error })
+            )
+        },
+        selectRepository: (nextRepository: Repository) =>
+          props.dispatcher.selectRepository(nextRepository.path),
+        showPopup: (popup: {
+          readonly type: PopupType
+          readonly worktreePath?: string
+        }) => {
+          if (popup.type === PopupType.AddWorktree) setWorktreeToAdd(true)
+          if (popup.type === PopupType.RenameWorktree)
+            setWorktreeToRename(popup.worktreePath || null)
+          return Promise.resolve()
+        },
+        switchWorktree: (
+          _repository: Repository,
+          worktree: { readonly path: string }
+        ) => props.dispatcher.selectRepository(worktree.path),
+        setWorktreeDropdownWidth: updateWorktreeDropdownWidth,
+        resetWorktreeDropdownWidth,
+      } as unknown as Dispatcher),
+    [
+      desktopWorktreeRepository.path,
+      props.confirmWorktreeRemoval,
+      props.dispatcher,
+      resetWorktreeDropdownWidth,
+      runWorktreeOperation,
+      setToolbarDropdownState,
+      updateWorktreeDropdownWidth,
+      worktrees,
     ]
   )
 
@@ -2812,6 +3060,30 @@ function DesktopToolbar(props: {
             shouldNudge={false}
             tipState={desktopTip.kind}
           />
+        }
+        worktree={
+          props.showWorktrees && repository ? (
+            <WorktreeDropdown
+              dispatcher={desktopWorktreeDispatcher}
+              enableFocusTrap={true}
+              isOpen={worktreeDropdownOpen}
+              onDropDownStateChanged={state =>
+                setToolbarDropdownState('worktree', state)
+              }
+              repository={desktopWorktreeRepository}
+              worktreeDropdownWidth={{
+                max: Math.max(365, window.innerWidth - 150),
+                min: 365,
+                value: worktreeDropdownWidth,
+              }}
+              worktrees={worktrees}
+              onPruneWorktree={path =>
+                void props.dispatcher.runOperationOrThrow('worktree-prune', {
+                  values: [path],
+                })
+              }
+            />
+          ) : null
         }
         repository={
           <RepositoryToolbarDropdown
@@ -2897,6 +3169,91 @@ function DesktopToolbar(props: {
         }
         sidebarWidth={props.sidebarWidth}
       />
+      {worktreeToAdd && repository ? (
+        <DialogStackContext.Provider value={{ isTopMost: true }}>
+          <AddWorktreeDialog
+            allBranches={desktopBranches}
+            dispatcher={desktopWorktreeDispatcher}
+            onDismissed={() => setWorktreeToAdd(false)}
+            repository={desktopWorktreeRepository}
+          />
+        </DialogStackContext.Provider>
+      ) : null}
+      {worktreeToRename && repository ? (
+        <DialogStackContext.Provider value={{ isTopMost: true }}>
+          <RenameWorktreeDialog
+            dispatcher={desktopWorktreeDispatcher}
+            onDismissed={() => setWorktreeToRename(null)}
+            repository={desktopWorktreeRepository}
+            worktreePath={worktreeToRename}
+          />
+        </DialogStackContext.Provider>
+      ) : null}
+      {worktreeToDelete && repository ? (
+        <DialogStackContext.Provider value={{ isTopMost: true }}>
+          <DeleteWorktreeDialog
+            askForConfirmationOnWorktreeRemoval={props.confirmWorktreeRemoval}
+            onConfirmWorktreeRemovalChanged={
+              props.onConfirmWorktreeRemovalChanged
+            }
+            onDeleteWorktree={async (_repository, worktreePath) => {
+              try {
+                await runWorktreeOperation(worktreePath)
+              } catch (error) {
+                setWorktreeDeleteFailure({
+                  path: worktreePath,
+                  error:
+                    error instanceof Error ? error : new Error(String(error)),
+                })
+              }
+            }}
+            onDismissed={() => setWorktreeToDelete(null)}
+            repository={desktopWorktreeRepository}
+            worktreePath={worktreeToDelete}
+          />
+        </DialogStackContext.Provider>
+      ) : null}
+      {worktreeDeleteFailure && repository ? (
+        <DialogStackContext.Provider value={{ isTopMost: true }}>
+          <DeleteWorktreeFailedDialog
+            error={worktreeDeleteFailure.error}
+            onDeleteWorktree={async (_repository, worktreePath, force) => {
+              await runWorktreeOperation(worktreePath, force)
+              setWorktreeDeleteFailure(null)
+            }}
+            onDismissed={() => setWorktreeDeleteFailure(null)}
+            onSwitchToWorktree={(_repository, worktree) =>
+              props.dispatcher.selectRepository(worktree.path)
+            }
+            originalWorktree={
+              worktrees.find(
+                worktree => worktree.path === worktreeDeleteFailure.path
+              ) || null
+            }
+            repository={desktopWorktreeRepository}
+            worktreePath={worktreeDeleteFailure.path}
+          />
+        </DialogStackContext.Provider>
+      ) : null}
+      {openWithEditorOpen && repository ? (
+        <DialogStackContext.Provider value={{ isTopMost: true }}>
+          <OpenWithExternalEditor
+            onDismissed={() => setOpenWithEditorOpen(false)}
+            onOpenWithEditor={async (editor, custom) => {
+              await props.dispatcher.openIntegration(
+                'editor',
+                repository.path,
+                {
+                  name: editor,
+                  custom: custom
+                    ? { path: custom.path, arguments: custom.arguments || '' }
+                    : null,
+                }
+              )
+            }}
+          />
+        </DialogStackContext.Provider>
+      ) : null}
       {discardAllChangesOpen && props.state.selectedRepositoryPath ? (
         <DesktopDiscardChangesDialog
           askForConfirmation={props.confirmDiscardChanges}
@@ -2904,7 +3261,7 @@ function DesktopToolbar(props: {
           files={props.state.status?.workingDirectory.files || []}
           onConfirmDiscardChangesChanged={props.onConfirmDiscardChangesChanged}
           onDismiss={() => setDiscardAllChangesOpen(false)}
-          permanentlyDelete={false}
+          permanentlyDelete={discardAllChangesPermanently}
           repositoryPath={props.state.selectedRepositoryPath}
         />
       ) : null}
@@ -3144,6 +3501,14 @@ function DesktopToolbar(props: {
                 removeRemote: (_repository: Repository, name: string) =>
                   props.dispatcher.runOperationOrThrow('remote-remove', {
                     values: [name],
+                  }),
+                setRemoteURL: (
+                  _repository: Repository,
+                  name: string,
+                  url: string
+                ) =>
+                  props.dispatcher.runOperationOrThrow('remote-set-url', {
+                    values: [name, url],
                   }),
                 showPopup: (popup: { readonly type: PopupType }) => {
                   if (popup.type === PopupType.AddRemote) setAddRemoteOpen(true)
@@ -6018,6 +6383,15 @@ function DesktopRepositoryView(props: {
               )
               setConflictDialogOpen(false)
             }}
+            onSkip={
+              operation === 'rebase'
+                ? async () => {
+                    await props.dispatcher.runOperation('skip-rebase')
+                    setConflictDialogOpen(false)
+                  }
+                : undefined
+            }
+            skipButtonText="Skip Rebase"
             openFileInExternalEditor={path =>
               void props.dispatcher.openIntegration(
                 'editor',
@@ -6218,7 +6592,7 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
     getBoolean(webShowCompareTabStorageKey, true)
   )
   const [showWorktrees, setShowWorktrees] = React.useState(() =>
-    getBoolean(webShowWorktreesStorageKey, false)
+    getBoolean(webShowWorktreesStorageKey, true)
   )
   const [useExternalCredentialHelper, setUseExternalCredentialHelper] =
     React.useState(() =>
@@ -6629,6 +7003,7 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
                 onBranchSortOrderChanged={updateBranchSortOrder}
                 sidebarWidth={sidebarWidth}
                 showBranchName={showBranchName}
+                showWorktrees={showWorktrees}
                 showWorktreesInRepositoryList={showWorktreesInRepositoryList}
                 repositoryIndicatorsEnabled={repositoryIndicatorsEnabled}
                 showRecentRepositories={showRecentRepositories}
