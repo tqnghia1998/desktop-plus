@@ -102,6 +102,7 @@ import { Popup, PopupType } from '../models/popup'
 import { BannerType } from '../models/banner'
 import { CloneRepositoryTab } from '../models/clone-repository-tab'
 import { Tip, TipState } from '../models/tip'
+import type { Progress } from '../models/progress'
 import { ShowBranchNameInRepoListSetting } from '../models/show-branch-name-in-repo-list'
 import { defaultCopyPathNormalization } from '../models/copy-path-normalization'
 import type { Dispatcher } from './dispatcher'
@@ -141,6 +142,7 @@ import {
   WebStash,
   WebTag,
   WebOperationOptions,
+  WebOperationTask,
   WebIntegrationSelection,
 } from './web/contracts'
 import { TutorialStep } from '../models/tutorial-step'
@@ -250,6 +252,9 @@ const webChangesScrollStorageKey = 'desktop-plus-web-changes-scroll'
 const webCompareScrollStorageKey = 'desktop-plus-web-compare-scroll'
 const webEditorIntegrationStorageKey = 'desktop-plus-web-editor-integration'
 const webShellIntegrationStorageKey = 'desktop-plus-web-shell-integration'
+const webBranchDropdownWidthStorageKey = 'branch-dropdown-width'
+const webPushPullButtonWidthStorageKey = 'push-pull-button-width'
+const webToolbarButtonWidth = { min: 180, max: 620, default: 230 }
 
 const webSuggestedActionsMenu: IMenu = {
   type: 'menu',
@@ -2082,6 +2087,53 @@ function DesktopRepositoryPicker(props: {
   )
 }
 
+function getNetworkProgress(
+  operationTask: WebOperationTask | null,
+  remoteName: string | null,
+  branchName: string | null
+): Progress | null {
+  if (operationTask?.status !== 'running') return null
+
+  const remote = remoteName || 'origin'
+  const value = (operationTask.progress || 0) / 100
+  const description = operationTask.phase || 'Contacting remote…'
+
+  switch (operationTask.operation) {
+    case 'fetch':
+      return {
+        kind: 'fetch',
+        remote,
+        title: `Fetching ${remote}`,
+        description,
+        value,
+      }
+    case 'pull':
+    case 'reset-upstream':
+      return {
+        kind: 'pull',
+        remote,
+        title:
+          operationTask.operation === 'pull'
+            ? `Pulling ${remote}`
+            : `Resetting and pulling ${remote}`,
+        description,
+        value,
+      }
+    case 'push':
+    case 'publish-branch':
+      return {
+        kind: 'push',
+        remote,
+        branch: branchName || 'current branch',
+        title: `Pushing ${remote}`,
+        description,
+        value,
+      }
+    default:
+      return null
+  }
+}
+
 function DesktopToolbar(props: {
   readonly state: WebApplicationState
   readonly dispatcher: WebDispatcher
@@ -2114,6 +2166,46 @@ function DesktopToolbar(props: {
   readonly onConfirmDiscardChangesChanged: (value: boolean) => void
   readonly underlineLinks: boolean
 }) {
+  const [branchDropdownWidth, setBranchDropdownWidth] = React.useState(() =>
+    Math.min(
+      webToolbarButtonWidth.max,
+      Math.max(
+        webToolbarButtonWidth.min,
+        getNumber(
+          webBranchDropdownWidthStorageKey,
+          webToolbarButtonWidth.default
+        )
+      )
+    )
+  )
+  const [pushPullButtonWidth, setPushPullButtonWidth] = React.useState(() =>
+    Math.min(
+      webToolbarButtonWidth.max,
+      Math.max(
+        webToolbarButtonWidth.min,
+        getNumber(
+          webPushPullButtonWidthStorageKey,
+          webToolbarButtonWidth.default
+        )
+      )
+    )
+  )
+  const updateBranchDropdownWidth = React.useCallback((width: number) => {
+    setNumber(webBranchDropdownWidthStorageKey, width)
+    setBranchDropdownWidth(width)
+  }, [])
+  const resetBranchDropdownWidth = React.useCallback(() => {
+    localStorage.removeItem(webBranchDropdownWidthStorageKey)
+    setBranchDropdownWidth(webToolbarButtonWidth.default)
+  }, [])
+  const updatePushPullButtonWidth = React.useCallback((width: number) => {
+    setNumber(webPushPullButtonWidthStorageKey, width)
+    setPushPullButtonWidth(width)
+  }, [])
+  const resetPushPullButtonWidth = React.useCallback(() => {
+    localStorage.removeItem(webPushPullButtonWidthStorageKey)
+    setPushPullButtonWidth(webToolbarButtonWidth.default)
+  }, [])
   const [toolbarDropdown, setToolbarDropdown] = React.useState<
     'repository' | 'branch' | 'sync' | null
   >(null)
@@ -2390,8 +2482,16 @@ function DesktopToolbar(props: {
           _repository: Repository,
           nextDefaultBranch: string
         ) => props.dispatcher.setRepositoryDefaultBranch(nextDefaultBranch),
+        setBranchDropdownWidth: updateBranchDropdownWidth,
+        resetBranchDropdownWidth,
       } as unknown as Dispatcher),
-    [props.dispatcher, props.state.branches, setToolbarDropdownState]
+    [
+      props.dispatcher,
+      props.state.branches,
+      resetBranchDropdownWidth,
+      setToolbarDropdownState,
+      updateBranchDropdownWidth,
+    ]
   )
   const desktopBranchDropdownState = React.useMemo(
     () =>
@@ -2428,6 +2528,14 @@ function DesktopToolbar(props: {
   )
   const remoteName =
     desktopCurrentBranch?.upstreamRemoteName || remotes[0]?.name || null
+  const lastFetched = props.state.branches?.lastFetched
+    ? new Date(props.state.branches.lastFetched)
+    : null
+  const networkProgress = getNetworkProgress(
+    props.state.operationTask,
+    remoteName,
+    desktopCurrentBranch?.name || null
+  )
   const forcePushBranchState = getCurrentBranchForcePushState(
     desktopBranchDropdownState.branchesState,
     aheadBehind
@@ -2449,13 +2557,17 @@ function DesktopToolbar(props: {
         },
         resetAndPull: () =>
           props.dispatcher.runOperation('reset-upstream', { confirmed: true }),
+        setPushPullButtonWidth: updatePushPullButtonWidth,
+        resetPushPullButtonWidth,
       } as unknown as Dispatcher),
     [
       aheadBehind,
       desktopCurrentBranch,
       props.dispatcher,
       remoteName,
+      resetPushPullButtonWidth,
       setToolbarDropdownState,
+      updatePushPullButtonWidth,
     ]
   )
 
@@ -2464,7 +2576,11 @@ function DesktopToolbar(props: {
       <ApplicationToolbar
         branch={
           <BranchDropdown
-            branchDropdownWidth={{ max: 620, min: 180, value: 230 }}
+            branchDropdownWidth={{
+              max: webToolbarButtonWidth.max,
+              min: webToolbarButtonWidth.min,
+              value: branchDropdownWidth,
+            }}
             branchSortOrder={props.branchSortOrder}
             currentPullRequest={null}
             dispatcher={desktopBranchDropdownDispatcher}
@@ -2494,15 +2610,19 @@ function DesktopToolbar(props: {
             enableFocusTrap={true}
             forcePushBranchState={forcePushBranchState}
             isDropdownOpen={syncMenuOpen}
-            lastFetched={null}
+            lastFetched={lastFetched}
             networkActionInProgress={props.state.loading}
             numTagsToPush={props.state.branches?.tagsToPush?.length || 0}
             onDropdownStateChanged={state =>
               setToolbarDropdownState('sync', state)
             }
-            progress={null}
+            progress={networkProgress}
             pullWithRebase={props.state.branches?.pullWithRebase}
-            pushPullButtonWidth={{ max: 620, min: 180, value: 230 }}
+            pushPullButtonWidth={{
+              max: webToolbarButtonWidth.max,
+              min: webToolbarButtonWidth.min,
+              value: pushPullButtonWidth,
+            }}
             rebaseInProgress={false}
             remoteName={remoteName}
             repository={getDesktopRepository(
@@ -3830,7 +3950,22 @@ function DesktopChangesView(props: {
     const selectedFile = desktopFiles.find(
       file => file.path === props.state.selectedFilePath
     )
-    setSelectedFileIDs(selectedFile ? [selectedFile.id] : [])
+    setSelectedFileIDs(currentSelection => {
+      const availableFileIDs = new Set(desktopFiles.map(file => file.id))
+      const retainedSelection = currentSelection.filter(fileID =>
+        availableFileIDs.has(fileID)
+      )
+
+      // Selecting a file loads its diff through the web store. That store only
+      // tracks one path, but the shared Changes UI owns a multi-file selection.
+      // Keep that richer local selection whenever it already contains the
+      // diff file; otherwise synchronize a selection made outside the list.
+      if (selectedFile && retainedSelection.includes(selectedFile.id)) {
+        return retainedSelection
+      }
+
+      return selectedFile ? [selectedFile.id] : []
+    })
   }, [desktopFiles, props.state.selectedFilePath])
 
   const desktopDispatcher = React.useMemo(
