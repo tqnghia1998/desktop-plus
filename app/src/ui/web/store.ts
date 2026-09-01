@@ -527,6 +527,10 @@ export function createWebApplicationStore(
   let persisted = loadPersistedState()
   const listeners = new Set<() => void>()
   let retryLastAction: (() => Promise<void>) | null = null
+  let retryGenericCredentials: {
+    readonly username: string
+    readonly password: string
+  } | null = null
   const deliveredNotificationIds = new Set<string>()
   let historyRefreshGeneration = 0
   let historyInspectionGeneration = 0
@@ -762,7 +766,14 @@ export function createWebApplicationStore(
     operation: WebGitOperation,
     options: WebOperationOptions = {}
   ): Promise<WebOperationResult | null> => {
-    const task = await git.startOperation(path, operation, options)
+    // Credentials are only retained long enough to start the retry. Keeping
+    // them out of application state prevents them from reaching localStorage.
+    const genericCredentials = retryGenericCredentials
+    retryGenericCredentials = null
+    const task = await git.startOperation(path, operation, {
+      ...options,
+      ...(genericCredentials ? { genericCredentials } : {}),
+    })
     update({ operationTask: task })
     const completed = await waitForOperation(task)
     if (completed.status === 'cancelled') {
@@ -2835,6 +2846,13 @@ export function createWebApplicationStore(
     async retryLastAction() {
       const action = retryLastAction
       if (action) await action()
+    },
+
+    async retryLastActionWithCredentials(username, password) {
+      const action = retryLastAction
+      if (!action) return
+      retryGenericCredentials = { username, password }
+      await action()
     },
 
     dismissHistoryRewriteUndo() {
