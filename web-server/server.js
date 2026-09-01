@@ -629,7 +629,7 @@ function classifyGitHostingError(error) {
         detail
       )
     ? 'ssh-host-key'
-    : /could not read username|credential helper|terminal prompts disabled|no such device or address/i.test(
+    : /could not read username|credential helper|askpass|terminal prompts disabled|no such device or address/i.test(
         detail
       )
     ? 'credential-helper-failed'
@@ -681,7 +681,7 @@ function classifyGitRemoteError(error, operation) {
       detail
     )
       ? 'ssh-host-key'
-      : /could not read username|credential helper|terminal prompts disabled|no such device or address/i.test(
+      : /could not read username|credential helper|askpass|terminal prompts disabled|no such device or address/i.test(
           detail
         )
       ? 'credential-helper-failed'
@@ -2613,8 +2613,6 @@ async function gitOperationAuthenticationEnvironment(
     !Array.isArray(body.hostingAccount)
       ? body.hostingAccount
       : null
-  if (!account) return undefined
-
   const remoteURL = await gitOperationRemoteURL(
     repoPath,
     body,
@@ -2623,9 +2621,62 @@ async function gitOperationAuthenticationEnvironment(
   )
   if (!remoteURL) return undefined
 
+  const genericEnvironment = credentials => {
+    const username = requireString(credentials.username, 'username')
+    const password = requireString(credentials.password, 'password')
+    let remote
+    try {
+      remote = new URL(remoteURL)
+    } catch {
+      throw Object.assign(new Error('The repository URL is invalid.'), {
+        statusCode: 400,
+        code: 'invalid-url',
+      })
+    }
+    if (!['http:', 'https:'].includes(remote.protocol))
+      throw Object.assign(
+        new Error(
+          'Username and password authentication is only available for HTTP(S) remotes.'
+        ),
+        { statusCode: 400, code: 'authentication-required' }
+      )
+    const authorization = Buffer.from(`${username}:${password}`).toString(
+      'base64'
+    )
+    return {
+      ...nonInteractiveGitEnvironment(),
+      GIT_CONFIG_COUNT: '3',
+      GIT_CONFIG_KEY_2: `http.${remote.origin}/.extraHeader`,
+      GIT_CONFIG_VALUE_2: `Authorization: Basic ${authorization}`,
+    }
+  }
+
+  // Do not inherit an editor's askpass handler. In particular, VS Code would
+  // otherwise show its credential prompt outside the web application.
+  const genericCredentials = body.genericCredentials
+  if (genericCredentials) {
+    if (
+      typeof genericCredentials !== 'object' ||
+      Array.isArray(genericCredentials)
+    )
+      throw Object.assign(
+        new Error('Credentials must include a username and password.'),
+        { statusCode: 400 }
+      )
+    return genericEnvironment(genericCredentials)
+  }
+
+  const storedCredentialEnvironment = async () => {
+    const storedCredentials = await readStoredGitCredential(repoPath, remoteURL)
+    if (storedCredentials) return genericEnvironment(storedCredentials)
+    return nonInteractiveGitEnvironment()
+  }
+  if (!account) return storedCredentialEnvironment()
+
   if (account.provider === 'gitlab') {
     const { credentialId, endpoint } = requireGitLabCredential(account)
-    if (!gitLabRemoteMatchesEndpoint(remoteURL, endpoint)) return undefined
+    if (!gitLabRemoteMatchesEndpoint(remoteURL, endpoint))
+      return storedCredentialEnvironment()
     if (!services?.keytar)
       throw Object.assign(new Error('OS credential store is unavailable'), {
         statusCode: 501,
@@ -2641,12 +2692,13 @@ async function gitOperationAuthenticationEnvironment(
     try {
       return authenticatedGitLabEnvironment(remoteURL, token)
     } catch {
-      return undefined
+      return nonInteractiveGitEnvironment()
     }
   }
 
   const { credentialId, endpoint } = requireGitHubCredential(account)
-  if (!gitHubRemoteMatchesEndpoint(remoteURL, endpoint)) return undefined
+  if (!gitHubRemoteMatchesEndpoint(remoteURL, endpoint))
+    return storedCredentialEnvironment()
   if (!services?.keytar)
     throw Object.assign(new Error('OS credential store is unavailable'), {
       statusCode: 501,
@@ -2660,6 +2712,90 @@ async function gitOperationAuthenticationEnvironment(
       statusCode: 401,
     })
   return authenticatedGitEnvironment(remoteURL, token)
+}
+
+async function readStoredGitCredential(repoPath, remoteURL) {
+  let remote
+  try {
+    remote = new URL(remoteURL)
+  } catch {
+    return null
+  }
+  if (!['http:', 'https:'].includes(remote.protocol)) return null
+
+  const input = [
+    `protocol=${remote.protocol.slice(0, -1)}`,
+    `host=${remote.host}`,
+    ...(remote.pathname === '/' ? [] : [`path=${remote.pathname.slice(1)}`]),
+    ...(remote.username
+      ? [`username=${decodeURIComponent(remote.username)}`]
+      : []),
+    '',
+  ].join('\n')
+  let result
+  try {
+    result = await operationContext.run(null, () =>
+      git(
+        ['credential', 'fill'],
+        repoPath,
+        [0, 1, 128],
+        input,
+        credentialLookupEnvironment(),
+        5_000
+      )
+    )
+  } catch {
+    return null
+  }
+  if (result.exitCode !== 0) return null
+
+  const values = new Map(
+    result.stdout.split(/\r?\n/).flatMap(line => {
+      const separator = line.indexOf('=')
+      return separator > 0
+        ? [[line.slice(0, separator), line.slice(separator + 1)]]
+        : []
+    })
+  )
+  const username = values.get('username')
+  const password = values.get('password')
+  return username && password ? { username, password } : null
+}
+
+function credentialLookupEnvironment() {
+  return {
+    ...process.env,
+    // Drop transient config inherited from an editor, while retaining helpers
+    // configured in the user's Git config (such as osxkeychain or GCM).
+    GIT_CONFIG_PARAMETERS: '',
+    GIT_TERMINAL_PROMPT: '0',
+    GIT_ASKPASS: process.execPath,
+    SSH_ASKPASS: process.execPath,
+    GCM_INTERACTIVE: 'never',
+    GIT_CONFIG_COUNT: '2',
+    GIT_CONFIG_KEY_0: 'credential.interactive',
+    GIT_CONFIG_VALUE_0: 'false',
+    GIT_CONFIG_KEY_1: 'core.askPass',
+    GIT_CONFIG_VALUE_1: '',
+  }
+}
+
+function nonInteractiveGitEnvironment() {
+  return {
+    ...process.env,
+    GIT_CONFIG_PARAMETERS: '',
+    GIT_TERMINAL_PROMPT: '0',
+    // Do not inherit an editor's configured credential or askpass helper.
+    // Git exits non-zero and the renderer can collect credentials in its own
+    // modal instead.
+    GIT_ASKPASS: process.execPath,
+    SSH_ASKPASS: process.execPath,
+    GIT_CONFIG_COUNT: '2',
+    GIT_CONFIG_KEY_0: 'credential.helper',
+    GIT_CONFIG_VALUE_0: '',
+    GIT_CONFIG_KEY_1: 'core.askPass',
+    GIT_CONFIG_VALUE_1: '',
+  }
 }
 
 function withGitEnvironment(base, additional) {
@@ -8488,4 +8624,9 @@ if (require.main === module) {
   })
 }
 
-module.exports = { createServer, resolveServerPort, webOperationNames }
+module.exports = {
+  createServer,
+  resolveServerPort,
+  webOperationNames,
+  readStoredGitCredential,
+}
