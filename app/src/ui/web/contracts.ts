@@ -928,7 +928,8 @@ export interface WebDispatcher {
   launchIntegration(
     kind: 'editor' | 'shell',
     name: string | null,
-    custom?: WebCustomIntegration | null
+    custom?: WebCustomIntegration | null,
+    target?: string
   ): Promise<void>
   loadRepositoryPolicies(owner: string, repository: string): Promise<void>
   pushRepository(owner: string, repository: string): Promise<void>
