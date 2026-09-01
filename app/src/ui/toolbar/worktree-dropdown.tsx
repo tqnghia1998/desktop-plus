@@ -23,6 +23,7 @@ interface IWorktreeDropdownProps {
   readonly enableFocusTrap: boolean
   readonly worktreeDropdownWidth: IConstrainedValue
   readonly disabled?: boolean
+  readonly onPruneWorktree?: (path: string) => void
 }
 
 interface IWorktreeDropdownState {
@@ -66,8 +67,10 @@ export class WorktreeDropdown extends React.Component<
       path: worktree.path,
       isMainWorktree: worktree.type === 'main',
       isLocked: worktree.isLocked,
+      isPrunable: worktree.isPrunable,
       onRenameWorktree: this.onRenameWorktree,
       onRemoveWorktree: this.onRemoveWorktree,
+      onPruneWorktree: this.props.onPruneWorktree,
       onOpenInNewWindow: () => this.onOpenWorktreeInNewWindow(worktree.path),
     })
 
@@ -118,7 +121,9 @@ export class WorktreeDropdown extends React.Component<
       path: currentWorktree.path,
       isMainWorktree: isMain,
       isLocked: currentWorktree.isLocked,
+      isPrunable: currentWorktree.isPrunable,
       onRemoveWorktree: isMain ? undefined : this.onRemoveWorktree,
+      onPruneWorktree: this.props.onPruneWorktree,
     })
 
     const newWorktreeItem: IMenuItem = {
