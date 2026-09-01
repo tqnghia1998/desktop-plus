@@ -2274,6 +2274,17 @@ export function createWebApplicationStore(
       }
     },
 
+    async respondOperationAuth(id, response, remember = false) {
+      if (state.operationTask?.id !== id) return
+      try {
+        update({
+          operationTask: await git.respondOperationAuth(id, response, remember),
+        })
+      } catch (error) {
+        fail(error)
+      }
+    },
+
     async previewPruneBranches() {
       const path = selectedPath()
       const repository = state.repositories.find(item => item.path === path)

@@ -239,6 +239,18 @@ export const webGitClient: WebGitClient = {
     })
   },
 
+  respondOperationAuth(
+    id: string,
+    response: string,
+    remember = false
+  ): Promise<WebOperationTask> {
+    return request(`/api/git/operations/${encodeURIComponent(id)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'auth-response', response, remember }),
+    })
+  },
+
   getLfsStatus(path): Promise<WebLfsStatus> {
     return request(`/api/lfs${repositoryQuery(path)}`)
   },
