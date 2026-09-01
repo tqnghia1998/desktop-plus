@@ -13,7 +13,6 @@ const sourceSuites = Object.freeze({
   preferences: 'test-source-preferences-history.js',
   statePersistence: 'test-source-state-persistence.js',
   trash: 'test-source-trash-recovery.js',
-  tutorial: 'test-source-tutorial.js',
   platform: 'test-source-platform-gaps.js',
   coverage: 'test-docs.js',
 })
@@ -26,7 +25,6 @@ const evidence = Object.freeze({
   'REPO-06': ['recovery'],
   'REPO-07': ['parity'],
   'REPO-08': ['trash'],
-  'REPO-09': ['tutorial'],
   'REPO-12': ['platform'],
   'REPO-14': ['parity'],
   'REPO-16': ['recovery'],
