@@ -38,10 +38,10 @@ const inventoryCounts = Object.fromEntries(
   ])
 )
 assert.deepEqual(inventoryCounts, {
-  Supported: 99,
+  Supported: 98,
   Partial: 6,
   Missing: 0,
-  Deferred: 26,
+  Deferred: 27,
 })
 
 const integrationSuites = new Set([
@@ -59,7 +59,6 @@ const integrationSuites = new Set([
   'test-source-preferences-history.js',
   'test-source-state-persistence.js',
   'test-source-trash-recovery.js',
-  'test-source-tutorial.js',
   'test-source-platform-gaps.js',
 ])
 const evidenceOnlySuites = new Set(['test-docs.js'])
