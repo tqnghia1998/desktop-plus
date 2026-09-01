@@ -10,8 +10,8 @@ The complete desktop-versus-web implementation inventory is maintained in
 [PARITY-GAPS.md](PARITY-GAPS.md). It lists every known partial, missing, and
 intentionally deferred desktop behavior, including cases where a typed
 companion operation exists without a visible source-renderer control.
-The current inventory contains 134 rows: 98 Supported, 9 Partial, 2 Missing,
-and 25 Deferred.
+The current inventory contains 134 rows: 99 Supported, 10 Partial, 1 Missing,
+and 24 Deferred.
 
 - **Supported**: implemented and covered by an automated browser workflow.
 - **Partial**: a visible source control and companion path exist, but the
