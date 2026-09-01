@@ -64,19 +64,34 @@ function writeAsset(prefix, extension, content) {
   return fileName
 }
 
-function removeGeneratedAssets() {
+function writeFileAtomically(destination, content) {
+  const temporary = `${destination}.${process.pid}.${crypto
+    .randomBytes(6)
+    .toString('hex')}.tmp`
+  fs.writeFileSync(temporary, content)
+  fs.renameSync(temporary, destination)
+}
+
+function generatedAssetNames(manifest) {
+  if (!manifest?.assets) return []
+  return [
+    manifest.assets.bootstrap,
+    manifest.assets.application,
+    manifest.assets.stylesheet,
+  ].filter(name => typeof name === 'string')
+}
+
+function removeObsoleteGeneratedAssets(currentAssets) {
   fs.mkdirSync(assetsDir, { recursive: true })
   for (const entry of fs.readdirSync(assetsDir)) {
     if (
-      /^(?:app|bootstrap|index)-[a-fA-F0-9]+|^index-[A-Za-z0-9_-]+/.test(entry)
+      !currentAssets.has(entry) &&
+      /^(?:(?:app|bootstrap|index)-[a-fA-F0-9]+|index-[A-Za-z0-9_-]+)/.test(
+        entry
+      )
     )
       fs.rmSync(path.join(assetsDir, entry), { force: true })
   }
-  fs.rmSync(path.join(publicDir, 'highlighter.js'), { force: true })
-  fs.rmSync(path.join(publicDir, 'highlighter'), {
-    recursive: true,
-    force: true,
-  })
 }
 
 function copyFile(source, destination) {
@@ -179,6 +194,14 @@ function copyDirectory(source, destination) {
     if (entry.isDirectory()) copyDirectory(sourcePath, destinationPath)
     else copyFile(sourcePath, destinationPath)
   }
+}
+
+function removeHighlighterAssets() {
+  fs.rmSync(path.join(publicDir, 'highlighter.js'), { force: true })
+  fs.rmSync(path.join(publicDir, 'highlighter'), {
+    recursive: true,
+    force: true,
+  })
 }
 
 function validateRuntimeAssets() {
@@ -303,7 +326,7 @@ async function main() {
 
   const capabilities = require('./src/capabilities')
   prepareRuntimeAssets()
-  removeGeneratedAssets()
+  removeHighlighterAssets()
   const bootstrapAsset = writeAsset('bootstrap', 'js', environment)
   const [applicationStats, highlighterStats] = await Promise.all([
     compileApplication(),
@@ -317,36 +340,34 @@ async function main() {
     .replace('__BOOTSTRAP_ASSET__', bootstrapAsset)
     .replace('__APPLICATION_ASSET__', compiledAssets.application)
     .replace('__STYLESHEET_ASSET__', compiledAssets.stylesheet)
-  fs.writeFileSync(path.join(publicDir, 'index.html'), html)
-  fs.writeFileSync(
+  const manifest = {
+    ...buildInfo,
+    renderer: {
+      entry: 'app/src/ui/web-index.tsx',
+      source: [
+        'app/src/ui/web-index.tsx',
+        'app/src/ui/web-app.tsx',
+        'app/src/ui/web-emoji.ts',
+        'app/src/ui/web/contracts.ts',
+        'app/src/ui/web/client.ts',
+        'app/src/ui/web/platform.ts',
+        'app/src/ui/web/store.ts',
+      ],
+      capabilities,
+    },
+    assets: {
+      bootstrap: bootstrapAsset,
+      application: compiledAssets.application,
+      stylesheet: compiledAssets.stylesheet,
+      highlighter: compiledHighlighter,
+    },
+  }
+  writeFileAtomically(
     path.join(publicDir, 'build-manifest.json'),
-    `${JSON.stringify(
-      {
-        ...buildInfo,
-        renderer: {
-          entry: 'app/src/ui/web-index.tsx',
-          source: [
-            'app/src/ui/web-index.tsx',
-            'app/src/ui/web-app.tsx',
-            'app/src/ui/web-emoji.ts',
-            'app/src/ui/web/contracts.ts',
-            'app/src/ui/web/client.ts',
-            'app/src/ui/web/platform.ts',
-            'app/src/ui/web/store.ts',
-          ],
-          capabilities,
-        },
-        assets: {
-          bootstrap: bootstrapAsset,
-          application: compiledAssets.application,
-          stylesheet: compiledAssets.stylesheet,
-          highlighter: compiledHighlighter,
-        },
-      },
-      null,
-      2
-    )}\n`
+    `${JSON.stringify(manifest, null, 2)}\n`
   )
+  writeFileAtomically(path.join(publicDir, 'index.html'), html)
+  removeObsoleteGeneratedAssets(new Set(generatedAssetNames(manifest)))
   validateRuntimeAssets()
 
   console.log(

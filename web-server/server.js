@@ -35,10 +35,6 @@ try {
 }
 
 const publicDir = path.join(__dirname, 'public')
-const indexTemplate = fs.readFileSync(
-  path.join(publicDir, 'index.html'),
-  'utf8'
-)
 const MAX_REQUEST_BYTES = 10 * 1024 * 1024
 const MAX_RESPONSE_BYTES = 50 * 1024 * 1024
 const MAX_FILE_CONTENT_BYTES = 1024 * 1024
@@ -69,10 +65,10 @@ const CONTENT_SECURITY_POLICY = [
   "img-src 'self' data: https:",
   "object-src 'none'",
   "script-src 'self'",
-  "style-src 'self'",
-  // The source renderer reuses desktop virtualized-list and diff components
-  // that calculate geometry through React style attributes. Keep stylesheet
-  // elements strict while allowing only those attributes.
+  // The shared desktop React components calculate geometry through style
+  // properties. Chromium applies those CSSOM mutations to style-src in the
+  // release browser, so inline styles must be allowed for the reused UI.
+  "style-src 'self' 'unsafe-inline'",
   "style-src-attr 'unsafe-inline'",
   "worker-src 'self'",
 ].join('; ')
@@ -1240,12 +1236,17 @@ async function inspectRepository(repositoryPath) {
       }
     const topLevel = await git(['rev-parse', '--show-toplevel'], repositoryPath)
     const resolvedPath = path.resolve(topLevel.stdout.trim() || repositoryPath)
+    const [requestedRealPath, topLevelRealPath] = await Promise.all([
+      fs.promises.realpath(repositoryPath),
+      fs.promises.realpath(resolvedPath),
+    ])
     return {
       path: repositoryPath,
       repositoryPath: resolvedPath,
       kind: 'regular',
       exists: true,
       isDirectory: true,
+      isRepositoryRoot: requestedRealPath === topLevelRealPath,
       ...repositoryInspectionPathParts(resolvedPath),
     }
   }
@@ -2350,7 +2351,7 @@ function createOperationTaskManager(services) {
       }
       void operationContext.run(null, async () => {
         try {
-          const status = await getStatus(repoPath)
+          const status = await getStatus(repoPath, { noOptionalLocks: true })
           const operationState = status.operationState
           if (operationState?.position && operationState.totalCommitCount)
             task.setCommitProgress(
@@ -3024,10 +3025,15 @@ async function getCherryPickState(repoPath) {
   }
 }
 
-async function getStatus(repoPath) {
+async function getStatus(repoPath, options = {}) {
   const result = await git(
     ['status', '--porcelain=v2', '-z', '-uall', '--ignore-submodules=none'],
-    repoPath
+    repoPath,
+    [0],
+    undefined,
+    options.noOptionalLocks
+      ? { ...process.env, GIT_OPTIONAL_LOCKS: '0' }
+      : undefined
   )
   const records = result.stdout.split('\0')
   const files = []
@@ -3750,6 +3756,52 @@ async function getGitConfigIdentityValue(repoPath, name) {
     [0, 1]
   )
   return result.exitCode === 0 ? parseGitConfigOrigin(result.stdout) : null
+}
+
+async function editGitConfigValue(repoPath, scope, name, value, operation) {
+  if (!['local', 'global', 'effective', 'origin'].includes(scope))
+    throw Object.assign(new Error('Git config scope is invalid'), {
+      statusCode: 400,
+    })
+  if (!['get', 'set', 'remove'].includes(operation))
+    throw Object.assign(new Error('Git config operation is invalid'), {
+      statusCode: 400,
+    })
+  if (operation !== 'get' && !['local', 'global'].includes(scope))
+    throw Object.assign(new Error('Git config scope does not support writes'), {
+      statusCode: 400,
+    })
+
+  if (operation === 'get') {
+    if (scope === 'origin') {
+      const origin = await getGitConfigIdentityValue(repoPath, name)
+      return { origin }
+    }
+    return {
+      value: await getGitConfigValue(
+        repoPath,
+        scope === 'effective' ? 'effective' : scope,
+        name
+      ),
+    }
+  }
+
+  const configScope = scope === 'local' ? '--local' : '--global'
+  if (operation === 'set') {
+    await git(
+      [
+        'config',
+        configScope,
+        '--replace-all',
+        name,
+        requireGitValue(value, 'Git config value'),
+      ],
+      repoPath
+    )
+  } else {
+    await git(['config', configScope, '--unset-all', name], repoPath, [0, 1])
+  }
+  return { ok: true }
 }
 
 async function getGitIdentity(repoPath) {
@@ -5552,9 +5604,7 @@ async function runOperation(repoPath, body, services = null) {
         '-a',
         value(0, 'tag'),
         '-m',
-        body.message === undefined
-          ? ''
-          : requireString(body.message, 'message'),
+        body.message === undefined ? '' : requireText(body.message, 'message'),
         ...(values[1] ? [value(1, 'commit')] : []),
       ]
       break
@@ -6310,6 +6360,49 @@ async function routeApi(req, res, url, services) {
     return sendJson(res, 200, await previewCloneRepository(body))
   }
 
+  if (req.method === 'POST' && pathname === '/api/repository-setup/files') {
+    const body = await parseJsonBody(req)
+    const repositoryPath = requireAbsolutePath(
+      body.repositoryPath,
+      'repository path'
+    )
+    const action = requireString(body.action, 'repository setup file action')
+    const repositoryName = path.basename(repositoryPath)
+
+    switch (action) {
+      case 'readme':
+        await createRepositoryFiles(repositoryPath, repositoryName, {
+          createReadme: true,
+          description: body.description,
+        })
+        break
+      case 'gitignore':
+        await createRepositoryFiles(repositoryPath, repositoryName, {
+          gitignore: requireString(body.name, 'gitignore'),
+        })
+        break
+      case 'license':
+        await createRepositoryFiles(repositoryPath, repositoryName, {
+          license: requireString(body.name, 'license'),
+        })
+        break
+      case 'description':
+        await createRepositoryFiles(repositoryPath, repositoryName, {
+          description: requireText(body.description, 'description'),
+        })
+        break
+      case 'attributes':
+        await createRepositoryFiles(repositoryPath, repositoryName, {})
+        break
+      default:
+        throw Object.assign(
+          new Error('Unsupported repository setup file action'),
+          { statusCode: 400 }
+        )
+    }
+    return sendJson(res, 200, { ok: true })
+  }
+
   if (req.method === 'POST' && pathname === '/api/repository/inspect') {
     const body = await parseJsonBody(req)
     const repositoryPath = requireRepositoryInspectionPath(body.path)
@@ -6357,6 +6450,33 @@ async function routeApi(req, res, url, services) {
       res,
       200,
       await recoverGitConfigLock(repositoryPath, scope, body.confirmed)
+    )
+  }
+
+  if (req.method === 'POST' && pathname === '/api/git/config') {
+    const body = await parseJsonBody(req)
+    const scope = requireString(body.scope, 'scope')
+    let repositoryPath
+    if (body.path || body.repoPath || url.searchParams.has('path'))
+      repositoryPath = repoPathFrom(url, body)
+    else if (scope === 'global') repositoryPath = process.cwd()
+    else
+      throw Object.assign(
+        new Error('A repository path is required for this config scope.'),
+        { statusCode: 400 }
+      )
+    const name = requireGitValue(body.name, 'Git config name')
+    const operation = requireString(body.operation, 'Git config operation')
+    return sendJson(
+      res,
+      200,
+      await editGitConfigValue(
+        repositoryPath,
+        scope,
+        name,
+        body.value,
+        operation
+      )
     )
   }
 
@@ -6481,6 +6601,7 @@ async function routeApi(req, res, url, services) {
       'log',
       'ls-files',
       'merge-base',
+      'merge-tree',
       'remote',
       'rev-list',
       'rev-parse',
@@ -6671,6 +6792,35 @@ async function routeApi(req, res, url, services) {
   if (req.method === 'POST' && pathname === '/api/dialog/show-save-dialog') {
     const selectedPath = await services.selectSavePath(await parseJsonBody(req))
     return sendJson(res, 200, { path: selectedPath })
+  }
+
+  if (req.method === 'POST' && pathname === '/api/files/read-directory') {
+    const body = await parseJsonBody(req)
+    const directoryPath = requireAbsolutePath(body.path, 'directory path')
+    return sendJson(res, 200, {
+      entries: await fs.promises.readdir(directoryPath),
+    })
+  }
+
+  if (req.method === 'POST' && pathname === '/api/files/stat') {
+    const body = await parseJsonBody(req)
+    const filePath = requireAbsolutePath(body.path)
+    const stats = await fs.promises.stat(filePath).catch(error => {
+      if (error.code === 'ENOENT') return null
+      throw error
+    })
+    return sendJson(res, 200, {
+      exists: stats !== null,
+      isDirectory: stats?.isDirectory() === true,
+    })
+  }
+
+  if (req.method === 'POST' && pathname === '/api/files/mkdir') {
+    const body = await parseJsonBody(req)
+    await fs.promises.mkdir(requireAbsolutePath(body.path), {
+      recursive: body.recursive === true,
+    })
+    return sendJson(res, 200, { ok: true })
   }
 
   if (req.method === 'POST' && pathname === '/api/os/open') {
@@ -8191,6 +8341,7 @@ async function serveStatic(req, res, pathname, sessionToken) {
   const contentType =
     contentTypes[path.extname(fullPath)] || 'application/octet-stream'
   if (relative === 'index.html') {
+    const indexTemplate = await fs.promises.readFile(fullPath, 'utf8')
     const home = os.homedir()
     const runtime = {
       session: sessionToken,
