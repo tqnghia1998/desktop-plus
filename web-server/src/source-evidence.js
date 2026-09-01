@@ -5,6 +5,7 @@ const sourceSuites = Object.freeze({
   compare: 'test-source-compare-workflows.js',
   local: 'test-source-local-workflows.js',
   sync: 'test-source-sync-workflows.js',
+  sshAuth: 'test-source-ssh-auth.js',
   advanced: 'test-source-advanced-workflows.js',
   parity: 'test-source-parity-round.js',
   recovery: 'test-source-repository-recovery.js',
@@ -96,6 +97,7 @@ const evidence = Object.freeze({
   'SYNC-09': ['sync', 'advanced'],
   'SYNC-10': ['branch', 'sync'],
   'SYNC-11': ['parity'],
+  'SYNC-12': ['sshAuth'],
 
   'STASH-01': ['renderer', 'local'],
   'STASH-02': ['evidence', 'local'],
