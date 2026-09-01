@@ -11,6 +11,7 @@ const suites = {
     'test-source-compare-workflows.js',
     'test-source-local-workflows.js',
     'test-source-sync-workflows.js',
+    'test-source-ssh-auth.js',
     'test-source-advanced-workflows.js',
     'test-source-parity-round.js',
     'test-source-repository-recovery.js',
