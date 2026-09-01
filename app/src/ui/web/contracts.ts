@@ -417,6 +417,14 @@ export interface WebOperationOptions {
   readonly createLocalBranch?: string
   readonly moveChanges?: boolean
   readonly stashChanges?: boolean
+  /**
+   * Credentials supplied by the in-app authentication dialog for one remote
+   * operation. They are never persisted in browser storage.
+   */
+  readonly genericCredentials?: {
+    readonly username: string
+    readonly password: string
+  }
   readonly resolutions?: ReadonlyArray<
     readonly [string, 'ours' | 'theirs' | 'manual']
   >
@@ -899,6 +907,10 @@ export interface WebDispatcher {
     checkSuiteIds: ReadonlyArray<number>
   ): Promise<void>
   retryLastAction(): Promise<void>
+  retryLastActionWithCredentials(
+    username: string,
+    password: string
+  ): Promise<void>
   dismissHistoryRewriteUndo(): void
   dismissCherryPickUndo(): void
   loadLfsStatus(): Promise<void>
