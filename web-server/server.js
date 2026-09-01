@@ -1941,6 +1941,32 @@ async function appendGitIgnore(repoPath, body) {
   return getStatus(repoPath)
 }
 
+async function readGitIgnore(repoPath) {
+  try {
+    return {
+      text: await fs.promises.readFile(
+        path.join(repoPath, '.gitignore'),
+        'utf8'
+      ),
+    }
+  } catch (error) {
+    if (error.code === 'ENOENT') return { text: null }
+    throw error
+  }
+}
+
+async function saveGitIgnore(repoPath, text) {
+  const ignorePath = path.join(repoPath, '.gitignore')
+  if (text === '') {
+    await fs.promises.unlink(ignorePath).catch(error => {
+      if (error.code !== 'ENOENT') throw error
+    })
+  } else {
+    await fs.promises.writeFile(ignorePath, text, 'utf8')
+  }
+  return getStatus(repoPath)
+}
+
 async function git(
   args,
   repoPath,
@@ -6840,8 +6866,23 @@ async function routeApi(req, res, url, services) {
     return sendJson(res, 200, await getStashDiff(repoPathFrom(url), url))
   }
 
+  if (req.method === 'GET' && pathname === '/api/gitignore')
+    return sendJson(res, 200, await readGitIgnore(repoPathFrom(url)))
+
   if (req.method === 'POST' && pathname === '/api/gitignore') {
     const body = await parseJsonBody(req)
+    if (body.text !== undefined) {
+      const text = requireString(
+        body.text,
+        'gitignore text',
+        MAX_FILE_CONTENT_BYTES
+      )
+      return sendJson(
+        res,
+        200,
+        await saveGitIgnore(repoPathFrom(url, body), text)
+      )
+    }
     return sendJson(
       res,
       200,
