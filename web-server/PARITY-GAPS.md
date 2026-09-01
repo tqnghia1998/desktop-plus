@@ -44,11 +44,11 @@ explicitly deferred.
 | REPO-05 | Missing-repository detection and recovery | Supported | Persisted stale paths expose Check again, Relocate, Clone repository again, and Remove recovery actions. |
 | REPO-06 | Relocate a repository | Supported | The stale-repository view validates a replacement path and updates the remembered repository and pinned path. |
 | REPO-07 | Remove a repository from the app with desktop confirmation preferences | Supported | Removal is visible, confirmed by default, and has a persisted confirmation preference. |
-| REPO-08 | Delete a repository from disk | Supported | The picker exposes confirmed Move to Trash and permanent deletion modes with safe companion validation. |
-| REPO-09 | Tutorial repository and onboarding flow | Supported | The source renderer creates the tutorial repository, tracks branch/edit/commit steps, supports pause and resume, and records completion. |
+| REPO-08 | Delete a repository from disk | Supported | The desktop Remove Repository dialog optionally moves the repository to Trash through the browser companion. |
+| REPO-09 | Tutorial repository and onboarding flow | Deferred | The desktop onboarding flow depends on account-backed services that are not exposed by the local browser adapter. |
 | REPO-10 | Repository settings, default branch, and account association | Deferred | Alias, group, and default-branch settings are source-owned; hosted account association is outside the local-only release. |
 | REPO-11 | Clone provider repository lists and provider-specific clone dialogs | Deferred | Hosted account and provider controls are intentionally not exposed. |
-| REPO-12 | Native folder selection for add, clone, init, and worktree paths | Supported | Source dialogs expose Choose folder controls backed by the macOS companion folder picker; Chrome evidence covers add, clone, init, tutorial, relocation, and worktree paths. |
+| REPO-12 | Native folder selection for add, clone, init, and worktree paths | Supported | Source dialogs expose Choose controls backed by the macOS companion folder picker; Chrome evidence covers add, clone, init, relocation, and worktree paths. |
 | REPO-14 | Repository context actions for copy, browser view, and new-window opening | Supported | The picker exposes copy path, Finder reveal, remote browser, and new-window controls. |
 | REPO-15 | Install or recover from a missing Git executable | Deferred | Missing-Git errors have a macOS-specific explanation, retry, and installation-guide action; automated Command Line Tools installation is native installer behavior outside the browser release. |
 | REPO-16 | Unsafe-directory detection and Trust Repository recovery | Supported | Source add and persisted-repository flows distinguish Git's unsafe-directory result and expose a guarded `safe.directory` trust action, covered by the repository recovery browser workflow. |
