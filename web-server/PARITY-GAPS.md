@@ -191,7 +191,7 @@ visible web feature until its source-renderer UI is wired.
 
 | ID | Desktop behavior | Web status | Evidence and disposition |
 | --- | --- | --- | --- |
-| PLATFORM-01 | Application menu and desktop keyboard shortcut system | Partial | The source renderer exposes the important Repository and Branch actions through shared toolbar menus and preserves the Preferences shortcut; the full Electron application menu and native macOS menu lifecycle remain unavailable to web content. |
+| PLATFORM-01 | Application menu and desktop keyboard shortcut system | Partial | The source renderer reuses the shared AppMenuBar for File, View, Repository, and Branch actions and preserves the Preferences shortcut; the full Electron application menu and native macOS menu lifecycle remain unavailable to web content. |
 | PLATFORM-02 | Theme, font, tab-size, title-bar, and appearance preferences | Partial | Theme, diff font, tab size, and related browser appearance settings are source-owned; the remaining gap is Electron-owned native title-bar controls and lifecycle. |
 | PLATFORM-03 | External editor discovery, configuration, and launch | Partial | Repository Tools discovers editors and exposes visible Open repository actions through the companion contract; the browser fixture verifies selection and payloads, but native editor process execution evidence remains open. |
 | PLATFORM-04 | Shell discovery, configuration, and launch | Partial | Repository Tools discovers shells and exposes visible Open repository actions through the companion contract; the browser fixture verifies selection and payloads, but native shell process execution evidence remains open. |
