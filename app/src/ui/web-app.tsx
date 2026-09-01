@@ -38,6 +38,10 @@ import { DeleteRemoteBranch } from './delete-branch/delete-remote-branch-dialog'
 import { DeleteUnusedLocalBranches } from './delete-branch/delete-unused-local-branches-dialog'
 import { AddRemoteDialog } from './manage-remotes/add-remote-dialog'
 import { ManageRemotesDialog } from './manage-remotes/manage-remotes-dialog'
+import {
+  RepositorySettings,
+  RepositorySettingsTab,
+} from './repository-settings/repository-settings'
 import { ConfirmCheckoutCommitDialog } from './checkout/confirm-checkout-commit'
 import { ConfirmRemoveRepository } from './remove-repository/confirm-remove-repository'
 import { OpenWithExternalEditor } from './open-with-external-editor/open-with-external-editor'
@@ -100,6 +104,7 @@ import {
   formatPatchToDiscardChanges,
 } from '../lib/patch-formatter'
 import { Repository } from '../models/repository'
+import type { IRemote } from '../models/remote'
 import {
   defaultDiffFontFamily,
   defaultDiffFontSize,
@@ -154,6 +159,7 @@ import {
   WebDispatcher,
   WebFile,
   WebBranch,
+  WebBranches,
   WebDiff,
   WebStash,
   WebTag,
@@ -254,6 +260,7 @@ const webCommitSummaryLengthWarningThresholdStorageKey =
   'commit-summary-length-warning-threshold'
 const webShowRecentRepositoriesStorageKey = 'show-recent-repositories'
 const webUncommittedChangesStrategyStorageKey = 'uncommitted-changes-strategy'
+const webUpdateBranchStrategyStorageKey = 'update-branch-strategy'
 const webHideWindowOnQuitStorageKey = 'hide-window-on-quit'
 const webOptOutOfUsageTrackingStorageKey = 'opt-out-of-usage-tracking'
 const webUseExternalCredentialHelperStorageKey =
@@ -272,6 +279,30 @@ const webBranchDropdownWidthStorageKey = 'branch-dropdown-width'
 const webPushPullButtonWidthStorageKey = 'push-pull-button-width'
 const webWorktreeDropdownWidthStorageKey = 'worktree-dropdown-width'
 const webToolbarButtonWidth = { min: 180, max: 620, default: 230 }
+
+function updateBranchStrategyStorageKey(repositoryPath: string) {
+  return `${webUpdateBranchStrategyStorageKey}:${repositoryPath}`
+}
+
+function getStoredUpdateBranchStrategy(repositoryPath: string) {
+  return localStorage.getItem(
+    updateBranchStrategyStorageKey(repositoryPath)
+  ) === 'rebase'
+    ? 'rebase'
+    : 'merge'
+}
+
+function setStoredUpdateBranchStrategy(
+  repositoryPath: string,
+  strategy: string
+) {
+  if (strategy === 'rebase')
+    localStorage.setItem(
+      updateBranchStrategyStorageKey(repositoryPath),
+      strategy
+    )
+  else localStorage.removeItem(updateBranchStrategyStorageKey(repositoryPath))
+}
 
 const webSuggestedActionsMenu: IMenu = {
   type: 'menu',
@@ -347,9 +378,13 @@ const webApplicationMenu: IMenu = {
       webMenuItem('pull', 'Pull'),
       webMenuItem('fetch', 'Fetch'),
       { type: 'separator', id: 'repository-separator', visible: true },
+      webMenuItem('view-repository-in-browser', 'View in your browser'),
       webMenuItem('open-external-editor', 'Open in External Editor'),
+      webMenuItem('open-with-editor', 'Open With…'),
       webMenuItem('open-in-shell', 'Open in Terminal'),
       webMenuItem('open-working-directory', 'Show in File Manager'),
+      webMenuItem('new-worktree', 'New Worktree…'),
+      webMenuItem('repository-settings', 'Repository Settings…'),
       webMenuItem('manage-remotes', 'Manage Remotes…'),
       webMenuItem('remove-repository', 'Remove Repository…'),
     ]),
@@ -357,7 +392,18 @@ const webApplicationMenu: IMenu = {
       webMenuItem('create-branch', 'New Branch…'),
       webMenuItem('rename-branch', 'Rename…'),
       webMenuItem('delete-branch', 'Delete…'),
+      webMenuItem(
+        'delete-unused-local-branches',
+        'Delete Unused Local Branches…'
+      ),
       { type: 'separator', id: 'branch-separator', visible: true },
+      webMenuItem('discard-all-changes', 'Discard All Changes…'),
+      webMenuItem(
+        'permanently-discard-all-changes',
+        'Permanently Discard All Changes…'
+      ),
+      webMenuItem('stash-all-changes', 'Stash All Changes'),
+      { type: 'separator', id: 'branch-changes-separator', visible: true },
       webMenuItem('update-from-default', 'Update from Default Branch'),
       webMenuItem('compare-to-branch', 'Compare to Branch'),
       webMenuItem('merge-branch', 'Merge into Current Branch…'),
@@ -1499,6 +1545,81 @@ function DesktopOperationAuthPrompt(props: {
   )
 }
 
+function DesktopRepositorySettingsDialog(props: {
+  readonly repository: WebApplicationState['repositories'][number]
+  readonly branches: WebBranches | null
+  readonly dispatcher: WebDispatcher
+  readonly onDismissed: () => void
+  readonly onManageRemotes: () => void
+}) {
+  const repository = React.useMemo(() => {
+    const value = getDesktopRepository(props.repository.path)
+    Object.assign(value, {
+      _url: props.repository.remoteURL || null,
+      workflowPreferences: {
+        updateBranchStrategy: getStoredUpdateBranchStrategy(
+          props.repository.path
+        ),
+      },
+    })
+    return value
+  }, [props.repository.path, props.repository.remoteURL])
+  const remote = React.useMemo<IRemote | null>(() => {
+    const origin =
+      props.branches?.remotes?.find(remote => remote.name === 'origin') ||
+      props.branches?.remotes?.[0]
+    return origin ? { name: origin.name, url: origin.url } : null
+  }, [props.branches?.remotes])
+  const desktopDispatcher = React.useMemo(
+    () =>
+      ({
+        openInBrowser: (url: string) => props.dispatcher.openExternal(url),
+        setRemoteURL: (_repository: Repository, name: string, url: string) =>
+          props.dispatcher.runOperationOrThrow('remote-set-url', {
+            values: [name, url],
+          }),
+        updateRepositoryDefaultBranch: (
+          _repository: Repository,
+          branch: string
+        ) => props.dispatcher.setRepositoryDefaultBranch(branch),
+        saveGitIgnore: (_repository: Repository, text: string) =>
+          props.dispatcher.saveGitIgnore(text),
+        updateRepositoryAccount: () => Promise.resolve(),
+        updateRepositoryWorkflowPreferences: (
+          _repository: Repository,
+          preferences: { readonly updateBranchStrategy?: string }
+        ) => {
+          setStoredUpdateBranchStrategy(
+            props.repository.path,
+            preferences.updateBranchStrategy || 'merge'
+          )
+          return Promise.resolve()
+        },
+        refreshAuthor: () => props.dispatcher.loadGitIdentity(),
+        updateRepositoryEditorOverride: () => Promise.resolve(),
+        showPopup: (popup: { readonly type: PopupType }) => {
+          if (popup.type === PopupType.ManageRemotes) props.onManageRemotes()
+          return Promise.resolve()
+        },
+      } as unknown as Dispatcher),
+    [props.dispatcher, props.onManageRemotes]
+  )
+
+  return (
+    <DialogStackContext.Provider value={{ isTopMost: true }}>
+      <RepositorySettings
+        initialSelectedTab={RepositorySettingsTab.Remote}
+        remote={remote}
+        dispatcher={desktopDispatcher}
+        repository={repository}
+        repositoryAccount={null}
+        accounts={[]}
+        onDismissed={props.onDismissed}
+      />
+    </DialogStackContext.Provider>
+  )
+}
+
 function DesktopAppError(props: {
   readonly state: WebApplicationState
   readonly dispatcher: WebDispatcher
@@ -2297,6 +2418,12 @@ function DesktopToolbar(props: {
     readonly createBranch: number
     readonly renameBranch: number
     readonly deleteBranch: number
+    readonly discardAllChanges: number
+    readonly permanentlyDiscardAllChanges: number
+    readonly stashAllChanges: number
+    readonly newWorktree: number
+    readonly openWithEditor: number
+    readonly deleteUnusedLocalBranches: number
     readonly manageRemotes: number
     readonly mergeBranch: number
     readonly squashMergeBranch: number
@@ -2786,6 +2913,35 @@ function DesktopToolbar(props: {
     }
     if (requests.deleteBranch !== previous.deleteBranch && currentWebBranch)
       setBranchToDelete(currentWebBranch)
+    if (requests.discardAllChanges !== previous.discardAllChanges) {
+      setDiscardAllChangesPermanently(false)
+      setDiscardAllChangesOpen(true)
+    }
+    if (
+      requests.permanentlyDiscardAllChanges !==
+      previous.permanentlyDiscardAllChanges
+    ) {
+      setDiscardAllChangesPermanently(true)
+      setDiscardAllChangesOpen(true)
+    }
+    if (
+      requests.stashAllChanges !== previous.stashAllChanges &&
+      currentWebBranch &&
+      (props.state.status?.workingDirectory.files.length || 0) > 0
+    )
+      void props.dispatcher.runOperation('stash', {
+        values: (props.state.status?.workingDirectory.files || []).map(
+          file => file.path
+        ),
+        includeUntracked: true,
+      })
+    if (requests.newWorktree !== previous.newWorktree) setWorktreeToAdd(true)
+    if (requests.openWithEditor !== previous.openWithEditor)
+      setOpenWithEditorOpen(true)
+    if (
+      requests.deleteUnusedLocalBranches !== previous.deleteUnusedLocalBranches
+    )
+      setDeleteUnusedLocalBranchesOpen(true)
     if (requests.manageRemotes !== previous.manageRemotes)
       setManageRemotesOpen(true)
     if (requests.mergeBranch !== previous.mergeBranch)
@@ -2793,7 +2949,12 @@ function DesktopToolbar(props: {
     if (requests.squashMergeBranch !== previous.squashMergeBranch)
       setMergeOperation({ squash: true })
     if (requests.rebaseBranch !== previous.rebaseBranch) setRebaseDialog({})
-  }, [currentWebBranch, props.toolbarMenuRequests])
+  }, [
+    currentWebBranch,
+    props.dispatcher,
+    props.state.status?.workingDirectory.files,
+    props.toolbarMenuRequests,
+  ])
   const repositoryActionItems = React.useMemo<
     ReadonlyArray<ToolbarActionMenuItem>
   >(
@@ -3013,6 +3174,9 @@ function DesktopToolbar(props: {
         action: () =>
           void props.dispatcher.runOperation('update-from-default', {
             defaultBranch: defaultBranch || undefined,
+            updateStrategy: getStoredUpdateBranchStrategy(
+              props.state.selectedRepositoryPath || ''
+            ),
           }),
       },
       {
@@ -6630,6 +6794,8 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
     Math.min(500, Math.max(220, getNumber(webSidebarWidthStorageKey, 250)))
   )
   const [repositoryDialogOpen, setRepositoryDialogOpen] = React.useState(false)
+  const [repositorySettingsOpen, setRepositorySettingsOpen] =
+    React.useState(false)
   const [preferencesOpen, setPreferencesOpen] = React.useState(false)
   const [webAppMenuState, setWebAppMenuState] = React.useState(() =>
     AppMenuState.fromMenu(webApplicationMenu)
@@ -6639,6 +6805,12 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
     createBranch: 0,
     renameBranch: 0,
     deleteBranch: 0,
+    discardAllChanges: 0,
+    permanentlyDiscardAllChanges: 0,
+    stashAllChanges: 0,
+    newWorktree: 0,
+    openWithEditor: 0,
+    deleteUnusedLocalBranches: 0,
     manageRemotes: 0,
     mergeBranch: 0,
     squashMergeBranch: 0,
@@ -7160,6 +7332,31 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
         case 'fetch':
           if (path) void dispatcher.runOperation('fetch')
           break
+        case 'view-repository-in-browser':
+          if (selectedRepository?.remoteWebURL)
+            dispatcher.openExternal(selectedRepository.remoteWebURL)
+          break
+        case 'open-with-editor':
+          requestToolbarMenu('openWithEditor')
+          break
+        case 'new-worktree':
+          requestToolbarMenu('newWorktree')
+          break
+        case 'repository-settings':
+          if (selectedRepository) setRepositorySettingsOpen(true)
+          break
+        case 'discard-all-changes':
+          requestToolbarMenu('discardAllChanges')
+          break
+        case 'permanently-discard-all-changes':
+          requestToolbarMenu('permanentlyDiscardAllChanges')
+          break
+        case 'stash-all-changes':
+          requestToolbarMenu('stashAllChanges')
+          break
+        case 'delete-unused-local-branches':
+          requestToolbarMenu('deleteUnusedLocalBranches')
+          break
         case 'create-branch':
           requestToolbarMenu('createBranch')
           break
@@ -7185,6 +7382,7 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
           if (path)
             void dispatcher.runOperation('update-from-default', {
               defaultBranch: state.branches?.defaultBranch || undefined,
+              updateStrategy: getStoredUpdateBranchStrategy(path),
             })
           break
         case 'open-external-editor':
@@ -7208,8 +7406,9 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
       editorIntegration,
       openCloneDialog,
       openInitDialog,
-      requestRepositoryRemoval,
       requestToolbarMenu,
+      requestRepositoryRemoval,
+      selectedRepository,
       shellIntegration,
       state.branches?.defaultBranch,
       state.selectedRepositoryPath,
@@ -7408,6 +7607,18 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
                 dispatcher={dispatcher}
                 task={state.operationTask}
               />
+              {repositorySettingsOpen && selectedRepository ? (
+                <DesktopRepositorySettingsDialog
+                  branches={state.branches}
+                  dispatcher={dispatcher}
+                  onDismissed={() => setRepositorySettingsOpen(false)}
+                  onManageRemotes={() => {
+                    setRepositorySettingsOpen(false)
+                    requestToolbarMenu('manageRemotes')
+                  }}
+                  repository={selectedRepository}
+                />
+              ) : null}
               <DesktopAppError dispatcher={dispatcher} state={state} />
             </DesktopAppChrome>
             {repositoryDialogOpen ? (
