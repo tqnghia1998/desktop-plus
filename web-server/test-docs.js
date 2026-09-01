@@ -30,7 +30,7 @@ const inventoryRows = [
   ),
 ].map(match => ({ id: match[1], status: match[2] }))
 
-assert.equal(inventoryRows.length, 131, 'Parity inventory row count changed')
+assert.equal(inventoryRows.length, 134, 'Parity inventory row count changed')
 const inventoryCounts = Object.fromEntries(
   ['Supported', 'Partial', 'Missing', 'Deferred'].map(status => [
     status,
@@ -39,9 +39,9 @@ const inventoryCounts = Object.fromEntries(
 )
 assert.deepEqual(inventoryCounts, {
   Supported: 98,
-  Partial: 6,
-  Missing: 0,
-  Deferred: 27,
+  Partial: 9,
+  Missing: 2,
+  Deferred: 25,
 })
 
 const integrationSuites = new Set([
