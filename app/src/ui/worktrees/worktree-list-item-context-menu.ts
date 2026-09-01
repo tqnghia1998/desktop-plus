@@ -8,8 +8,10 @@ interface IWorktreeContextMenuConfig {
   readonly path: string
   readonly isMainWorktree: boolean
   readonly isLocked: boolean
+  readonly isPrunable?: boolean
   readonly onRenameWorktree?: (path: string) => void
   readonly onRemoveWorktree?: (path: string) => void
+  readonly onPruneWorktree?: (path: string) => void
   readonly onOpenInNewWindow?: () => void
 }
 
@@ -20,8 +22,10 @@ export function generateWorktreeContextMenuItems(
     path,
     isMainWorktree,
     isLocked,
+    isPrunable,
     onRenameWorktree,
     onRemoveWorktree,
+    onPruneWorktree,
     onOpenInNewWindow,
   } = config
   const name = Path.basename(path)
@@ -63,6 +67,14 @@ export function generateWorktreeContextMenuItems(
       label: 'Delete…',
       action: () => onRemoveWorktree(path),
       enabled: canMutate,
+    })
+  }
+
+  if (onPruneWorktree !== undefined && isPrunable) {
+    items.push({
+      label: 'Prune worktree…',
+      action: () => onPruneWorktree(path),
+      enabled: !isMainWorktree,
     })
   }
 
