@@ -67,9 +67,9 @@ shell, folder-picker, update, and LFS controls require the
 companion configuration and evidence described in the source-platform browser
 fixture; the platform-sensitive browser fixture uses injected services and
 does not replace native editor, shell, filesystem, installer, or Git LFS
-execution evidence. The browser application menu and keyboard shortcuts are
-covered as a Partial parity surface because the native macOS menu bar remains
-outside web renderer ownership.
+execution evidence. Repository and Branch actions are available in shared
+toolbar menus; the full application menu remains Partial because the native
+macOS menu bar remains outside web-renderer ownership.
 
 `yarn test:web` also verifies generic HTTP(S) credential lookup through Git's
 configured credential helper. The companion must suppress editor askpass and
