@@ -255,6 +255,10 @@ export interface WebHistoryRewriteUndo {
   readonly rewrittenTip: string
 }
 
+export interface WebCherryPickUndo extends WebHistoryRewriteUndo {
+  readonly count: number
+}
+
 export interface WebChangesFilter {
   readonly filterText: string
   readonly isIncludedInCommit: boolean
@@ -682,14 +686,13 @@ export interface WebApplicationState {
     | 'pull-requests'
     | 'notifications'
     | 'account'
-    | 'repository-tools'
     | 'copilot'
     | 'updates'
   readonly status: WebStatus | null
   readonly branches: WebBranches | null
   readonly history: ReadonlyArray<WebCommit>
   readonly historyRewriteUndo: WebHistoryRewriteUndo | null
-  readonly cherryPickUndo: WebHistoryRewriteUndo | null
+  readonly cherryPickUndo: WebCherryPickUndo | null
   readonly hasMoreHistory: boolean
   readonly selectedHistoryCommitSHA: string | null
   readonly historyCommitDetails: WebCommitDetails | null
@@ -800,6 +803,7 @@ export interface WebDispatcher {
   selectHistoryFile(path: string): Promise<void>
   clearHistoryInspection(): void
   loadComparison(branch: string, mode: 'Ahead' | 'Behind'): Promise<void>
+  loadRemoteTagMetadata(): Promise<WebBranches>
   inspectStash(stash: WebStash): Promise<void>
   selectStashFile(path: string): Promise<void>
   clearStashInspection(): void
@@ -832,6 +836,10 @@ export interface WebDispatcher {
     operation: WebGitOperation,
     options?: WebOperationOptions
   ): Promise<void>
+  runOperationOrThrow(
+    operation: WebGitOperation,
+    options?: WebOperationOptions
+  ): Promise<void>
   cancelOperation(): Promise<void>
   previewPruneBranches(): Promise<ReadonlyArray<WebBranchPruneCandidate>>
   commit(
@@ -851,7 +859,6 @@ export interface WebDispatcher {
       | 'pull-requests'
       | 'notifications'
       | 'account'
-      | 'repository-tools'
       | 'copilot'
       | 'updates'
   ): Promise<void>
@@ -892,6 +899,8 @@ export interface WebDispatcher {
     checkSuiteIds: ReadonlyArray<number>
   ): Promise<void>
   retryLastAction(): Promise<void>
+  dismissHistoryRewriteUndo(): void
+  dismissCherryPickUndo(): void
   loadLfsStatus(): Promise<void>
   installLfs(scope: 'local' | 'global', confirmed: boolean): Promise<void>
   repairLfs(confirmed: boolean): Promise<void>
