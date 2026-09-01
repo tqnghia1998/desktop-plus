@@ -170,11 +170,11 @@ visible web feature until its source-renderer UI is wired.
 
 | ID | Desktop behavior | Web status | Evidence and disposition |
 | --- | --- | --- | --- |
-| WT-01 | Searchable grouped worktree list and dropdown | Supported | Repository Tools provides a searchable list grouped into main and linked worktrees. |
+| WT-01 | Searchable grouped worktree list and dropdown | Supported | The source toolbar renders the shared searchable worktree dropdown, grouped into main and linked worktrees, when the worktree preference is enabled. |
 | WT-03 | Checkout a remote branch or Pull Request in a new worktree | Deferred | Source-renderer controls create worktrees from local and remote branches; Pull Request worktree checkout requires hosted provider controls outside the local-only release. |
 | WT-04 | Rename a worktree while preserving its parent directory | Supported | The source rename dialog validates a new sibling name and maps it to the existing parent directory before invoking the companion move operation. |
 | WT-05 | Open a worktree in a new desktop window | Supported | Worktree rows expose a new-window action backed by the source platform contract. |
-| WT-06 | Locked, prunable, and force-remove recovery dialogs | Supported | Worktree state displays locked, prunable, and dirty markers and routes prune or force-remove through distinct guarded confirmations. |
+| WT-06 | Locked, prunable, and force-remove recovery dialogs | Supported | Worktree state displays locked, prunable, and dirty markers; the shared toolbar context menu exposes prune, and removal routes through the existing force-remove recovery dialog. |
 | WT-07 | Worktree removal confirmation preferences and dirty-change handling | Supported | Preferences persist removal confirmation; dirty or locked worktrees require a distinct force-removal confirmation, while the opt-out path remains guarded by the companion. |
 | WT-08 | `.worktreeinclude` copy behavior and related creation options | Supported | Worktree creation visibly reports configured include patterns and the companion copies matching ignored files into the new worktree, with Chrome execution evidence. |
 
@@ -191,7 +191,7 @@ visible web feature until its source-renderer UI is wired.
 
 | ID | Desktop behavior | Web status | Evidence and disposition |
 | --- | --- | --- | --- |
-| PLATFORM-01 | Application menu and desktop keyboard shortcut system | Partial | The source renderer provides File, View, Repository, and Preferences menus plus macOS keyboard equivalents in the browser; the native macOS menu bar and Electron-owned menu lifecycle remain unavailable to web content. |
+| PLATFORM-01 | Application menu and desktop keyboard shortcut system | Partial | The source renderer exposes the important Repository and Branch actions through shared toolbar menus and preserves the Preferences shortcut; the full Electron application menu and native macOS menu lifecycle remain unavailable to web content. |
 | PLATFORM-02 | Theme, font, tab-size, title-bar, and appearance preferences | Partial | Theme, diff font, tab size, and related browser appearance settings are source-owned; the remaining gap is Electron-owned native title-bar controls and lifecycle. |
 | PLATFORM-03 | External editor discovery, configuration, and launch | Partial | Repository Tools discovers editors and exposes visible Open repository actions through the companion contract; the browser fixture verifies selection and payloads, but native editor process execution evidence remains open. |
 | PLATFORM-04 | Shell discovery, configuration, and launch | Partial | Repository Tools discovers shells and exposes visible Open repository actions through the companion contract; the browser fixture verifies selection and payloads, but native shell process execution evidence remains open. |
