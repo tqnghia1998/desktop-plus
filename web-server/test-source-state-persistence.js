@@ -120,18 +120,30 @@ async function main() {
       'pointer'
     )
     const toolbarResizeHandles = toolbar.locator('.resize-handle')
-    assert.equal(await toolbarResizeHandles.count(), 2)
-    assert.equal(
-      await toolbarResizeHandles
-        .first()
-        .evaluate(handle => getComputedStyle(handle).cursor),
-      'ew-resize'
-    )
+    assert.equal(await toolbarResizeHandles.count(), 3)
+    const resizeHandles = [
+      toolbar.locator(
+        '.resizable-component:has(.branch-toolbar-button) .resize-handle'
+      ),
+      toolbar.locator(
+        '.resizable-component:has(.push-pull-button) .resize-handle'
+      ),
+    ]
+    for (const handle of [
+      ...resizeHandles,
+      toolbar.locator(
+        '.resizable-component:has(.worktree-button) .resize-handle'
+      ),
+    ])
+      assert.equal(
+        await handle.evaluate(element => getComputedStyle(element).cursor),
+        'ew-resize'
+      )
     for (const [index, key] of [
       'branch-dropdown-width',
       'push-pull-button-width',
     ].entries()) {
-      const handle = toolbarResizeHandles.nth(index)
+      const handle = resizeHandles[index]
       const resizeBox = await handle.boundingBox()
       assert.ok(resizeBox)
       await page.mouse.move(resizeBox.x + 2, resizeBox.y + 2)
