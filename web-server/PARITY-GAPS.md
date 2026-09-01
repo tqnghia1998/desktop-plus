@@ -42,7 +42,7 @@ visible web feature until its source-renderer UI is wired.
 | REPO-07 | Remove a repository from the app with desktop confirmation preferences | Supported | Removal is visible, confirmed by default, and has a persisted confirmation preference. |
 | REPO-08 | Delete a repository from disk | Supported | The desktop Remove Repository dialog optionally moves the repository to Trash through the browser companion. |
 | REPO-09 | Tutorial repository and onboarding flow | Deferred | The desktop onboarding flow depends on account-backed services that are not exposed by the local browser adapter. |
-| REPO-10 | Repository settings, default branch, and account association | Deferred | Alias, group, and default-branch settings are source-owned; hosted account association is outside the local-only release. |
+| REPO-10 | Repository settings, default branch, and account association | Partial | The shared Repository Settings dialog exposes remote URL, default branch, Git config, ignored files, and the shared integrations view; hosted account association and repository-specific native editor overrides remain outside the local-only release. |
 | REPO-11 | Clone provider repository lists and provider-specific clone dialogs | Deferred | Hosted account and provider controls are intentionally not exposed. |
 | REPO-12 | Native folder selection for add, clone, init, and worktree paths | Supported | Source dialogs expose Choose controls backed by the macOS companion folder picker; Chrome evidence covers add, clone, init, relocation, and worktree paths. |
 | REPO-14 | Repository context actions for copy, browser view, and new-window opening | Supported | The picker exposes copy path, Finder reveal, remote browser, and new-window controls. |

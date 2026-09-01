@@ -39,9 +39,9 @@ const inventoryCounts = Object.fromEntries(
 )
 assert.deepEqual(inventoryCounts, {
   Supported: 99,
-  Partial: 9,
+  Partial: 10,
   Missing: 1,
-  Deferred: 25,
+  Deferred: 24,
 })
 
 const integrationSuites = new Set([
@@ -52,6 +52,7 @@ const integrationSuites = new Set([
   'test-source-local-workflows.js',
   'test-source-sync-workflows.js',
   'test-source-ssh-auth.js',
+  'test-source-application-menu.js',
   'test-source-advanced-workflows.js',
   'test-source-parity-round.js',
   'test-source-repository-recovery.js',
