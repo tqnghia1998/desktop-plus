@@ -3002,13 +3002,15 @@ export function createWebApplicationStore(
       }
     },
 
-    async launchIntegration(kind, name, custom = null) {
-      const target = selectedPath()
+    async launchIntegration(kind, name, custom = null, requestedTarget) {
+      const target = requestedTarget || selectedPath()
       begin()
       try {
         await platform.launchIntegration(kind, target, name, custom)
       } catch (error) {
-        fail(error, () => dispatcher.launchIntegration(kind, name, custom))
+        fail(error, () =>
+          dispatcher.launchIntegration(kind, name, custom, requestedTarget)
+        )
       } finally {
         update({ loading: false })
       }
