@@ -23,6 +23,7 @@ import {
   ToolbarActionMenu,
   ToolbarActionMenuItem,
 } from './toolbar'
+import { AppMenuBar } from './app-menu/app-menu-bar'
 import * as octicons from './octicons/octicons.generated'
 import { Changes, ChangesSidebar } from './changes'
 import { NoChanges } from './changes/no-changes'
@@ -114,7 +115,13 @@ import { defaultCopyPathNormalization } from '../models/copy-path-normalization'
 import type { Dispatcher } from './dispatcher'
 import { RepositoryLayout } from './repository-layout'
 import { RepositoryTabs } from './repository-tabs'
-import type { IMenu } from '../models/app-menu'
+import { AppMenu as AppMenuState } from '../models/app-menu'
+import type {
+  IMenu,
+  IMenuItem,
+  ISubmenuItem,
+  MenuItem,
+} from '../models/app-menu'
 import {
   getHideWhitespaceInDiff,
   getImageDiffType,
@@ -283,6 +290,70 @@ const webSuggestedActionsMenu: IMenu = {
     accelerator: null,
     accessKey: null,
   })),
+}
+
+function webMenuItem(
+  id: string,
+  label: string,
+  accelerator: string | null = null
+): IMenuItem {
+  return {
+    type: 'menuItem',
+    id,
+    label,
+    enabled: true,
+    visible: true,
+    accelerator,
+    accessKey: null,
+  }
+}
+
+function webSubmenu(
+  id: string,
+  label: string,
+  items: ReadonlyArray<MenuItem>
+): ISubmenuItem {
+  return {
+    type: 'submenuItem',
+    id,
+    label,
+    enabled: true,
+    visible: true,
+    accessKey: null,
+    menu: { type: 'menu', id, items },
+  }
+}
+
+const webApplicationMenu: IMenu = {
+  type: 'menu',
+  items: [
+    webSubmenu('file', 'File', [
+      webMenuItem('add-repository', 'Add Local Repository…'),
+      webMenuItem('clone-repository', 'Clone Repository…'),
+      webMenuItem('create-repository', 'Create New Repository…'),
+      { type: 'separator', id: 'file-separator', visible: true },
+      webMenuItem('show-preferences', 'Preferences…', 'CmdOrCtrl+,'),
+    ]),
+    webSubmenu('view', 'View', [
+      webMenuItem('show-changes', 'Changes'),
+      webMenuItem('show-history', 'History'),
+      webMenuItem('show-compare', 'Compare'),
+    ]),
+    webSubmenu('repository', 'Repository', [
+      webMenuItem('push', 'Push'),
+      webMenuItem('pull', 'Pull'),
+      webMenuItem('fetch', 'Fetch'),
+      { type: 'separator', id: 'repository-separator', visible: true },
+      webMenuItem('open-external-editor', 'Open in External Editor'),
+      webMenuItem('open-in-shell', 'Open in Terminal'),
+      webMenuItem('open-working-directory', 'Show in File Manager'),
+      webMenuItem('remove-repository', 'Remove Repository…'),
+    ]),
+    webSubmenu('branch', 'Branch', [
+      webMenuItem('update-from-default', 'Update from Default Branch'),
+      webMenuItem('compare-to-branch', 'Compare to Branch'),
+    ]),
+  ],
 }
 
 function getStoredIntegrationSelection(key: string): WebIntegrationSelection {
@@ -6473,6 +6544,10 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
   )
   const [repositoryDialogOpen, setRepositoryDialogOpen] = React.useState(false)
   const [preferencesOpen, setPreferencesOpen] = React.useState(false)
+  const [webAppMenuState, setWebAppMenuState] = React.useState(() =>
+    AppMenuState.fromMenu(webApplicationMenu)
+  )
+  const [webAppMenuOpen, setWebAppMenuOpen] = React.useState(false)
   const [browserNotificationsEnabled, setBrowserNotificationsEnabled] =
     React.useState(() =>
       getBoolean(webBrowserNotificationsEnabledStorageKey, true)
@@ -6944,6 +7019,102 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
   const openRepositoryRelocation = (path: string) => {
     setRepositoryRelocationPath(path)
   }
+  const executeWebMenuItem = React.useCallback(
+    (item: MenuItem) => {
+      if (item.type !== 'menuItem') return
+      const path = state.selectedRepositoryPath
+      switch (item.id) {
+        case 'add-repository':
+          openRepositoryDialog()
+          break
+        case 'clone-repository':
+          openCloneDialog()
+          break
+        case 'create-repository':
+          openInitDialog()
+          break
+        case 'show-preferences':
+          void warmWebPreferences().then(() => setPreferencesOpen(true))
+          break
+        case 'show-changes':
+          dispatcher.selectSection('changes')
+          break
+        case 'show-history':
+          dispatcher.selectSection('history')
+          break
+        case 'show-compare':
+        case 'compare-to-branch':
+          dispatcher.selectSection('compare')
+          break
+        case 'push':
+          if (path) void dispatcher.runOperation('push')
+          break
+        case 'pull':
+          if (path) void dispatcher.runOperation('pull')
+          break
+        case 'fetch':
+          if (path) void dispatcher.runOperation('fetch')
+          break
+        case 'update-from-default':
+          if (path)
+            void dispatcher.runOperation('update-from-default', {
+              defaultBranch: state.branches?.defaultBranch || undefined,
+            })
+          break
+        case 'open-external-editor':
+          if (path)
+            void dispatcher.openIntegration('editor', path, editorIntegration)
+          break
+        case 'open-in-shell':
+          if (path)
+            void dispatcher.openIntegration('shell', path, shellIntegration)
+          break
+        case 'open-working-directory':
+          if (path) void dispatcher.openPath(path, true)
+          break
+        case 'remove-repository':
+          if (path) requestRepositoryRemoval(path)
+          break
+      }
+    },
+    [
+      dispatcher,
+      editorIntegration,
+      openCloneDialog,
+      openInitDialog,
+      requestRepositoryRemoval,
+      shellIntegration,
+      state.branches?.defaultBranch,
+      state.selectedRepositoryPath,
+    ]
+  )
+  const webAppMenuDispatcher = React.useMemo(
+    () =>
+      ({
+        closeFoldout: (foldout: FoldoutType) => {
+          if (foldout === FoldoutType.AppMenu) {
+            setWebAppMenuOpen(false)
+            setWebAppMenuState(menu => menu.withReset())
+          }
+          return Promise.resolve()
+        },
+        executeMenuItem: (item: MenuItem) => {
+          executeWebMenuItem(item)
+          setWebAppMenuOpen(false)
+          setWebAppMenuState(menu => menu.withReset())
+          return Promise.resolve()
+        },
+        setAppMenuState: (update: (menu: AppMenuState) => AppMenuState) => {
+          setWebAppMenuState(update)
+          return Promise.resolve()
+        },
+        showFoldout: (foldout: { readonly type: FoldoutType }) => {
+          if (foldout.type === FoldoutType.AppMenu) setWebAppMenuOpen(true)
+          return Promise.resolve()
+        },
+      } as unknown as Dispatcher),
+    [executeWebMenuItem]
+  )
 
   return (
     <WebIntegrationPreferencesContext.Provider
@@ -6992,6 +7163,23 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
               tabSize={diffPreferences.tabSize}
               theme={diffPreferences.theme}
             >
+              <AppMenuBar
+                appMenu={webAppMenuState.openMenus}
+                dispatcher={webAppMenuDispatcher}
+                highlightAppMenuAccessKeys={false}
+                foldoutState={
+                  webAppMenuOpen
+                    ? {
+                        type: FoldoutType.AppMenu,
+                        enableAccessKeyNavigation: false,
+                      }
+                    : null
+                }
+                onLostFocus={() => {
+                  setWebAppMenuOpen(false)
+                  setWebAppMenuState(menu => menu.withReset())
+                }}
+              />
               <DesktopToolbar
                 dispatcher={dispatcher}
                 onOpenRepositoryDialog={openRepositoryDialog}
