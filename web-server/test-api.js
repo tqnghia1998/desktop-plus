@@ -3,7 +3,7 @@ const fs = require('fs')
 const os = require('os')
 const path = require('path')
 const { execFileSync } = require('child_process')
-const { createServer } = require('./server')
+const { createServer, readStoredGitCredential } = require('./server')
 const {
   authenticatedGitEnvironment,
   githubCredentialService,
@@ -39,6 +39,20 @@ async function main() {
   git(repo, 'init', '-b', 'main')
   git(repo, 'config', 'user.name', 'API Test')
   git(repo, 'config', 'user.email', 'api-test@example.com')
+  git(
+    repo,
+    'config',
+    'credential.helper',
+    '!f() { echo username=stored-user; echo password=stored-password; }; f'
+  )
+  assert.deepEqual(
+    await readStoredGitCredential(
+      repo,
+      'https://credential-web-test.invalid/owner/repository.git'
+    ),
+    { username: 'stored-user', password: 'stored-password' }
+  )
+  git(repo, 'config', '--unset-all', 'credential.helper')
   await fs.promises.writeFile(path.join(repo, 'tracked.txt'), 'first\n')
   git(repo, 'add', 'tracked.txt')
   git(repo, 'commit', '-m', 'Initial commit')
@@ -1453,12 +1467,16 @@ async function main() {
       'https://github.example/owner/repo.git',
       'push-token'
     )
+    assert.equal(authenticatedEnv.GIT_CONFIG_KEY_0, 'credential.helper')
+    assert.equal(authenticatedEnv.GIT_CONFIG_VALUE_0, '')
+    assert.equal(authenticatedEnv.GIT_CONFIG_KEY_1, 'core.askPass')
+    assert.equal(authenticatedEnv.GIT_CONFIG_VALUE_1, '')
     assert.equal(
-      authenticatedEnv.GIT_CONFIG_KEY_0,
+      authenticatedEnv.GIT_CONFIG_KEY_2,
       'http.https://github.example/.extraHeader'
     )
     assert.equal(authenticatedEnv.GIT_TERMINAL_PROMPT, '0')
-    assert.doesNotMatch(authenticatedEnv.GIT_CONFIG_VALUE_0, /push-token/)
+    assert.doesNotMatch(authenticatedEnv.GIT_CONFIG_VALUE_2, /push-token/)
 
     result = await request(base, '/api/git/operation', {
       method: 'POST',
