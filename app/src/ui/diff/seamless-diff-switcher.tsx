@@ -449,19 +449,34 @@ export class SeamlessDiffSwitcher extends React.Component<
 
     this.loadingState = { file: fileToLoad, diff }
 
-    const fileContents = await getFileContents(
-      this.props.repository,
-      fileToLoad
-    )
+    try {
+      const fileContents = await getFileContents(
+        this.props.repository,
+        fileToLoad
+      )
 
-    this.loadingState = null
+      // Has the file changed while we've been reading it?
+      if (!isSameFile(fileToLoad, this.props.file)) {
+        return
+      }
 
-    // Has the file changed while we've been reading it?
-    if (!isSameFile(fileToLoad, this.props.file)) {
-      return
+      this.applyFileContents(diff, fileContents)
+    } catch {
+      // The patch can still be rendered without syntax-highlighted contents.
+      // Do not leave the switcher in its loading state if the optional content
+      // request fails (for example, after a repository refresh).
+      if (!isSameFile(fileToLoad, this.props.file)) {
+        return
+      }
+      this.applyFileContents(diff, {
+        file: fileToLoad,
+        oldContents: [],
+        newContents: [],
+        canBeExpanded: false,
+      })
+    } finally {
+      this.loadingState = null
     }
-
-    this.applyFileContents(diff, fileContents)
   }
 
   private applyFileContents(
