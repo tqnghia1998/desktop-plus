@@ -65,8 +65,8 @@ This is not a claim of full feature-for-feature desktop parity. The complete
 implementation-gap inventory, including partial local workflows and deferred
 provider/platform behavior, is in
 [PARITY-GAPS.md](PARITY-GAPS.md).
-The current audit has 131 rows: 99 Supported, 6 Partial, 0 Missing, and
-26 Deferred.
+[CAPABILITIES.md](CAPABILITIES.md) is the single source of truth for the
+current status totals.
 
 The browser application menu exposes local File, View, Repository, and
 Preferences actions plus macOS keyboard equivalents. It remains Partial
@@ -105,12 +105,19 @@ through the companion.
 
 ## Credentials and platform limits
 
-Hosted credentials are not part of the current source-renderer release. The
-companion still contains the isolated credential paths reserved for a future
-hosted UI, but the browser does not collect or persist provider tokens. On
-Linux, the folder picker additionally requires `zenity`; reveal, trash, and
-default-open require `xdg-open` and `gio`. The companion reports missing Linux
-dependencies with installation guidance.
+Hosted account sign-in and provider tokens are not part of the current
+source-renderer release. For an HTTP(S) Git remote, the companion first looks
+up credentials through the configured Git credential helper (for example,
+macOS Keychain or Git Credential Manager) without allowing an editor askpass
+prompt. If no valid credential is available, the browser shows its own
+username/password dialog and retries the operation once. Those credentials are
+kept only in memory for that retry and are never written to browser storage or
+approved into a credential helper.
+
+Interactive SSH host trust, SSH key passphrases, and SSH username/password
+prompts remain unsupported. On Linux, the folder picker additionally requires
+`zenity`; reveal, trash, and default-open require `xdg-open` and `gio`. The
+companion reports missing Linux dependencies with installation guidance.
 
 The companion's GitLab endpoint normalization remains covered by API tests, but
 the source renderer does not currently expose GitLab sign-in or merge-request
