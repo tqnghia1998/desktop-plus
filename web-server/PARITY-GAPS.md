@@ -141,7 +141,7 @@ visible web feature until its source-renderer UI is wired.
 | SYNC-09 | Push rejection, pull-before-push, and force-push decision dialogs | Supported | Push rejection exposes sanitized remote output and retry, while force-push requires an explicit lease confirmation; branded Chrome evidence covers both paths. |
 | SYNC-10 | Update the current branch from its contribution/default branch | Supported | The sync menu exposes Update from the configured default branch with persisted merge/rebase strategy selection. |
 | SYNC-11 | Pull all repositories in a selected repository group | Supported | Repository picker group headers expose Pull and the store scopes the guarded pull loop to that group. |
-| SYNC-12 | Interactive SSH credentials and host trust | Missing | The web companion deliberately suppresses terminal prompts and the source renderer has no dialogs for adding a host, accepting a host key, or entering an SSH key passphrase or username/password. It can only show recovery guidance. |
+| SYNC-12 | Interactive SSH credentials and host trust | Supported | The companion routes SSH askpass prompts through the task API; the source renderer reuses the Desktop host-trust, key-passphrase, and username/password dialogs, resumes or cancels Git without an editor prompt, and can store remembered passwords/passphrases in the operating-system credential store. |
 
 ## Stashes
 
