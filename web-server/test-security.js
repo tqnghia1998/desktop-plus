@@ -58,8 +58,8 @@ async function main() {
       'script execution must remain same-origin without inline exceptions'
     )
     assert.ok(
-      contentSecurityPolicy.includes("style-src 'self'"),
-      'stylesheet elements must remain same-origin without inline exceptions'
+      contentSecurityPolicy.includes("style-src 'self' 'unsafe-inline'"),
+      'shared desktop React geometry styles must remain available in Chromium'
     )
     assert.ok(
       contentSecurityPolicy.includes("style-src-attr 'unsafe-inline'"),
