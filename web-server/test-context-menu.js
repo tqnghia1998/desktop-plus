@@ -11,17 +11,17 @@ function git(cwd, ...args) {
 }
 
 async function main() {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'desktop-plus-tools-'))
+  const root = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'desktop-plus-context-menu-')
+  )
   const repository = path.join(root, 'repository')
   fs.mkdirSync(repository)
   git(repository, 'init', '-b', 'main')
-  git(repository, 'config', 'user.name', 'Tools Test')
-  git(repository, 'config', 'user.email', 'tools@example.com')
-  fs.writeFileSync(path.join(repository, 'README.md'), '# Tools\n')
+  git(repository, 'config', 'user.name', 'Context Menu Test')
+  git(repository, 'config', 'user.email', 'context-menu@example.com')
+  fs.writeFileSync(path.join(repository, 'README.md'), '# Context menu\n')
   git(repository, 'add', '.')
   git(repository, 'commit', '-m', 'Tagged commit')
-  git(repository, 'tag', 'first-tag')
-  git(repository, 'tag', 'second-tag')
 
   const server = createServer({ getDesktopRepositories: async () => [] })
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve))
@@ -37,48 +37,68 @@ async function main() {
         name: /Add an Existing Repository from your local drive…/i,
       })
       .click()
-    await page.getByLabel('Local path').fill(repository)
-    await page.getByRole('button', { name: 'Add repository' }).click()
-    await page.getByRole('tab', { name: 'Tools' }).click()
-
-    const tools = page.locator('.web-tools-panel')
-    await tools.getByRole('button', { name: 'Delete' }).first().click()
-    const confirmation = page.getByRole('alertdialog')
-    await confirmation.waitFor()
-    await confirmation.getByRole('button', { name: 'Cancel' }).click()
-    await confirmation.waitFor({ state: 'hidden' })
-    assert.match(git(repository, 'tag'), /first-tag/)
-
-    await tools.getByRole('button', { name: 'Delete' }).first().click()
-    await page
-      .getByRole('alertdialog')
-      .getByRole('button', { name: 'Delete local tag' })
-      .click()
-    for (
-      let attempt = 0;
-      attempt < 50 && hasTag(repository, 'first-tag');
-      attempt++
+    const repositoryInspection = page.waitForResponse(
+      response =>
+        response.url().includes('/api/repository/inspect') &&
+        response.status() === 200
     )
-      await new Promise(resolve => setTimeout(resolve, 100))
-    assert.doesNotMatch(git(repository, 'tag'), /first-tag/)
-    assert.match(git(repository, 'tag'), /second-tag/)
-    console.log('Source tools passed: tag deletion confirmation and lifecycle')
+    await page.getByLabel('Local path').fill(repository)
+    await repositoryInspection
+    await page.getByRole('button', { name: 'Add repository' }).click()
+    await page
+      .locator('#desktop-app-toolbar .branch-toolbar-button .title')
+      .getByText('main', { exact: true })
+      .waitFor()
+
+    const branch = page
+      .locator('.branch-toolbar-button')
+      .getByRole('button')
+      .last()
+    const branchBounds = await branch.boundingBox()
+    assert.ok(branchBounds, 'Expected the branch button to have visible bounds')
+
+    const pointer = { x: 28, y: 16 }
+    await branch.evaluate(
+      (button, position) =>
+        button.dispatchEvent(
+          new MouseEvent('contextmenu', {
+            bubbles: true,
+            cancelable: true,
+            button: 2,
+            buttons: 2,
+            clientX: position.x,
+            clientY: position.y,
+          })
+        ),
+      {
+        x: branchBounds.x + pointer.x,
+        y: branchBounds.y + pointer.y,
+      }
+    )
+    const menu = page.locator('#web-context-menu')
+    await menu.waitFor()
+    await menu.getByRole('menuitem', { name: 'Copy Branch Name' }).waitFor()
+    const menuBounds = await menu.boundingBox()
+    assert.ok(menuBounds, 'Expected the context menu to have visible bounds')
+    assert.ok(
+      Math.abs(menuBounds.x - (branchBounds.x + pointer.x)) <= 2,
+      `Expected menu x=${menuBounds.x} near pointer x=${
+        branchBounds.x + pointer.x
+      }`
+    )
+    assert.ok(
+      Math.abs(menuBounds.y - (branchBounds.y + pointer.y)) <= 2,
+      `Expected menu y=${menuBounds.y} near pointer y=${
+        branchBounds.y + pointer.y
+      }`
+    )
+    await page.keyboard.press('Escape')
+    await menu.waitFor({ state: 'hidden' })
+    console.log('Desktop context menu passed: anchored to right-click pointer')
   } finally {
     await browser.close()
     await new Promise(resolve => server.close(resolve))
     fs.rmSync(root, { recursive: true, force: true })
-  }
-}
-
-function hasTag(repository, tag) {
-  try {
-    execFileSync('git', ['rev-parse', '--verify', `refs/tags/${tag}`], {
-      cwd: repository,
-      stdio: ['ignore', 'ignore', 'ignore'],
-    })
-    return true
-  } catch {
-    return false
   }
 }
 
