@@ -1,0 +1,52 @@
+.toolbar-action-menu {
+  --toolbar-action-menu-width: 240px;
+
+  flex: 0 0 auto;
+
+  > .toolbar-button {
+    width: auto;
+
+    > button {
+      min-width: 104px;
+    }
+  }
+
+  .toolbar-action-list {
+    padding: var(--spacing-half) 0;
+    background: var(--app-menu-pane-background-color);
+    border: var(--base-border);
+    box-shadow: 0 8px 20px rgb(0 0 0 / 24%);
+
+    button {
+      display: block;
+      width: 100%;
+      min-width: var(--toolbar-action-menu-width);
+      height: 30px;
+      padding: 0 var(--spacing-double);
+      color: var(--text-color);
+      text-align: left;
+      background: transparent;
+      border: 0;
+      border-radius: 0;
+      cursor: pointer;
+
+      &:hover:not(:disabled),
+      &:focus-visible {
+        color: var(--box-selected-active-text-color);
+        background: var(--box-selected-active-background-color);
+        outline: 0;
+      }
+
+      &:disabled {
+        cursor: default;
+      }
+    }
+
+    hr {
+      height: 1px;
+      margin: var(--spacing-half) 0;
+      border: 0;
+      border-top: 1px solid var(--app-menu-divider-color);
+    }
+  }
+}
