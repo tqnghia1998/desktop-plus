@@ -6,12 +6,14 @@ import { Dialog, DialogContent, DialogError, DialogFooter } from '../dialog'
 import { TextBox } from '../lib/text-box'
 import { Row } from '../lib/row'
 import { OkCancelButtonGroup } from '../dialog/ok-cancel-button-group'
+import { IRemote } from '../../models/remote'
 
 interface IAddRemoteDialogProps {
   readonly repository: Repository
   readonly dispatcher: Dispatcher
   readonly existingRemoteNames: ReadonlyArray<string>
   readonly onDismissed: () => void
+  readonly remote?: IRemote
 }
 
 interface IAddRemoteDialogState {
@@ -30,8 +32,8 @@ export class AddRemoteDialog extends React.Component<
     super(props)
 
     this.state = {
-      name: '',
-      url: '',
+      name: props.remote?.name || '',
+      url: props.remote?.url || '',
       adding: false,
     }
   }
@@ -50,7 +52,10 @@ export class AddRemoteDialog extends React.Component<
 
   private get nameAlreadyExists(): boolean {
     const name = this.state.name.trim()
-    return this.props.existingRemoteNames.some(n => n === name)
+    return (
+      name !== this.props.remote?.name &&
+      this.props.existingRemoteNames.some(n => n === name)
+    )
   }
 
   private get isValidName(): boolean {
@@ -67,7 +72,11 @@ export class AddRemoteDialog extends React.Component<
     this.setState({ adding: true })
 
     try {
-      await dispatcher.addRemote(repository, name, url)
+      if (this.props.remote) {
+        await dispatcher.setRemoteURL(repository, this.props.remote.name, url)
+      } else {
+        await dispatcher.addRemote(repository, name, url)
+      }
     } catch (e) {
       dispatcher.postError(e)
       this.setState({ adding: false })
@@ -88,7 +97,15 @@ export class AddRemoteDialog extends React.Component<
     return (
       <Dialog
         id="add-remote"
-        title={__DARWIN__ ? 'Add a Remote' : 'Add a remote'}
+        title={
+          this.props.remote
+            ? __DARWIN__
+              ? 'Edit Remote'
+              : 'Edit remote'
+            : __DARWIN__
+            ? 'Add a Remote'
+            : 'Add a remote'
+        }
         loading={this.state.adding}
         onSubmit={this.onSubmit}
         onDismissed={this.props.onDismissed}
@@ -105,6 +122,7 @@ export class AddRemoteDialog extends React.Component<
               ref={this.nameTextBoxRef}
               label="Name"
               placeholder="upstream"
+              readOnly={this.props.remote !== undefined}
               value={this.state.name}
               onValueChanged={this.onNameChanged}
             />
@@ -122,7 +140,15 @@ export class AddRemoteDialog extends React.Component<
 
         <DialogFooter>
           <OkCancelButtonGroup
-            okButtonText={__DARWIN__ ? 'Add Remote' : 'Add remote'}
+            okButtonText={
+              this.props.remote
+                ? __DARWIN__
+                  ? 'Save Remote'
+                  : 'Save remote'
+                : __DARWIN__
+                ? 'Add Remote'
+                : 'Add remote'
+            }
             okButtonDisabled={disabled}
           />
         </DialogFooter>
