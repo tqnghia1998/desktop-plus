@@ -244,6 +244,9 @@ async function main() {
     )
     const historyDiff = page.locator('#history .side-by-side-diff')
     await historyDiff.filter({ hasText: 'changed' }).waitFor()
+    await page.locator('#history .loading-indicator').waitFor({
+      state: 'detached',
+    })
     const commitDetailsText = await commitDetails.innerText()
     assert.match(commitDetailsText, /(?:^|\n)\+2(?:\n|$)/)
     assert.match(commitDetailsText, /(?:^|\n)-2(?:\n|$)/)
