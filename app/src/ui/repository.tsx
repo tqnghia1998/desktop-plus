@@ -2,14 +2,12 @@ import * as React from 'react'
 import { Repository } from '../models/repository'
 import { Commit, CommitOneLine } from '../models/commit'
 import { TipState } from '../models/tip'
-import { UiView } from './ui-view'
 import { Changes, ChangesSidebar } from './changes'
 import { NoChanges } from './changes/no-changes'
 import { MultipleSelection } from './changes/multiple-selection'
-import { FilesChangedBadge } from './changes/files-changed-badge'
 import { SelectedCommits, CompareSidebar, CommitGraphSidebar } from './history'
-import { Resizable } from './resizable'
-import { TabBar } from './tab-bar'
+import { RepositoryLayout } from './repository-layout'
+import { RepositoryTabs } from './repository-tabs'
 import {
   IRepositoryState,
   RepositorySectionTab,
@@ -22,7 +20,6 @@ import { Dispatcher } from './dispatcher'
 import { IssuesStore, GitHubUserStore } from '../lib/stores'
 import { assertNever } from '../lib/fatal-error'
 import { Account } from '../models/account'
-import { FocusContainer } from './lib/focus-container'
 import { ImageDiffType } from '../models/diff'
 import { IMenu } from '../models/app-menu'
 import { StashDiffViewer } from './stashing'
@@ -168,12 +165,6 @@ interface IRepositoryViewState {
   readonly compareListScrollTop: number
 }
 
-const enum Tab {
-  Changes = 0,
-  History = 1,
-  Compare = 2,
-}
-
 export class RepositoryView extends React.Component<
   IRepositoryViewProps,
   IRepositoryViewState
@@ -229,65 +220,6 @@ export class RepositoryView extends React.Component<
 
   private onCompareListScrolled = (scrollTop: number) => {
     this.setState({ compareListScrollTop: scrollTop })
-  }
-
-  private renderChangesBadge(): JSX.Element | null {
-    const filesChangedCount =
-      this.props.state.changesState.workingDirectory.files.length
-
-    if (filesChangedCount <= 0) {
-      return null
-    }
-
-    return <FilesChangedBadge filesChangedCount={filesChangedCount} />
-  }
-
-  private renderTabs(): JSX.Element {
-    const selectedTab = this.sectionToTab(this.props.state.selectedSection)
-    return (
-      <TabBar selectedIndex={selectedTab} onTabClicked={this.onTabClicked}>
-        <span className="with-indicator" id="changes-tab">
-          <span>Changes</span>
-          {this.renderChangesBadge()}
-        </span>
-
-        <div className="with-indicator" id="history-tab">
-          <span>History</span>
-        </div>
-
-        {this.props.showCompareTab && (
-          <div className="with-indicator" id="compare-tab">
-            <span>Compare</span>
-          </div>
-        )}
-      </TabBar>
-    )
-  }
-
-  private sectionToTab(section: RepositorySectionTab): Tab {
-    switch (section) {
-      case RepositorySectionTab.Changes:
-        return Tab.Changes
-      case RepositorySectionTab.History:
-        return Tab.History
-      case RepositorySectionTab.Compare:
-        return Tab.Compare
-      default:
-        return assertNever(section, 'Unknown repository section')
-    }
-  }
-
-  private tabToSection(tab: Tab): RepositorySectionTab {
-    switch (tab) {
-      case Tab.Changes:
-        return RepositorySectionTab.Changes
-      case Tab.History:
-        return RepositorySectionTab.History
-      case Tab.Compare:
-        return RepositorySectionTab.Compare
-      default:
-        return assertNever(tab, 'Unknown tab')
-    }
   }
 
   private nextSection(section: RepositorySectionTab): RepositorySectionTab {
@@ -553,20 +485,17 @@ export class RepositoryView extends React.Component<
 
   private renderSidebar(): JSX.Element {
     return (
-      <FocusContainer onFocusWithinChanged={this.onSidebarFocusWithinChanged}>
-        <Resizable
-          id="repository-sidebar"
-          width={this.props.sidebarWidth.value}
-          maximumWidth={this.props.sidebarWidth.max}
-          minimumWidth={this.props.sidebarWidth.min}
-          onReset={this.handleSidebarWidthReset}
-          onResize={this.handleSidebarResize}
-          description="Repository sidebar"
-        >
-          {this.renderTabs()}
-          {this.renderSidebarContents()}
-        </Resizable>
-      </FocusContainer>
+      <>
+        <RepositoryTabs
+          changesCount={
+            this.props.state.changesState.workingDirectory.files.length
+          }
+          onTabClicked={this.onTabClicked}
+          selectedSection={this.props.state.selectedSection}
+          showCompareTab={this.props.showCompareTab}
+        />
+        {this.renderSidebarContents()}
+      </>
     )
   }
 
@@ -804,11 +733,15 @@ export class RepositoryView extends React.Component<
 
   public render() {
     return (
-      <UiView id="repository">
-        {this.renderSidebar()}
-        {this.renderContent()}
-        {this.maybeRenderTutorialPanel()}
-      </UiView>
+      <RepositoryLayout
+        content={this.renderContent()}
+        onSidebarFocusWithinChanged={this.onSidebarFocusWithinChanged}
+        onSidebarReset={this.handleSidebarWidthReset}
+        onSidebarResize={this.handleSidebarResize}
+        sidebar={this.renderSidebar()}
+        sidebarWidth={this.props.sidebarWidth}
+        tutorial={this.maybeRenderTutorialPanel()}
+      />
     )
   }
 
@@ -881,9 +814,7 @@ export class RepositoryView extends React.Component<
     }
   }
 
-  private onTabClicked = (tab: Tab) => {
-    const section = this.tabToSection(tab)
-
+  private onTabClicked = (section: RepositorySectionTab) => {
     this.props.dispatcher.changeRepositorySection(
       this.props.repository,
       section
