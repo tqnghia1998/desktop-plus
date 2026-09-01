@@ -59,9 +59,10 @@ not full feature-for-feature desktop parity. The remaining local gaps include:
 - Worktrees and appearance: Pull Request worktree checkout and native title-bar
   controls are Deferred with hosted or native ownership; browser appearance
   preferences are Supported.
-- Native and hosted surfaces: Repository and Branch actions are available in
-  shared toolbar menus, while the full application menu remains Partial
-  because the native macOS menu bar cannot be owned by the web renderer.
+- Native and hosted surfaces: File, View, Repository, and Branch actions are
+  available through the shared application menu and toolbar menus, while the
+  full native application menu remains Partial because the macOS menu bar
+  cannot be owned by the web renderer.
   Editor and shell launch, filesystem actions, signed updates, and
   Git LFS controls are Partial because the current browser fixtures validate
   injected companion contracts rather than native process, installer, or LFS
