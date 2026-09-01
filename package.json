@@ -60,6 +60,7 @@
     "test:web:ui-ownership": "node web-server/test-ui-ownership.js",
     "test:web:payload": "node web-server/test-payload.js",
     "test:web:platform": "node web-server/test-platform.js",
+    "test:web:toolbar-actions": "node web-server/test-source-toolbar-actions.js",
     "test:web:security": "node web-server/test-security.js",
     "test:web:start": "node web-server/test-start-web.js",
     "test:web:hosting-errors": "node web-server/test-hosting-errors.js",
@@ -73,7 +74,7 @@
     "test:web:browser-integration": "node web-server/run-browser-tests.js integration",
     "test:web:ui": "node web-server/run-browser-tests.js ui",
     "test:web:e2e": "node web-server/run-browser-tests.js all",
-    "test:web": "yarn check:web && yarn test:web:contract && yarn test:web:operation-parity && yarn test:web:payload && yarn test:web:platform && yarn test:web:security && yarn test:web:start && yarn test:web:hosting-errors && yarn test:web:gitlab && yarn test:web:updates && yarn test:web:copilot-cancellation && yarn test:web:api && yarn test:web:e2e"
+    "test:web": "yarn check:web && yarn test:web:contract && yarn test:web:operation-parity && yarn test:web:payload && yarn test:web:platform && yarn test:web:toolbar-actions && yarn test:web:security && yarn test:web:start && yarn test:web:hosting-errors && yarn test:web:gitlab && yarn test:web:updates && yarn test:web:copilot-cancellation && yarn test:web:api && yarn test:web:e2e"
   },
   "author": {
     "name": "Pol Rivero",
