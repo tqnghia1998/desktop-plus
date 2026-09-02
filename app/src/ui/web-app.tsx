@@ -26,7 +26,6 @@ import {
   ToolbarActionMenu,
   ToolbarActionMenuItem,
 } from './toolbar'
-import { AppMenuBar } from './app-menu/app-menu-bar'
 import * as octicons from './octicons/octicons.generated'
 import { Changes, ChangesSidebar } from './changes'
 import { NoChanges } from './changes/no-changes'
@@ -6797,10 +6796,6 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
   const [repositorySettingsOpen, setRepositorySettingsOpen] =
     React.useState(false)
   const [preferencesOpen, setPreferencesOpen] = React.useState(false)
-  const [webAppMenuState, setWebAppMenuState] = React.useState(() =>
-    AppMenuState.fromMenu(webApplicationMenu)
-  )
-  const [webAppMenuOpen, setWebAppMenuOpen] = React.useState(false)
   const [toolbarMenuRequests, setToolbarMenuRequests] = React.useState({
     createBranch: 0,
     renameBranch: 0,
@@ -7414,34 +7409,6 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
       state.selectedRepositoryPath,
     ]
   )
-  const webAppMenuDispatcher = React.useMemo(
-    () =>
-      ({
-        closeFoldout: (foldout: FoldoutType) => {
-          if (foldout === FoldoutType.AppMenu) {
-            setWebAppMenuOpen(false)
-            setWebAppMenuState(menu => menu.withReset())
-          }
-          return Promise.resolve()
-        },
-        executeMenuItem: (item: MenuItem) => {
-          executeWebMenuItem(item)
-          setWebAppMenuOpen(false)
-          setWebAppMenuState(menu => menu.withReset())
-          return Promise.resolve()
-        },
-        setAppMenuState: (update: (menu: AppMenuState) => AppMenuState) => {
-          setWebAppMenuState(update)
-          return Promise.resolve()
-        },
-        showFoldout: (foldout: { readonly type: FoldoutType }) => {
-          if (foldout.type === FoldoutType.AppMenu) setWebAppMenuOpen(true)
-          return Promise.resolve()
-        },
-      } as unknown as Dispatcher),
-    [executeWebMenuItem]
-  )
-
   return (
     <WebIntegrationPreferencesContext.Provider
       value={{ editor: editorIntegration, shell: shellIntegration }}
@@ -7489,23 +7456,6 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
               tabSize={diffPreferences.tabSize}
               theme={diffPreferences.theme}
             >
-              <AppMenuBar
-                appMenu={webAppMenuState.openMenus}
-                dispatcher={webAppMenuDispatcher}
-                highlightAppMenuAccessKeys={false}
-                foldoutState={
-                  webAppMenuOpen
-                    ? {
-                        type: FoldoutType.AppMenu,
-                        enableAccessKeyNavigation: false,
-                      }
-                    : null
-                }
-                onLostFocus={() => {
-                  setWebAppMenuOpen(false)
-                  setWebAppMenuState(menu => menu.withReset())
-                }}
-              />
               <DesktopToolbar
                 dispatcher={dispatcher}
                 onOpenRepositoryDialog={openRepositoryDialog}
