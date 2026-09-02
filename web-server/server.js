@@ -38,8 +38,27 @@ const publicDir = path.join(__dirname, 'public')
 const MAX_REQUEST_BYTES = 10 * 1024 * 1024
 const MAX_RESPONSE_BYTES = 50 * 1024 * 1024
 const MAX_FILE_CONTENT_BYTES = 1024 * 1024
-const MAX_ARGUMENT_LENGTH = 64 * 1024
-const MAX_PATH_LENGTH = 32 * 1024
+const { Router } = require('./src/http')
+const { registerRepositoryRoutes } = require('./routes/repository')
+const { registerFsRoutes } = require('./routes/fs')
+const { registerHostingRoutes } = require('./routes/hosting')
+const { registerSystemRoutes } = require('./routes/system')
+const {
+  MAX_ARGUMENT_LENGTH,
+  MAX_PATH_LENGTH,
+  requireString,
+  requireText,
+  requireGitValue,
+  requireAbsolutePath,
+  requireArray,
+  requireBoolean,
+  requireInteger,
+} = require('./src/validation')
+const {
+  DESKTOP_STASH_ENTRY_MARKER,
+  DESKTOP_STASH_ENTRY_MESSAGE_RE,
+  parseDesktopStashMessage,
+} = require('./src/git-stash-parser')
 const STALE_GIT_CONFIG_LOCK_AGE_MS = 5 * 60 * 1000
 const SSH_AUTH_PROMPT_TIMEOUT_MS = 120_000
 const SSH_ASKPASS_SCRIPT_PATH = path.join(__dirname, 'ssh-askpass.js')
@@ -221,45 +240,6 @@ function sendJson(res, statusCode, data) {
   res.end(body)
 }
 
-function requireString(value, name, maxLength = MAX_ARGUMENT_LENGTH) {
-  if (typeof value !== 'string' || value.length === 0) {
-    throw Object.assign(new Error(`${name} (string) is required`), {
-      statusCode: 400,
-    })
-  }
-  if (value.length > maxLength || value.includes('\0')) {
-    throw Object.assign(new Error(`${name} is too large or invalid`), {
-      statusCode: 400,
-    })
-  }
-  return value
-}
-
-function requireText(value, name, maxLength = MAX_ARGUMENT_LENGTH) {
-  if (typeof value !== 'string' || value.includes('\0')) {
-    throw Object.assign(new Error(`${name} (string) is required`), {
-      statusCode: 400,
-    })
-  }
-  if (value.length > maxLength) {
-    throw Object.assign(new Error(`${name} is too large or invalid`), {
-      statusCode: 400,
-    })
-  }
-  return value
-}
-
-function requireGitValue(value, name) {
-  const result = requireString(value, name)
-  if (
-    result.startsWith('-') ||
-    /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/u.test(result)
-  ) {
-    throw Object.assign(new Error(`${name} is invalid`), { statusCode: 400 })
-  }
-  return result
-}
-
 function requireCommitTrailers(value) {
   if (value === undefined) return []
   if (!Array.isArray(value))
@@ -297,16 +277,6 @@ async function mergeCommitTrailers(repoPath, message, trailers) {
   for (const trailer of trailers)
     args.push('--trailer', `${trailer.token}=${trailer.value}`)
   return (await git(args, repoPath, [0], message)).stdout
-}
-
-function requireAbsolutePath(value, name = 'path') {
-  const result = requireString(value, name, MAX_PATH_LENGTH)
-  if (!path.isAbsolute(result)) {
-    throw Object.assign(new Error(`${name} must be an absolute path`), {
-      statusCode: 400,
-    })
-  }
-  return path.normalize(result)
 }
 
 async function repositoryDeletionTarget(value) {
@@ -3404,12 +3374,10 @@ async function getStatus(repoPath, options = {}) {
   }
 }
 
-const desktopStashMessageRe = /(?:!!Name<([^<>]+)>)?!!GitHub_Desktop<(.+)>$/
-
 function desktopStashMessage(branchName, customName = null) {
   return `${
     customName ? `!!Name<${encodeURIComponent(customName)}>` : ''
-  }!!GitHub_Desktop<${branchName}>`
+  }${DESKTOP_STASH_ENTRY_MARKER}<${branchName}>`
 }
 
 async function getStashEntries(repoPath) {
@@ -3430,29 +3398,24 @@ async function getStashEntries(repoPath) {
     const values = raw.replace(/^\n+|\n+$/g, '').split('\0')
     if (values.length < 6) return []
     const [name, stashSha, message, tree, parentText, createdAt] = values
-    const desktopMatch = desktopStashMessageRe.exec(message)
+    const desktopStash = parseDesktopStashMessage(message)
     const genericMatch = /^(?:WIP on|On) ([^:]+):\s*(.*)$/.exec(message)
-    let customName = null
-    if (desktopMatch?.[1]) {
-      try {
-        customName = decodeURIComponent(desktopMatch[1])
-      } catch {
-        customName = desktopMatch[1]
-      }
-    } else if (genericMatch?.[2] && !message.startsWith('WIP on ')) {
+    let customName = desktopStash?.customStashMessage || null
+    if (!customName && genericMatch?.[2] && !message.startsWith('WIP on ')) {
       customName = genericMatch[2] || null
     }
+    const branchName = desktopStash?.branchName || genericMatch?.[1] || 'HEAD'
     return [
       {
         name,
-        branchName: desktopMatch?.[2] || genericMatch?.[1] || 'HEAD',
+        branchName,
         customName,
         stashSha,
         createdAt,
         files: { kind: 'NotLoaded' },
         tree,
         parents: parentText ? parentText.split(' ') : [],
-        isDesktop: desktopMatch !== null,
+        isDesktop: desktopStash !== null,
       },
     ]
   })
@@ -6662,8 +6625,41 @@ async function runOperation(repoPath, body, services = null) {
   return git(args, repoPath, [0], undefined, gitEnvironment)
 }
 
+const router = new Router()
+registerRepositoryRoutes(router, {
+  repositorySetupOptions,
+  previewRepositoryInitialization,
+  previewCloneRepository,
+  createRepositoryFiles,
+  requireRepositoryInspectionPath,
+  inspectRepository,
+  trustRepository,
+  deleteRepositoryFromDisk,
+  getWorktreeIndicators: getRepositoryIndicators,
+})
+registerFsRoutes(router, {
+  MAX_RESPONSE_BYTES,
+  MAX_REQUEST_BYTES,
+})
+registerHostingRoutes(router, {
+  normalizeGitLabEndpoint,
+  gitLabCredentialId,
+  requireGitLabCredential,
+  gitLabCredentialService,
+  githubCredentialService,
+  sendJson,
+  parseJsonBody,
+})
+registerSystemRoutes(router)
+
 async function routeApi(req, res, url, services) {
+  const handled = await router.dispatch(req, res, services, url)
+  if (handled) {
+    return
+  }
+
   const { pathname } = url
+
   if (req.method === 'GET' && pathname === '/api/health') {
     return sendJson(res, 200, { status: 'ok', time: new Date().toISOString() })
   }
@@ -8518,105 +8514,6 @@ async function routeApi(req, res, url, services) {
     })
   }
 
-  if (req.method === 'POST' && pathname === '/api/fs/read-file') {
-    const body = await parseJsonBody(req)
-    const filePath = requireAbsolutePath(body.path)
-    if (body.encoding !== undefined && body.encoding !== 'utf8')
-      return sendJson(res, 400, { error: 'Only utf8 encoding is supported' })
-    let stats
-    let data
-    try {
-      stats = await fs.promises.stat(filePath)
-      data = await fs.promises.readFile(
-        filePath,
-        body.encoding ? { encoding: body.encoding } : undefined
-      )
-    } catch (error) {
-      if (error.code === 'ENOENT')
-        throw Object.assign(new Error('File not found'), { statusCode: 404 })
-      throw error
-    }
-    if (stats.size > MAX_RESPONSE_BYTES)
-      throw Object.assign(new Error('File is too large'), { statusCode: 413 })
-    return sendJson(
-      res,
-      200,
-      body.encoding
-        ? { content: data }
-        : { content: data.toString('base64'), isBase64: true }
-    )
-  }
-
-  if (req.method === 'POST' && pathname === '/api/fs/read-dir') {
-    const body = await parseJsonBody(req)
-    const entries = await fs.promises.readdir(requireAbsolutePath(body.path), {
-      withFileTypes: true,
-    })
-    return sendJson(res, 200, {
-      entries: entries.map(entry => ({
-        name: entry.name,
-        isDirectory: entry.isDirectory(),
-        isFile: entry.isFile(),
-        isSymbolicLink: entry.isSymbolicLink(),
-      })),
-    })
-  }
-
-  if (req.method === 'POST' && pathname === '/api/fs/stat') {
-    const body = await parseJsonBody(req)
-    const stats = await fs.promises.stat(requireAbsolutePath(body.path))
-    return sendJson(res, 200, {
-      isFile: stats.isFile(),
-      isDirectory: stats.isDirectory(),
-      size: stats.size,
-      mtimeMs: stats.mtimeMs,
-      birthtimeMs: stats.birthtimeMs,
-    })
-  }
-
-  if (req.method === 'POST' && pathname === '/api/fs/write-file') {
-    const body = await parseJsonBody(req)
-    const content =
-      body.content === undefined
-        ? ''
-        : requireString(body.content, 'content', MAX_REQUEST_BYTES)
-    if (
-      body.encoding !== undefined &&
-      body.encoding !== 'utf8' &&
-      body.isBase64 !== true
-    )
-      return sendJson(res, 400, { error: 'Only utf8 encoding is supported' })
-    await fs.promises.writeFile(
-      requireAbsolutePath(body.path),
-      body.isBase64 ? Buffer.from(content, 'base64') : content,
-      body.isBase64 ? undefined : body.encoding || 'utf8'
-    )
-    return sendJson(res, 200, { ok: true })
-  }
-
-  if (req.method === 'POST' && pathname === '/api/fs/mkdir') {
-    const body = await parseJsonBody(req)
-    await fs.promises.mkdir(requireAbsolutePath(body.path), {
-      recursive: body.recursive === true,
-    })
-    return sendJson(res, 200, { ok: true })
-  }
-
-  if (req.method === 'POST' && pathname === '/api/fs/unlink') {
-    const body = await parseJsonBody(req)
-    await fs.promises.unlink(requireAbsolutePath(body.path))
-    return sendJson(res, 200, { ok: true })
-  }
-
-  if (req.method === 'POST' && pathname === '/api/fs/copy-file') {
-    const body = await parseJsonBody(req)
-    await fs.promises.copyFile(
-      requireAbsolutePath(body.from, 'from'),
-      requireAbsolutePath(body.to, 'to')
-    )
-    return sendJson(res, 200, { ok: true })
-  }
-
   return false
 }
 
@@ -8746,9 +8643,14 @@ async function serveStatic(req, res, pathname, sessionToken) {
     res.end(req.method === 'HEAD' ? undefined : html)
     return true
   }
+  const isHashedAsset =
+    relative.startsWith('assets/') && /-[a-f0-9]{8,32}\./.test(relative)
+  const isFont = extension === '.woff2' || extension === '.ttf'
   const cacheControl =
-    relative.startsWith('assets/') && /-[a-f0-9]{12}\./.test(relative)
+    isHashedAsset || isFont
       ? 'public, max-age=31536000, immutable'
+      : relative.startsWith('static/') || extension === '.png'
+      ? 'public, max-age=86400, stale-while-revalidate=3600'
       : 'no-cache'
   const stat = await fs.promises.stat(fullPath)
   res.writeHead(
