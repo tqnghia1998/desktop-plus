@@ -152,32 +152,32 @@ module.exports = {
       [path.join(root, 'app', 'src', 'lib', 'git', 'lfs.ts')]: path.join(
         __dirname,
         'src',
-        'desktop-changes-lfs-stub.js'
+        'desktop-shared-stubs.js'
       ),
       [path.join(root, 'app', 'src', 'lib', 'git', 'lfs')]: path.join(
         __dirname,
         'src',
-        'desktop-changes-lfs-stub.js'
+        'desktop-shared-stubs.js'
       ),
       [path.join(root, 'app', 'src', 'lib', 'large-files.ts')]: path.join(
         __dirname,
         'src',
-        'desktop-changes-large-files-stub.js'
+        'desktop-shared-stubs.js'
       ),
       [path.join(root, 'app', 'src', 'lib', 'large-files')]: path.join(
         __dirname,
         'src',
-        'desktop-changes-large-files-stub.js'
+        'desktop-shared-stubs.js'
       ),
       [path.join(root, 'app', 'src', 'lib', 'stats')]: path.join(
         __dirname,
         'src',
-        'desktop-preferences-stats-stub.js'
+        'desktop-shared-stubs.js'
       ),
       [path.join(root, 'app', 'src', 'lib', 'stats', 'index.ts')]: path.join(
         __dirname,
         'src',
-        'desktop-preferences-stats-stub.js'
+        'desktop-shared-stubs.js'
       ),
       [path.join(root, 'app', 'src', 'lib', 'stores', 'copilot-store')]:
         path.join(
