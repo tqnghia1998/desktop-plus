@@ -3,7 +3,7 @@ const path = require('path')
 const fs = require('fs')
 const os = require('os')
 const crypto = require('crypto')
-const { execFile, spawn } = require('child_process')
+const { execFile, execFileSync, spawn } = require('child_process')
 const { AsyncLocalStorage } = require('async_hooks')
 const ignore = require('ignore')
 const platform = require('./platform')
@@ -63,6 +63,8 @@ const STALE_GIT_CONFIG_LOCK_AGE_MS = 5 * 60 * 1000
 const SSH_AUTH_PROMPT_TIMEOUT_MS = 120_000
 const SSH_ASKPASS_SCRIPT_PATH = path.join(__dirname, 'ssh-askpass.js')
 const SSH_CREDENTIAL_SERVICE = 'desktop-plus-web-ssh'
+let macOSCredentialHelperExecPath
+let resolvedMacOSCredentialHelperExecPath = false
 const EMPTY_TREE_SHA = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
 const operationContext = new AsyncLocalStorage()
 const IMAGE_MEDIA_TYPES = Object.freeze({
@@ -2798,17 +2800,22 @@ async function gitOperationAuthenticationEnvironment(
     return genericEnvironment(genericCredentials)
   }
 
-  const storedCredentialEnvironment = async () => {
-    const storedCredentials = await readStoredGitCredential(repoPath, remoteURL)
-    if (storedCredentials) return genericEnvironment(storedCredentials)
-    return nonInteractiveGitEnvironment()
-  }
-  if (!account) return storedCredentialEnvironment()
+  // Git's configured credential helper is the user's source of truth for
+  // repository authentication. Check it before considering a signed-in
+  // hosting account, which may contain a different or expired token.
+  const storedCredentials = await readStoredGitCredential(repoPath, remoteURL)
+  if (storedCredentials) return credentialLookupEnvironment()
+
+  // Keep the helper available to the Git operation itself. This matters for
+  // `fetch --all`, where additional remotes may need their own credentials,
+  // and lets helpers handle their native authentication flow without opening
+  // a terminal or editor prompt.
+  if (!account) return credentialLookupEnvironment()
 
   if (account.provider === 'gitlab') {
     const { credentialId, endpoint } = requireGitLabCredential(account)
     if (!gitLabRemoteMatchesEndpoint(remoteURL, endpoint))
-      return storedCredentialEnvironment()
+      return credentialLookupEnvironment()
     if (!services?.keytar)
       throw Object.assign(new Error('OS credential store is unavailable'), {
         statusCode: 501,
@@ -2830,7 +2837,7 @@ async function gitOperationAuthenticationEnvironment(
 
   const { credentialId, endpoint } = requireGitHubCredential(account)
   if (!gitHubRemoteMatchesEndpoint(remoteURL, endpoint))
-    return storedCredentialEnvironment()
+    return credentialLookupEnvironment()
   if (!services?.keytar)
     throw Object.assign(new Error('OS credential store is unavailable'), {
       statusCode: 501,
@@ -2909,7 +2916,44 @@ function credentialLookupEnvironment() {
     GIT_CONFIG_VALUE_0: 'false',
     GIT_CONFIG_KEY_1: 'core.askPass',
     GIT_CONFIG_VALUE_1: '',
+    ...macOSCredentialHelperEnvironment(),
   }
+}
+
+function macOSCredentialHelperEnvironment() {
+  if (process.platform !== 'darwin') return {}
+
+  // Dugite's macOS Git intentionally does not bundle the Keychain helper. If
+  // the user selected `credential.helper=osxkeychain`, point Git at a system
+  // Git exec directory that does include it. This preserves the user's helper
+  // configuration instead of replacing it with an app-specific credential.
+  if (!resolvedMacOSCredentialHelperExecPath) {
+    resolvedMacOSCredentialHelperExecPath = true
+    try {
+      const execPath = execFileSync('git', ['--exec-path'], {
+        encoding: 'utf8',
+        env: { ...process.env, GIT_EXEC_PATH: '' },
+        timeout: 5_000,
+      }).trim()
+      if (fs.existsSync(path.join(execPath, 'git-credential-osxkeychain')))
+        macOSCredentialHelperExecPath = execPath
+    } catch {}
+  }
+  if (macOSCredentialHelperExecPath)
+    return { GIT_EXEC_PATH: macOSCredentialHelperExecPath }
+
+  for (const execPath of [
+    '/opt/homebrew/opt/git/libexec/git-core',
+    '/usr/local/opt/git/libexec/git-core',
+    '/Library/Developer/CommandLineTools/usr/libexec/git-core',
+    '/Applications/Xcode.app/Contents/Developer/usr/libexec/git-core',
+  ]) {
+    if (fs.existsSync(path.join(execPath, 'git-credential-osxkeychain'))) {
+      macOSCredentialHelperExecPath = execPath
+      return { GIT_EXEC_PATH: execPath }
+    }
+  }
+  return {}
 }
 
 function nonInteractiveGitEnvironment() {
@@ -8776,4 +8820,5 @@ module.exports = {
   resolveServerPort,
   webOperationNames,
   readStoredGitCredential,
+  gitOperationAuthenticationEnvironment,
 }
