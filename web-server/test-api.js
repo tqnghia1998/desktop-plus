@@ -3,9 +3,14 @@ const fs = require('fs')
 const os = require('os')
 const path = require('path')
 const { execFileSync } = require('child_process')
-const { createServer, readStoredGitCredential } = require('./server')
+const {
+  createServer,
+  gitOperationAuthenticationEnvironment,
+  readStoredGitCredential,
+} = require('./server')
 const {
   authenticatedGitEnvironment,
+  githubCredentialId,
   githubCredentialService,
   normalizeGitHubEndpoint,
 } = require('./hosting')
@@ -52,13 +57,48 @@ async function main() {
     ),
     { username: 'stored-user', password: 'stored-password' }
   )
+  git(
+    repo,
+    'remote',
+    'add',
+    'origin',
+    'https://github.com/owner/repository.git'
+  )
+  const environment = await gitOperationAuthenticationEnvironment(
+    repo,
+    {
+      hostingAccount: {
+        provider: 'github',
+        endpoint: 'https://github.com',
+        login: 'desktop-plus-user',
+        credentialId: githubCredentialId(
+          'https://github.com',
+          'desktop-plus-user'
+        ),
+      },
+    },
+    {
+      keytar: {
+        getPassword() {
+          throw new Error('the hosting token should not be read')
+        },
+      },
+    },
+    'fetch',
+    []
+  )
+  assert.equal(environment.GIT_CONFIG_KEY_0, 'credential.interactive')
+  assert.equal(environment.GIT_CONFIG_VALUE_0, 'false')
+  assert.equal(environment.GIT_CONFIG_KEY_1, 'core.askPass')
+  assert.equal(environment.GIT_CONFIG_VALUE_1, '')
+  assert.equal(environment.GIT_CONFIG_KEY_2, undefined)
   git(repo, 'config', '--unset-all', 'credential.helper')
   await fs.promises.writeFile(path.join(repo, 'tracked.txt'), 'first\n')
   git(repo, 'add', 'tracked.txt')
   git(repo, 'commit', '-m', 'Initial commit')
   const remote = path.join(root, 'remote.git')
   git(root, 'init', '--bare', remote)
-  git(repo, 'remote', 'add', 'origin', remote)
+  git(repo, 'remote', 'set-url', 'origin', remote)
   git(repo, 'push', '-u', 'origin', 'main')
   git(repo, 'checkout', '-b', 'feature')
   await fs.promises.writeFile(path.join(repo, 'branch.txt'), 'feature\n')
