@@ -1,13 +1,15 @@
 .toolbar-action-menu {
   --toolbar-action-menu-width: 240px;
 
-  flex: 0 0 auto;
+  flex: 1 1 0;
+  min-width: 0;
 
   > .toolbar-button {
-    width: auto;
+    width: 100%;
 
     > button {
-      min-width: 104px;
+      width: 100%;
+      min-width: 0;
     }
   }
 
