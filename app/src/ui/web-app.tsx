@@ -277,7 +277,8 @@ const webShellIntegrationStorageKey = 'desktop-plus-web-shell-integration'
 const webBranchDropdownWidthStorageKey = 'branch-dropdown-width'
 const webPushPullButtonWidthStorageKey = 'push-pull-button-width'
 const webWorktreeDropdownWidthStorageKey = 'worktree-dropdown-width'
-const webToolbarButtonWidth = { min: 180, max: 620, default: 230 }
+const webSidebarWidth = { min: 220, max: 800, default: 480 }
+const webToolbarButtonWidth = { min: 180, max: 620, default: 300 }
 
 function updateBranchStrategyStorageKey(repositoryPath: string) {
   return `${webUpdateBranchStrategyStorageKey}:${repositoryPath}`
@@ -2464,8 +2465,14 @@ function DesktopToolbar(props: {
   )
   const [worktreeDropdownWidth, setWorktreeDropdownWidth] = React.useState(() =>
     Math.min(
-      600,
-      Math.max(365, getNumber(webWorktreeDropdownWidthStorageKey, 365))
+      webToolbarButtonWidth.max,
+      Math.max(
+        webToolbarButtonWidth.min,
+        getNumber(
+          webWorktreeDropdownWidthStorageKey,
+          webToolbarButtonWidth.default
+        )
+      )
     )
   )
   const [worktreeToAdd, setWorktreeToAdd] = React.useState(false)
@@ -2501,7 +2508,7 @@ function DesktopToolbar(props: {
   }, [])
   const resetWorktreeDropdownWidth = React.useCallback(() => {
     localStorage.removeItem(webWorktreeDropdownWidthStorageKey)
-    setWorktreeDropdownWidth(365)
+    setWorktreeDropdownWidth(webToolbarButtonWidth.default)
   }, [])
   const [toolbarDropdown, setToolbarDropdown] = React.useState<
     | 'repository'
@@ -3393,8 +3400,8 @@ function DesktopToolbar(props: {
               }
               repository={desktopWorktreeRepository}
               worktreeDropdownWidth={{
-                max: Math.max(365, window.innerWidth - 150),
-                min: 365,
+                max: webToolbarButtonWidth.max,
+                min: webToolbarButtonWidth.min,
                 value: worktreeDropdownWidth,
               }}
               worktrees={worktrees}
@@ -6516,10 +6523,16 @@ function DesktopRepositoryView(props: {
     <>
       <RepositoryLayout
         content={content}
-        onSidebarReset={() => props.onSidebarWidthChanged(250)}
+        onSidebarReset={() =>
+          props.onSidebarWidthChanged(webSidebarWidth.default)
+        }
         onSidebarResize={props.onSidebarWidthChanged}
         sidebar={sidebar}
-        sidebarWidth={{ max: 500, min: 220, value: props.sidebarWidth }}
+        sidebarWidth={{
+          max: webSidebarWidth.max,
+          min: webSidebarWidth.min,
+          value: props.sidebarWidth,
+        }}
         tutorial={
           <DesktopTutorialPanel
             dispatcher={props.dispatcher}
@@ -6790,7 +6803,13 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
   } | null>(null)
   const diffPreferences = useWebDiffPresentationPreferencesState()
   const [sidebarWidth, setSidebarWidth] = React.useState(() =>
-    Math.min(500, Math.max(220, getNumber(webSidebarWidthStorageKey, 250)))
+    Math.min(
+      webSidebarWidth.max,
+      Math.max(
+        webSidebarWidth.min,
+        getNumber(webSidebarWidthStorageKey, webSidebarWidth.default)
+      )
+    )
   )
   const [repositoryDialogOpen, setRepositoryDialogOpen] = React.useState(false)
   const [repositorySettingsOpen, setRepositorySettingsOpen] =
@@ -7265,7 +7284,10 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
     setBrowserNotificationsEnabled(value)
   }
   const updateSidebarWidth = (width: number) => {
-    const normalized = Math.min(500, Math.max(220, Math.round(width)))
+    const normalized = Math.min(
+      webSidebarWidth.max,
+      Math.max(webSidebarWidth.min, Math.round(width))
+    )
     setNumber(webSidebarWidthStorageKey, normalized)
     setSidebarWidth(normalized)
   }
