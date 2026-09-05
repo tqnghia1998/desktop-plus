@@ -15,6 +15,12 @@ yarn start:web --port 4000
 
 Open `http://127.0.0.1:3000`. Use `--port` or set `PORT` to use another port.
 
+This fork carries upstream-divergent changes for the Space App Vibing embed
+(opt-in iframe embedding, worktree-family repository picker, narrow-viewport
+foldout/toolbar fit, and the host-matched dark theme). See
+[FORK-OVERLAY.md](FORK-OVERLAY.md) and retain those changes when syncing from
+upstream.
+
 The current source renderer supports opening local repositories, cloning or
 initializing repositories, inspecting the current branch and ahead/behind
 state, viewing working-directory, committed, and stashed file diffs, committing
