@@ -19,14 +19,14 @@ const outRoot =
   path.resolve(root, '..', 'space-app-vibing', 'scripts', 'desktop-plus-web')
 
 const builtins = new Set(
-  require('node:module').builtinModules.flatMap((name) => [name, `node:${name}`]),
+  require('node:module').builtinModules.flatMap(name => [name, `node:${name}`])
 )
 
 const serverEntry = path.join(root, 'web-server', 'server.js')
 const builtIndex = path.join(root, 'web-server', 'public', 'index.html')
 if (!fs.existsSync(builtIndex)) {
   console.error(
-    'web-server/public/index.html is missing. Run `yarn build:web` before bundling.',
+    'web-server/public/index.html is missing. Run `yarn build:web` before bundling.'
   )
   process.exit(1)
 }
@@ -75,7 +75,7 @@ function copyPackage(pkgDir) {
   copyDir(pkgDir, path.join(outRoot, relative))
 
   const manifest = JSON.parse(
-    fs.readFileSync(path.join(pkgDir, 'package.json'), 'utf8'),
+    fs.readFileSync(path.join(pkgDir, 'package.json'), 'utf8')
   )
   for (const name of Object.keys(manifest.dependencies ?? {})) {
     const nested = path.join(pkgDir, 'node_modules', name)
@@ -146,7 +146,10 @@ walk(serverEntry)
 // Spawned by path for SSH credential flows, never required.
 copyFile(path.join(root, 'web-server', 'ssh-askpass.js'))
 // Built renderer, highlighter worker and static assets.
-copyDir(path.join(root, 'web-server', 'public'), path.join(outRoot, 'web-server', 'public'))
+copyDir(
+  path.join(root, 'web-server', 'public'),
+  path.join(outRoot, 'web-server', 'public')
+)
 
 if (unresolved.length > 0) {
   console.error('Unresolved requires:\n' + unresolved.join('\n'))
@@ -166,13 +169,21 @@ measure(outRoot)
 
 console.log(`Bundled Desktop Plus Web into ${outRoot}`)
 console.log(
-  `${files.size} server files, ${packages.size} packages, ${(totalBytes / 1024 / 1024).toFixed(1)} MB total`,
+  `${files.size} server files, ${packages.size} packages, ${(
+    totalBytes /
+    1024 /
+    1024
+  ).toFixed(1)} MB total`
 )
 
 // Vibing's root package.json is "type": "module"; the desktop-plus runtime is
 // CommonJS, so pin the module type inside the bundle.
 fs.writeFileSync(
   path.join(outRoot, 'package.json'),
-  JSON.stringify({ name: 'desktop-plus-web-bundle', type: 'commonjs', private: true }, null, 2) + '\n',
+  JSON.stringify(
+    { name: 'desktop-plus-web-bundle', type: 'commonjs', private: true },
+    null,
+    2
+  ) + '\n'
 )
 console.log('Wrote bundle package.json (type: commonjs)')
