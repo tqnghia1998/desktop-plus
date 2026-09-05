@@ -278,7 +278,7 @@ const webBranchDropdownWidthStorageKey = 'branch-dropdown-width'
 const webPushPullButtonWidthStorageKey = 'push-pull-button-width'
 const webWorktreeDropdownWidthStorageKey = 'worktree-dropdown-width'
 const webSidebarWidth = { min: 220, max: 800, default: 480 }
-const webToolbarButtonWidth = { min: 180, max: 620, default: 300 }
+const webToolbarButtonWidth = { min: 140, max: 620, default: 300 }
 
 function updateBranchStrategyStorageKey(repositoryPath: string) {
   return `${webUpdateBranchStrategyStorageKey}:${repositoryPath}`
@@ -7093,7 +7093,7 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
       requestedPath !== state.selectedRepositoryPath
     ) {
       openedRepositoryQuery.current = requestedPath
-      void dispatcher.addRepository(requestedPath)
+      void dispatcher.addRepositoryWithWorktrees(requestedPath)
     }
   }, [dispatcher, state.selectedRepositoryPath])
 
