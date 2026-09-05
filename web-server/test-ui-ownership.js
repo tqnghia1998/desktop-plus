@@ -236,19 +236,6 @@ body.theme-dark {
     )
     0 100%;
 }
-
-/* Bump the whole type scale for the compact Space App Vibing embed: the
- * renderer's 12px base reads too small inside the host's left-tab iframe.
- * Values mirror _variables.scss with +1px on every size. */
-:root {
-  --font-size: 13px;
-  --font-size-sm: 12px;
-  --font-size-md: 15px;
-  --font-size-lg: 29px;
-  --font-size-xl: 33px;
-  --font-size-xxl: 43px;
-  --font-size-xs: 10px;
-}
 `,
   'Browser CSS may only size the renderer root, position the shared menu, align\n' +
     'the dark theme with the Space App Vibing host, and fit the toolbar in\n' +
