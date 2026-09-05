@@ -549,8 +549,7 @@ function useWebDiffPresentationPreferencesState() {
     getNumber('tab-size', 4)
   )
   const [diffFontSize, setDiffFontSizeState] = React.useState(() =>
-    // The web embed reads better with a larger diff font than the desktop default.
-    getNumber('diff-font-size', defaultDiffFontSize + 2)
+    getNumber('diff-font-size', defaultDiffFontSize)
   )
   const [diffFontFamily, setDiffFontFamilyState] =
     React.useState<DiffFontFamily>(
