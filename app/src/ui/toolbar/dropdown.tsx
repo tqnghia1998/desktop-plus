@@ -236,6 +236,8 @@ export interface IToolbarDropdownProps {
 
 interface IToolbarDropdownState {
   readonly clientRect: ClientRect | null
+  /** Natural width of the open foldout, measured once before clamping. */
+  readonly foldoutWidth: number | null
 }
 
 /**
@@ -247,11 +249,12 @@ export class ToolbarDropdown extends React.Component<
 > {
   private innerButton = React.createRef<ToolbarButton>()
   private rootDiv = React.createRef<HTMLDivElement>()
+  private foldoutDiv = React.createRef<HTMLDivElement>()
   private focusTrapOptions: FocusTrapOptions
 
   public constructor(props: IToolbarDropdownProps) {
     super(props)
-    this.state = { clientRect: null }
+    this.state = { clientRect: null, foldoutWidth: null }
 
     this.focusTrapOptions = {
       allowOutsideClick: true,
@@ -348,6 +351,18 @@ export class ToolbarDropdown extends React.Component<
           this.setState({ clientRect: newRect })
         }
       }
+
+      // The first render after opening is intentionally unclamped so the
+      // natural content width can be measured before shifting and clamping.
+      const foldout = this.foldoutDiv.current
+      if (foldout && this.state.foldoutWidth === null) {
+        const foldoutWidth = foldout.offsetWidth
+        if (foldoutWidth > 0) {
+          this.setState({ foldoutWidth })
+        }
+      }
+    } else if (this.state.foldoutWidth !== null) {
+      this.setState({ foldoutWidth: null })
     }
   }
 
@@ -394,12 +409,41 @@ export class ToolbarDropdown extends React.Component<
         ? { maxHeight: '100%', width: rect.width }
         : { height: '100%', minWidth: rect.width }
 
+    // Re-anchor the foldout when its natural content width would overflow the
+    // right edge of the window (e.g. long repository names in an embedded web
+    // view where a host panel narrows the available width): shift it left so
+    // its right edge stays visible and clamp it to the remaining space.
+    const { foldoutWidth } = this.state
+    let marginLeft = rect.left
+    if (foldoutWidth !== null) {
+      const viewportWidth = document.documentElement.clientWidth
+      const naturalWidth = Math.max(foldoutWidth, rect.width)
+      if (marginLeft + naturalWidth > viewportWidth) {
+        marginLeft = Math.max(
+          marginLeft - (marginLeft + naturalWidth - viewportWidth),
+          0
+        )
+      }
+
+      const overrides: React.CSSProperties =
+        this.props.foldoutStyleOverrides ?? {}
+
+      return {
+        position: 'absolute',
+        marginLeft,
+        top: 0,
+        maxWidth: Math.max(viewportWidth - marginLeft, 0),
+        ...heightStyle,
+        ...overrides,
+      }
+    }
+
     const overrides: React.CSSProperties =
       this.props.foldoutStyleOverrides ?? {}
 
     return {
       position: 'absolute',
-      marginLeft: rect.left,
+      marginLeft,
       top: 0,
       ...heightStyle,
       ...overrides,
@@ -438,6 +482,7 @@ export class ToolbarDropdown extends React.Component<
             style={this.getFoldoutStyle()}
             tabIndex={-1}
             onKeyDown={this.onFoldoutKeyDown}
+            ref={this.foldoutDiv}
           >
             {this.props.dropdownContentRenderer()}
           </div>
