@@ -95,6 +95,47 @@ The build uses a browser-targeted webpack configuration, emits content-hashed
 JavaScript and CSS, and rejects Electron and Node-only imports from the source
 renderer. It has no renderer snapshot or snapshot provenance dependency.
 
+## Space App Vibing bundle
+
+The [Space App Vibing](https://github.com/tqnghia1998/space-app-vibing) app
+embeds this web port in its GitHub Desktop workspace tab. It launches the
+companion from a self-contained runtime committed in that repository at
+`scripts/desktop-plus-web/`, so the packaged app never needs a desktop-plus
+checkout on disk.
+
+Build and refresh the bundle from this checkout:
+
+```sh
+yarn build:web
+yarn bundle:vibing
+```
+
+`scripts/bundle-desktop-plus-web.mjs` writes `../space-app-vibing/scripts/desktop-plus-web/`
+(relative to this checkout; pass a directory to override) containing:
+
+- the require closure of `web-server/server.js` (server entry, routes, stubs,
+  and the `src/` modules it loads),
+- `web-server/public/` (the built renderer) and `web-server/ssh-askpass.js`,
+  which is spawned by path rather than required,
+- the runtime packages the closure reaches: `dugite` (with its embedded git)
+  and `keytar` from `app/node_modules`, `ignore` and `semver` from the root
+  `node_modules`, plus their transitive dependencies,
+- a `package.json` pinning `"type": "commonjs"`, because the vibing
+  repository's root package is ESM and would otherwise load these files as
+  ES modules.
+
+The output is committed build output in the vibing repository and is copied
+into its packaged app by that repository's electron build. Because it carries
+platform-specific binaries (dugite's embedded git, keytar's native module),
+each release OS must re-run the two commands above from a checkout on that
+OS. Runtime changes in this repository only reach the vibing app after a
+rebuild and bundle refresh.
+
+The vibing-specific runtime behaviors themselves — opt-in iframe embedding,
+the worktree-family repository picker, viewport fit, the host-matched theme —
+are listed in [FORK-OVERLAY.md](FORK-OVERLAY.md), which is the sync checklist
+for all divergences from upstream.
+
 ## Security model
 
 The companion binds only to `127.0.0.1`. Every browser API request requires a
