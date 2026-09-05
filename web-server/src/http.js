@@ -1,16 +1,17 @@
 const path = require('path')
 const fs = require('fs')
 const os = require('os')
+const { applyEmbedding } = require('./embedding')
 
 function securityHeaders(headers = {}) {
-  return {
+  return applyEmbedding({
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'DENY',
     'Referrer-Policy': 'no-referrer',
     'Content-Security-Policy':
       "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self'; script-src 'self'; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
     ...headers,
-  }
+  })
 }
 
 function sendJson(res, statusCode, data) {
