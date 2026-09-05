@@ -118,6 +118,31 @@ button.resize-handle {
   z-index: 2147483647;
 }
 
+/* Fit the app inside narrow viewports (e.g. embedded next to a host details
+ * panel): let the resizable toolbar buttons shrink instead of pushing the
+ * trailing Repository/Branch menu buttons past the right edge, and clamp the
+ * sidebar (the toolbar section and the sidebar column share one clamp so they
+ * stay aligned). 630px ≈ the floor space the remaining toolbar buttons need
+ * (3 resizable buttons at 140px + 2 action menus at 105px). */
+#desktop-app-toolbar > *,
+#desktop-app-toolbar .resizable-component {
+  flex-shrink: 1;
+  min-width: 0;
+}
+
+#desktop-app-toolbar .resizable-component {
+  min-width: 140px;
+}
+
+#desktop-app-toolbar .toolbar-action-menu {
+  min-width: 105px;
+}
+
+#desktop-app-toolbar > .sidebar-section,
+#repository-sidebar {
+  max-width: calc(100vw - 630px);
+}
+
 /* Reuse the shared AppMenu markup, with the same visual elevation as desktop
  * popovers so it remains distinct over a diff or other dark surfaces. */
 #web-context-menu .menu-pane {
@@ -126,8 +151,95 @@ button.resize-handle {
   box-shadow: var(--base-box-shadow);
   color: var(--app-menu-pane-color);
 }
+
+/* Align the dark theme with the Space App Vibing host application: flat
+ * Metro-style neutral surfaces (#1a1a1a family) and its #3a96dd accent.
+ * Loaded after web-desktop.scss, so these override the GitHub dark palette. */
+body.theme-dark {
+  --text-color: #ffffff;
+  --text-secondary-color: #a0a0a0;
+  --background-color: #1a1a1a;
+
+  --button-background: #3a96dd;
+  --button-hover-background: #55a8e3;
+  --button-focus-border-color: #3a96dd;
+  --link-button-color: #3a96dd;
+  --link-button-hover-color: #55a8e3;
+  --secondary-button-background: #252526;
+  --secondary-button-border-color: #2c2c30;
+  --secondary-button-hover-border-color: #3f3f46;
+
+  --box-background-color: #1a1a1a;
+  --box-alt-background-color: #1a1a1a;
+  --box-border-color: #222225;
+  --box-border-contrast-color: #2c2c30;
+  --box-border-accent-color: #3a96dd;
+  --box-hover-background-color: #2d2d30;
+  --box-selected-background-color: #2d2d30;
+  --box-selected-active-background-color: #3a96dd;
+  --box-skeleton-background-color: #3f3f46;
+  --skeleton-background-gradient: -webkit-linear-gradient(
+    left,
+    rgba(26, 26, 26, 0) 0%,
+    rgba(26, 26, 26, 0.5) 50%,
+    rgba(26, 26, 26, 0) 100%
+  );
+  --box-placeholder-color: #6e6e6e;
+
+  --toolbar-background-color: #1a1a1a;
+  --toolbar-button-hover-background-color: #2d2d30;
+  --toolbar-button-focus-background-color: #2d2d30;
+  --toolbar-button-progress-color: #2d2d30;
+  --toolbar-button-focus-progress-color: #3f3f46;
+  --toolbar-button-hover-progress-color: #3f3f46;
+  --toolbar-badge-background-color: #3f3f46;
+  --toolbar-dropdown-open-progress-color: #55a8e3;
+
+  --app-menu-pane-background-color: #252526;
+  --app-menu-divider-color: #2c2c30;
+  --app-menu-button-active-background-color: #2d2d30;
+
+  --tab-bar-hover-background-color: #2d2d30;
+  --tab-bar-count-background-color: #3f3f46;
+  --list-item-badge-background-color: #3f3f46;
+  --branch-pill-background-color: #2d2d30;
+  --list-item-hover-background-color: #2d2d30;
+
+  --focus-color: #3a96dd;
+  --accent-color: #55a8e3;
+  --overlay-background-color: rgba(0, 0, 0, 0.6);
+  --path-segment-background: #2d2d30;
+  --path-segment-background-focus: #3f3f46;
+  --tooltip-background-color: #252526;
+  --commit-warning-badge-background-color: #1a1a1a;
+  --commit-warning-badge-border-color: #3f3f46;
+
+  --box-overflow-shadow-background: linear-gradient(
+    180deg,
+    rgba(26, 26, 26, 0) 0%,
+    #1a1a1a 90%,
+    #1a1a1a 100%
+  );
+  --no-shadow-top: linear-gradient(#1a1a1a, rgba(255, 255, 255, 0));
+  --no-shadow-bottom: linear-gradient(rgba(255, 255, 255, 0), #1a1a1a);
+  --top-shadow: linear-gradient(
+    0deg,
+    rgba(26, 26, 26, 0) 0%,
+    rgba(0, 0, 0, 0.6) 90%,
+    rgba(0, 0, 0, 1) 100%
+  );
+  --bottom-shadow: linear-gradient(
+      180deg,
+      rgba(26, 26, 26, 0) 0%,
+      rgba(0, 0, 0, 0.6) 90%,
+      rgba(0, 0, 0, 1) 100%
+    )
+    0 100%;
+}
 `,
-  'Browser CSS may only size the renderer root and position the shared menu'
+  'Browser CSS may only size the renderer root, position the shared menu, align\n' +
+    'the dark theme with the Space App Vibing host, and fit the toolbar in\n' +
+    'narrow viewports'
 )
 
 const browserSources = fs
