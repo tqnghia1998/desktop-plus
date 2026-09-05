@@ -3478,7 +3478,7 @@ function DesktopToolbar(props: {
             <ToolbarActionMenu
               id="web-repository-actions"
               isOpen={repositoryActionsOpen}
-              label="Repository"
+              label="Repo"
               items={repositoryActionItems}
               onStateChanged={state =>
                 setToolbarDropdownState('repository-actions', state)
