@@ -50,6 +50,7 @@
     "draft-release:pr": "ts-node -P script/tsconfig.json script/draft-release/draft-pull-request.ts",
     "validate-changelog": "ts-node -P script/tsconfig.json script/validate-changelog.ts",
     "build:web": "node web-server/build.js",
+    "bundle:vibing": "node scripts/bundle-desktop-plus-web.mjs",
     "check:web:types": "tsc -p web-server/tsconfig.json",
     "check:web:format": "prettier --check \"web-server/*.js\" \"web-server/src/*.js\" \"app/src/ui/web*.tsx\" \"app/src/ui/web/**/*.ts\" \"app/src/ui/app-chrome.tsx\" \"app/src/ui/repository-layout.tsx\" \"app/src/ui/repository-tabs.tsx\" \"app/src/ui/toolbar/*.tsx\" \".github/workflows/web-port.yml\"",
     "check:web": "yarn check:web:types && yarn check:web:format && yarn test:web:docs && yarn test:web:source-dependencies && yarn test:web:ui-ownership",
