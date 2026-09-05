@@ -151,6 +151,36 @@ copyDir(
   path.join(outRoot, 'web-server', 'public')
 )
 
+// Prune heavyweight helpers from dugite's embedded Git that this embed never
+// uses: git-lfs and the .NET runtime backing Git Credential Manager (~120MB).
+// On macOS credential operations re-point GIT_EXEC_PATH at the system Git
+// (only it carries the osxkeychain helper), so the bundled GCM is dead
+// weight. Windows ships its own Git layout and relies on GCM, so keep it.
+function pruneUnusedGitHelpers() {
+  if (process.platform !== 'darwin') return
+  const gitCoreDir = path.join(
+    outRoot,
+    'app',
+    'node_modules',
+    'dugite',
+    'git',
+    'libexec',
+    'git-core'
+  )
+  if (!fs.existsSync(gitCoreDir)) return
+  const prunePatterns = [
+    /^git-credential-manager/,
+    /^git-lfs/,
+    /\.dll$/,
+    /\.dylib$/,
+  ]
+  for (const entry of fs.readdirSync(gitCoreDir)) {
+    if (prunePatterns.some(pattern => pattern.test(entry)))
+      fs.rmSync(path.join(gitCoreDir, entry), { recursive: true, force: true })
+  }
+}
+pruneUnusedGitHelpers()
+
 if (unresolved.length > 0) {
   console.error('Unresolved requires:\n' + unresolved.join('\n'))
   process.exit(1)

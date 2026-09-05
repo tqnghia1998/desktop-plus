@@ -124,6 +124,15 @@ yarn bundle:vibing
   repository's root package is ESM and would otherwise load these files as
   ES modules.
 
+On macOS the bundler prunes dugite's `git/libexec/git-core` of `git-lfs` and
+the .NET runtime behind Git Credential Manager (~120MB): the macOS Git that
+dugite ships has no osxkeychain helper anyway, so credential operations
+re-point `GIT_EXEC_PATH` at the system Git, and the Vibing hosts that run
+this bundle have no git-lfs. Windows builds rely on GCM and keep it. If a
+repository that uses git-lfs is opened in the embed on macOS, its LFS files
+will not smudge — install git-lfs on the host and it resolves through
+`PATH`.
+
 The output is committed build output in the vibing repository and is copied
 into its packaged app by that repository's electron build. Because it carries
 platform-specific binaries (dugite's embedded git, keytar's native module),
