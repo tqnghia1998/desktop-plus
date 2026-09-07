@@ -6795,6 +6795,22 @@ function DesktopRepositoryView(props: {
   )
 }
 
+function getEmbeddedParentOrigin(): string | null {
+  const raw = new URLSearchParams(window.location.search).get('parentOrigin')
+  if (!raw) return null
+  try {
+    const url = new URL(raw)
+    if (
+      (url.protocol !== 'http:' && url.protocol !== 'https:') ||
+      url.origin !== raw
+    )
+      return null
+    return raw
+  } catch {
+    return null
+  }
+}
+
 export function WebApp({ store, dispatcher }: WebAppProps) {
   const state = useApplicationState(store)
   const [undoneCherryPick, setUndoneCherryPick] = React.useState<{
@@ -7054,6 +7070,43 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
       }
     ).__DESKTOP_PLUS_WEB_REPOSITORY_PATH__ = state.selectedRepositoryPath
   }, [state.selectedRepositoryPath])
+
+  const hostRefreshInFlight = React.useRef(false)
+  const hostRefreshQueued = React.useRef(false)
+  const requestHostRefresh = React.useCallback(() => {
+    if (store.getState().loading) return
+    const refresh = () => {
+      hostRefreshInFlight.current = true
+      const complete = () => {
+        hostRefreshInFlight.current = false
+        if (!hostRefreshQueued.current) return
+        hostRefreshQueued.current = false
+        refresh()
+      }
+      void dispatcher.refresh().then(complete, complete)
+    }
+    if (hostRefreshInFlight.current) {
+      hostRefreshQueued.current = true
+      return
+    }
+    refresh()
+  }, [dispatcher, store])
+
+  React.useEffect(() => {
+    const parentOrigin = getEmbeddedParentOrigin()
+    if (!parentOrigin) return
+    const refreshFromHost = (event: MessageEvent) => {
+      if (
+        event.origin === parentOrigin &&
+        event.source === window.parent &&
+        event.data?.type === 'space:desktop-plus-refresh-request'
+      ) {
+        requestHostRefresh()
+      }
+    }
+    window.addEventListener('message', refreshFromHost)
+    return () => window.removeEventListener('message', refreshFromHost)
+  }, [requestHostRefresh])
 
   React.useEffect(() => {
     if (repositoryIndicatorsEnabled)
