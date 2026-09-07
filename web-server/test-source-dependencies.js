@@ -15,6 +15,17 @@ const sourceFiles = [
 const forbiddenImports =
   /(?:from\s+['"](?:electron|node:|child_process|crypto|fs|http|https|os|path|stream|url)['"]|require\(['"](?:electron|node:|child_process|crypto|fs|http|https|os|path|stream|url)['"]\))/u
 
+const webApp = fs.readFileSync(
+  path.join(root, 'app/src/ui/web-app.tsx'),
+  'utf8'
+)
+assert.match(webApp, /space:desktop-plus-refresh-request/)
+assert.match(webApp, /event\.origin === parentOrigin/)
+assert.match(webApp, /event\.source === window\.parent/)
+assert.match(webApp, /hostRefreshInFlight\.current/)
+assert.match(webApp, /hostRefreshQueued\.current/)
+assert.match(webApp, /store\.getState\(\)\.loading/)
+
 for (const file of sourceFiles) {
   const source = fs.readFileSync(path.join(root, file), 'utf8')
   assert.doesNotMatch(
