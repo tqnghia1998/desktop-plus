@@ -797,6 +797,7 @@ export interface WebDispatcher {
   renameRepositoryGroup(group: string, nextGroup: string | null): void
   relocateRepository(oldPath: string, newPath: string): Promise<void>
   refreshRepositoryIndicators(): Promise<void>
+  refresh(): Promise<void>
   openRepositoryInNewWindow(path: string): void
   selectFile(path: string): Promise<void>
   setFileIncluded(path: string, included: boolean): void
@@ -896,7 +897,6 @@ export interface WebDispatcher {
       | 'updates'
   ): Promise<void>
   loadMoreHistory(): Promise<void>
-  refresh(): Promise<void>
   removeRepository(path: string): void
   deleteRepository(path: string, mode: WebRepositoryDeleteMode): Promise<void>
   pullAllRepositories(): Promise<void>
