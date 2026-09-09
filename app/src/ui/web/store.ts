@@ -1230,6 +1230,36 @@ export function createWebApplicationStore(
       await refreshRepository(repositoryPath)
     },
 
+    async addRepositoryWithWorktrees(path) {
+      await dispatcher.addRepository(path)
+      // refreshRepository stored the worktree family (main worktree first) on
+      // the selected repository; surface every member as its own repository so
+      // the picker can switch between them. The selected path must not change.
+      const worktrees = state.repositories.find(
+        repository => repository.path === state.selectedRepositoryPath
+      )?.worktrees
+      if (!worktrees?.length) return
+      const known = new Set(
+        state.repositories.map(repository => repository.path)
+      )
+      const missing = worktrees.filter(
+        worktree => worktree.path && !known.has(worktree.path)
+      )
+      if (!missing.length) return
+      update({
+        repositories: [
+          ...state.repositories,
+          ...missing.map(worktree => ({
+            path: worktree.path,
+            name: repositoryName(worktree.path),
+            lastOpenedAt: 0,
+            defaultBranch: null,
+            currentBranch: null,
+          })),
+        ],
+      })
+    },
+
     async relocateRepository(oldPath, newPath) {
       const inspection = await git.inspectRepository(newPath)
       if (inspection.kind !== 'regular')
