@@ -3353,6 +3353,22 @@ async function main() {
       'aborting a revert restores the pre-revert commit'
     )
 
+    const nestedSubmoduleSource = path.join(root, 'nested-submodule-source')
+    await fs.promises.mkdir(nestedSubmoduleSource)
+    git(nestedSubmoduleSource, 'init', '-b', 'main')
+    git(nestedSubmoduleSource, 'config', 'user.name', 'Nested Submodule Test')
+    git(nestedSubmoduleSource, 'config', 'user.email', 'nested@example.com')
+    await fs.promises.writeFile(
+      path.join(nestedSubmoduleSource, 'nested.txt'),
+      'one\n'
+    )
+    git(nestedSubmoduleSource, 'add', 'nested.txt')
+    git(nestedSubmoduleSource, 'commit', '-m', 'nested one')
+    const nestedModuleSha = execFileSync('git', ['rev-parse', 'HEAD'], {
+      cwd: nestedSubmoduleSource,
+      encoding: 'utf8',
+    }).trim()
+
     const submoduleSource = path.join(root, 'submodule-source')
     const submoduleParent = path.join(root, 'submodule-parent')
     await fs.promises.mkdir(submoduleSource)
@@ -3365,6 +3381,16 @@ async function main() {
     )
     git(submoduleSource, 'add', 'module.txt')
     git(submoduleSource, 'commit', '-m', 'module one')
+    git(
+      submoduleSource,
+      '-c',
+      'protocol.file.allow=always',
+      'submodule',
+      'add',
+      nestedSubmoduleSource,
+      'nested/module'
+    )
+    git(submoduleSource, 'commit', '-m', 'add nested module')
     const moduleOne = execFileSync('git', ['rev-parse', 'HEAD'], {
       cwd: submoduleSource,
       encoding: 'utf8',
@@ -3403,6 +3429,15 @@ async function main() {
     git(submoduleParent, 'checkout', '-b', 'module-two')
     git(path.join(submoduleParent, 'vendor', 'module'), 'fetch')
     git(path.join(submoduleParent, 'vendor', 'module'), 'checkout', moduleTwo)
+    git(
+      path.join(submoduleParent, 'vendor', 'module'),
+      '-c',
+      'protocol.file.allow=always',
+      'submodule',
+      'update',
+      '--init',
+      '--recursive'
+    )
     git(submoduleParent, 'add', 'vendor/module')
     git(submoduleParent, 'commit', '-m', 'update module')
     const moduleUpdateSha = execFileSync('git', ['rev-parse', 'HEAD'], {
@@ -3428,7 +3463,14 @@ async function main() {
       moduleTwo
     )
     await fs.promises.writeFile(
-      path.join(submoduleParent, 'vendor', 'module', 'module.txt'),
+      path.join(
+        submoduleParent,
+        'vendor',
+        'module',
+        'nested',
+        'module',
+        'nested.txt'
+      ),
       'modified\n'
     )
     const originalSubmoduleGitTrace = process.env.GIT_TRACE2_EVENT
@@ -3451,6 +3493,18 @@ async function main() {
               untrackedChanges: false,
               recordedCommit: moduleTwo,
               currentCommit: moduleTwo,
+              nested: [
+                {
+                  path: 'nested/module',
+                  status: {
+                    commitChanged: false,
+                    modifiedChanges: true,
+                    untrackedChanges: false,
+                    recordedCommit: nestedModuleSha,
+                    currentCommit: nestedModuleSha,
+                  },
+                },
+              ],
             },
           },
         },
