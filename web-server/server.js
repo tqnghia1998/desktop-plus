@@ -23,6 +23,7 @@ const {
   normalizeGitLabEndpoint,
 } = require('./gitlab')
 const { getDesktopRepositories } = require('./desktop-data')
+const { applyEmbedding } = require('./src/embedding')
 const {
   operations: webOperationNames,
 } = require('./src/web-operation-contract')
@@ -205,7 +206,7 @@ function parseJsonBody(req) {
 }
 
 function securityHeaders(extra = {}) {
-  return {
+  return applyEmbedding({
     'Content-Security-Policy': CONTENT_SECURITY_POLICY,
     'Cross-Origin-Opener-Policy': 'same-origin',
     'Cross-Origin-Resource-Policy': 'same-origin',
@@ -215,7 +216,7 @@ function securityHeaders(extra = {}) {
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'DENY',
     ...extra,
-  }
+  })
 }
 
 function sendJson(res, statusCode, data) {
