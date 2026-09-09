@@ -67,6 +67,18 @@ button.resize-handle {
   color: var(--app-menu-pane-color);
 }
 
+/* The host's iframe is compact; keep every semantic type token 1px larger
+ * than the desktop default. */
+:root {
+  --font-size: 13px;
+  --font-size-sm: 12px;
+  --font-size-md: 15px;
+  --font-size-lg: 29px;
+  --font-size-xl: 33px;
+  --font-size-xxl: 43px;
+  --font-size-xs: 10px;
+}
+
 /* Align the dark theme with the Space App Vibing host application: flat
  * Metro-style neutral surfaces (#1a1a1a family) and its #3a96dd accent.
  * Loaded after web-desktop.scss, so these override the GitHub dark palette. */
