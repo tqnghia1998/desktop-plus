@@ -2451,7 +2451,7 @@ function createOperationTaskManager(services) {
       }
       void operationContext.run(null, async () => {
         try {
-          const status = await getStatus(repoPath, { noOptionalLocks: true })
+          const status = await getStatus(repoPath)
           const operationState = status.operationState
           if (operationState?.position && operationState.totalCommitCount)
             task.setCommitProgress(
@@ -3062,7 +3062,9 @@ async function nestedSubmoduleStatuses(repoPath, depth = 0) {
           filePath,
         ],
         repoPath,
-        [0, 1]
+        [0, 1],
+        undefined,
+        { ...process.env, GIT_OPTIONAL_LOCKS: '0' }
       ).catch(() => null)
       const record = statusResult?.stdout.split('\0').find(Boolean)
       const statusRecordValue = record ? statusRecord(record) : null
@@ -3354,15 +3356,13 @@ async function getCherryPickState(repoPath) {
   }
 }
 
-async function getStatus(repoPath, options = {}) {
+async function getStatus(repoPath) {
   const result = await git(
     ['status', '--porcelain=v2', '-z', '-uall', '--ignore-submodules=none'],
     repoPath,
     [0],
     undefined,
-    options.noOptionalLocks
-      ? { ...process.env, GIT_OPTIONAL_LOCKS: '0' }
-      : undefined
+    { ...process.env, GIT_OPTIONAL_LOCKS: '0' }
   )
   const records = result.stdout.split('\0')
   const files = []
