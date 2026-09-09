@@ -19,13 +19,6 @@ function git(repo, ...args) {
   execFileSync('git', args, { cwd: repo, stdio: 'pipe' })
 }
 
-function gitDir(repo) {
-  return execFileSync('git', ['rev-parse', '--absolute-git-dir'], {
-    cwd: repo,
-    encoding: 'utf8',
-  }).trim()
-}
-
 let sessionToken
 async function request(base, pathname, options = {}) {
   const response = await fetch(`${base}${pathname}`, {
@@ -103,14 +96,6 @@ async function main() {
   await fs.promises.writeFile(path.join(repo, 'tracked.txt'), 'first\n')
   git(repo, 'add', 'tracked.txt')
   git(repo, 'commit', '-m', 'Initial commit')
-  const serverSource = fs.readFileSync(
-    path.join(__dirname, 'server.js'),
-    'utf8'
-  )
-  assert.match(
-    serverSource,
-    /async function nestedSubmoduleStatuses[\s\S]*?GIT_OPTIONAL_LOCKS: '0'/
-  )
   const remote = path.join(root, 'remote.git')
   git(root, 'init', '--bare', remote)
   git(repo, 'remote', 'set-url', 'origin', remote)
@@ -469,8 +454,9 @@ async function main() {
     })
     assert.equal(result.response.status, 400)
 
-    const indexLockPath = path.join(gitDir(repo), 'index.lock')
-    await fs.promises.writeFile(indexLockPath, 'simulated concurrent write\n')
+    const originalGitTrace = process.env.GIT_TRACE2_EVENT
+    const gitTracePath = path.join(root, 'status-trace.json')
+    process.env.GIT_TRACE2_EVENT = gitTracePath
     try {
       result = await request(base, `/api/status${query}`)
       assert.equal(result.response.status, 200, JSON.stringify(result.data))
@@ -483,8 +469,14 @@ async function main() {
           ['untracked.txt', 'Untracked'],
         ]
       )
+      assert.doesNotMatch(
+        await fs.promises.readFile(gitTracePath, 'utf8'),
+        /"label":"do_write_index"/,
+        'status must not refresh the index while staging can hold its lock'
+      )
     } finally {
-      await fs.promises.unlink(indexLockPath)
+      if (originalGitTrace === undefined) delete process.env.GIT_TRACE2_EVENT
+      else process.env.GIT_TRACE2_EVENT = originalGitTrace
     }
 
     result = await request(base, `/api/status${query}`)
@@ -3439,26 +3431,40 @@ async function main() {
       path.join(submoduleParent, 'vendor', 'module', 'module.txt'),
       'modified\n'
     )
-    result = await request(
-      base,
-      `/api/status?path=${encodeURIComponent(submoduleParent)}`
-    )
-    assert.equal(result.response.status, 200, JSON.stringify(result.data))
-    assert.deepEqual(result.data.workingDirectory.files, [
-      {
-        path: 'vendor/module',
-        status: {
-          kind: 'Modified',
-          submoduleStatus: {
-            commitChanged: false,
-            modifiedChanges: true,
-            untrackedChanges: false,
-            recordedCommit: moduleTwo,
-            currentCommit: moduleTwo,
+    const originalSubmoduleGitTrace = process.env.GIT_TRACE2_EVENT
+    const submoduleGitTracePath = path.join(root, 'submodule-status-trace.json')
+    process.env.GIT_TRACE2_EVENT = submoduleGitTracePath
+    try {
+      result = await request(
+        base,
+        `/api/status?path=${encodeURIComponent(submoduleParent)}`
+      )
+      assert.equal(result.response.status, 200, JSON.stringify(result.data))
+      assert.deepEqual(result.data.workingDirectory.files, [
+        {
+          path: 'vendor/module',
+          status: {
+            kind: 'Modified',
+            submoduleStatus: {
+              commitChanged: false,
+              modifiedChanges: true,
+              untrackedChanges: false,
+              recordedCommit: moduleTwo,
+              currentCommit: moduleTwo,
+            },
           },
         },
-      },
-    ])
+      ])
+      assert.doesNotMatch(
+        await fs.promises.readFile(submoduleGitTracePath, 'utf8'),
+        /"label":"do_write_index"/,
+        'nested submodule status must not refresh the parent index'
+      )
+    } finally {
+      if (originalSubmoduleGitTrace === undefined)
+        delete process.env.GIT_TRACE2_EVENT
+      else process.env.GIT_TRACE2_EVENT = originalSubmoduleGitTrace
+    }
     result = await request(
       base,
       `/api/diff?path=${encodeURIComponent(
