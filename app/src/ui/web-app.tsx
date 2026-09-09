@@ -549,7 +549,7 @@ function useWebDiffPresentationPreferencesState() {
     getNumber('tab-size', 4)
   )
   const [diffFontSize, setDiffFontSizeState] = React.useState(() =>
-    getNumber('diff-font-size', defaultDiffFontSize)
+    getNumber('diff-font-size', defaultDiffFontSize + 1)
   )
   const [diffFontFamily, setDiffFontFamilyState] =
     React.useState<DiffFontFamily>(
@@ -7072,24 +7072,12 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
   }, [state.selectedRepositoryPath])
 
   const hostRefreshInFlight = React.useRef(false)
-  const hostRefreshQueued = React.useRef(false)
   const requestHostRefresh = React.useCallback(() => {
-    if (store.getState().loading) return
-    const refresh = () => {
-      hostRefreshInFlight.current = true
-      const complete = () => {
-        hostRefreshInFlight.current = false
-        if (!hostRefreshQueued.current) return
-        hostRefreshQueued.current = false
-        refresh()
-      }
-      void dispatcher.refresh().then(complete, complete)
-    }
-    if (hostRefreshInFlight.current) {
-      hostRefreshQueued.current = true
-      return
-    }
-    refresh()
+    if (hostRefreshInFlight.current || store.getState().loading) return
+    hostRefreshInFlight.current = true
+    void dispatcher.refresh().finally(() => {
+      hostRefreshInFlight.current = false
+    })
   }, [dispatcher, store])
 
   React.useEffect(() => {
