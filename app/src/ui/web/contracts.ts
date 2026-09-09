@@ -780,6 +780,9 @@ export interface WebDispatcher {
   inspectRepository(path: string): Promise<WebRepositoryInspection>
   trustRepository(path: string): Promise<void>
   addRepository(path: string): Promise<void>
+  /** Adds the repository plus any sibling worktrees so the picker lists the
+   * whole worktree family without selecting the siblings. */
+  addRepositoryWithWorktrees(path: string): Promise<void>
   chooseRepository(): Promise<void>
   cloneRepository(url: string, path: string, branch?: string): Promise<void>
   initializeRepository(
