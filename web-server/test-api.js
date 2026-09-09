@@ -19,6 +19,13 @@ function git(repo, ...args) {
   execFileSync('git', args, { cwd: repo, stdio: 'pipe' })
 }
 
+function gitDir(repo) {
+  return execFileSync('git', ['rev-parse', '--absolute-git-dir'], {
+    cwd: repo,
+    encoding: 'utf8',
+  }).trim()
+}
+
 let sessionToken
 async function request(base, pathname, options = {}) {
   const response = await fetch(`${base}${pathname}`, {
@@ -96,6 +103,14 @@ async function main() {
   await fs.promises.writeFile(path.join(repo, 'tracked.txt'), 'first\n')
   git(repo, 'add', 'tracked.txt')
   git(repo, 'commit', '-m', 'Initial commit')
+  const serverSource = fs.readFileSync(
+    path.join(__dirname, 'server.js'),
+    'utf8'
+  )
+  assert.match(
+    serverSource,
+    /async function nestedSubmoduleStatuses[\s\S]*?GIT_OPTIONAL_LOCKS: '0'/
+  )
   const remote = path.join(root, 'remote.git')
   git(root, 'init', '--bare', remote)
   git(repo, 'remote', 'set-url', 'origin', remote)
@@ -453,6 +468,24 @@ async function main() {
       }),
     })
     assert.equal(result.response.status, 400)
+
+    const indexLockPath = path.join(gitDir(repo), 'index.lock')
+    await fs.promises.writeFile(indexLockPath, 'simulated concurrent write\n')
+    try {
+      result = await request(base, `/api/status${query}`)
+      assert.equal(result.response.status, 200, JSON.stringify(result.data))
+      assert.deepEqual(
+        result.data.workingDirectory.files
+          .map(file => [file.path, file.status.kind])
+          .sort(),
+        [
+          ['tracked.txt', 'Modified'],
+          ['untracked.txt', 'Untracked'],
+        ]
+      )
+    } finally {
+      await fs.promises.unlink(indexLockPath)
+    }
 
     result = await request(base, `/api/status${query}`)
     assert.equal(result.response.status, 200)
