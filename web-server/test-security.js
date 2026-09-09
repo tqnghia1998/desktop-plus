@@ -74,6 +74,25 @@ async function main() {
     assert.equal(result.headers['referrer-policy'], 'no-referrer')
     assert.equal(result.headers['access-control-allow-origin'], undefined)
 
+    process.env.DESKTOP_PLUS_FRAME_ANCESTORS =
+      'http://localhost:5173, http://localhost:8100, "javascript:alert(1)"'
+    try {
+      result = await rawRequest(base, '/')
+      assert.equal(result.headers['x-frame-options'], undefined)
+      const embeddedPolicy = result.headers['content-security-policy']
+        .split('; ')
+        .find(part => part.startsWith('frame-ancestors '))
+      assert.equal(
+        embeddedPolicy,
+        'frame-ancestors http://localhost:5173 http://localhost:8100'
+      )
+    } finally {
+      delete process.env.DESKTOP_PLUS_FRAME_ANCESTORS
+    }
+
+    result = await rawRequest(base, '/')
+    assert.equal(result.headers['x-frame-options'], 'DENY')
+
     result = await rawRequest(base, '/static/empty-no-repo.svg')
     assert.equal(result.status, 200)
     assert.match(result.headers['content-security-policy'], /^sandbox;/)
