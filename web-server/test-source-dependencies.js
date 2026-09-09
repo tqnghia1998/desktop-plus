@@ -23,8 +23,9 @@ assert.match(webApp, /space:desktop-plus-refresh-request/)
 assert.match(webApp, /event\.origin === parentOrigin/)
 assert.match(webApp, /event\.source === window\.parent/)
 assert.match(webApp, /hostRefreshInFlight\.current/)
-assert.match(webApp, /hostRefreshQueued\.current/)
 assert.match(webApp, /store\.getState\(\)\.loading/)
+assert.doesNotMatch(webApp, /hostRefreshQueued/)
+assert.match(webApp, /defaultDiffFontSize \+ 1/)
 
 for (const file of sourceFiles) {
   const source = fs.readFileSync(path.join(root, file), 'utf8')
