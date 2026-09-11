@@ -25,7 +25,7 @@ assert.match(webApp, /event\.source === window\.parent/)
 assert.match(webApp, /hostRefreshInFlight\.current/)
 assert.match(webApp, /store\.getState\(\)\.loading/)
 assert.doesNotMatch(webApp, /hostRefreshQueued/)
-assert.match(webApp, /defaultDiffFontSize \+ 1/)
+assert.match(webApp, /defaultDiffFontSize \+ 3/)
 
 for (const file of sourceFiles) {
   const source = fs.readFileSync(path.join(root, file), 'utf8')
