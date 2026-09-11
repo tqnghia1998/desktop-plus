@@ -549,7 +549,7 @@ function useWebDiffPresentationPreferencesState() {
     getNumber('tab-size', 4)
   )
   const [diffFontSize, setDiffFontSizeState] = React.useState(() =>
-    getNumber('diff-font-size', defaultDiffFontSize + 1)
+    getNumber('diff-font-size', defaultDiffFontSize + 3)
   )
   const [diffFontFamily, setDiffFontFamilyState] =
     React.useState<DiffFontFamily>(
