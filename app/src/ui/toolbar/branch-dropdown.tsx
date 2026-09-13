@@ -51,6 +51,9 @@ interface IBranchDropdownProps {
 
   readonly branchSortOrder: BranchSortOrder
 
+  /** Optional fixed row height for embedded branch dropdowns. */
+  readonly branchRowHeight?: number
+
   /**
    * An event handler for when the drop down is opened, or closed, by a pointer
    * event or by pressing the space or enter key while focused.
@@ -116,6 +119,7 @@ export class BranchDropdown extends React.Component<IBranchDropdownProps> {
         currentPullRequest={this.props.currentPullRequest}
         isLoadingPullRequests={this.props.isLoadingPullRequests}
         branchSortOrder={this.props.branchSortOrder}
+        branchRowHeight={this.props.branchRowHeight}
         emoji={this.props.emoji}
         onDeleteBranch={this.onDeleteBranch}
         onDeleteUnusedLocalBranches={this.onDeleteUnusedLocalBranches}
