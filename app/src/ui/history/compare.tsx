@@ -69,6 +69,9 @@ interface ICompareSidebarProps {
   readonly accounts: ReadonlyArray<Account>
   readonly preferAbsoluteDates: boolean
   readonly showConventionalCommitBadges: boolean
+
+  /** Optional fixed row height for embedded Compare branch menus. */
+  readonly branchRowHeight?: number
 }
 interface ICompareSidebarState {
   /**
@@ -436,6 +439,7 @@ export class CompareSidebar extends React.Component<
         allBranches={branches}
         recentBranches={recentBranches}
         branchSortOrder={this.props.branchSortOrder}
+        rowHeight={this.props.branchRowHeight}
         filterText={filterText}
         textbox={this.textbox!}
         selectedBranch={this.state.focusedBranch}
