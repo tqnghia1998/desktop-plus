@@ -76,7 +76,7 @@ async function main() {
     })
     await addRepository(page, repository)
 
-    await page.getByRole('button', { name: 'Repository', exact: true }).click()
+    await page.getByRole('button', { name: 'Repo', exact: true }).click()
     const publishRequest = page.waitForRequest(
       request =>
         request.url().endsWith('/api/git/operations') &&
