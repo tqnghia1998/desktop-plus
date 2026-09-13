@@ -258,6 +258,7 @@ const webShowWorktreesStorageKey = 'show-worktrees'
 const webCommitSummaryLengthWarningThresholdStorageKey =
   'commit-summary-length-warning-threshold'
 const webShowRecentRepositoriesStorageKey = 'show-recent-repositories'
+const webRecentRepositoriesCountStorageKey = 'recent-repositories-count'
 const webUncommittedChangesStrategyStorageKey = 'uncommitted-changes-strategy'
 const webUpdateBranchStrategyStorageKey = 'update-branch-strategy'
 const webHideWindowOnQuitStorageKey = 'hide-window-on-quit'
@@ -711,8 +712,8 @@ function DesktopPreferencesDialog(props: {
   readonly onUncommittedChangesStrategyChanged: (
     value: UncommittedChangesStrategy
   ) => void
-  readonly showRecentRepositories: boolean
-  readonly onShowRecentRepositoriesChanged: (value: boolean) => void
+  readonly recentRepositoriesCount: number
+  readonly onRecentRepositoriesCountChanged: (value: number) => void
   readonly editorIntegration: WebIntegrationSelection
   readonly shellIntegration: WebIntegrationSelection
   readonly onEditorIntegrationChanged: (value: WebIntegrationSelection) => void
@@ -778,7 +779,7 @@ function DesktopPreferencesDialog(props: {
     setShowCompareTab: props.onShowCompareTabChanged,
     setShowConventionalCommitBadges:
       props.onShowConventionalCommitBadgesChanged,
-    setShowRecentRepositories: props.onShowRecentRepositoriesChanged,
+    setRecentRepositoriesCount: props.onRecentRepositoriesCountChanged,
     setShowWorktrees: props.onShowWorktreesChanged,
     setShowWorktreesInRepoList: props.onShowWorktreesInRepositoryListChanged,
     setStatsOptOut: async (value: boolean) => {
@@ -868,7 +869,7 @@ function DesktopPreferencesDialog(props: {
         showCompareTab={props.showCompareTab}
         showConventionalCommitBadges={props.showConventionalCommitBadges}
         showDiffCheckMarks={props.preferences.showDiffCheckMarks}
-        showRecentRepositories={props.showRecentRepositories}
+        recentRepositoriesCount={props.recentRepositoriesCount}
         showWorktrees={props.showWorktrees}
         showWorktreesInRepoList={props.showWorktreesInRepositoryList}
         titleBarStyle="native"
@@ -1990,7 +1991,7 @@ function DesktopRepositoryPicker(props: {
   readonly onOpenNewWindow: (path: string) => void
   readonly onPullAll: () => void
   readonly onCreateGroup: (paths: ReadonlyArray<string>) => void
-  readonly showRecentRepositories: boolean
+  readonly recentRepositoriesCount: number
   readonly branches: ReadonlyArray<WebBranch>
   readonly confirmWorktreeRemoval: boolean
   readonly onConfirmWorktreeRemovalChanged: (value: boolean) => void
@@ -2063,9 +2064,9 @@ function DesktopRepositoryPicker(props: {
             (webRepositoryByPath.get(right.path)?.lastOpenedAt || 0) -
             (webRepositoryByPath.get(left.path)?.lastOpenedAt || 0)
         )
-        .slice(0, 7)
+        .slice(0, props.recentRepositoriesCount)
         .map(repository => repository.id),
-    [desktopRepositories, webRepositoryByPath]
+    [desktopRepositories, props.recentRepositoriesCount, webRepositoryByPath]
   )
   const getWebRepository = React.useCallback(
     (repository: Repository) =>
@@ -2296,7 +2297,6 @@ function DesktopRepositoryPicker(props: {
             ? ShowBranchNameInRepoListSetting.WhenNotDefault
             : ShowBranchNameInRepoListSetting.Never
         }
-        showRecentRepositories={props.showRecentRepositories}
         showWorktrees={false}
         showWorktreesInRepoList={props.showWorktrees}
       />
@@ -2406,7 +2406,7 @@ function DesktopToolbar(props: {
   readonly showWorktrees: boolean
   readonly showWorktreesInRepositoryList: boolean
   readonly repositoryIndicatorsEnabled: boolean
-  readonly showRecentRepositories: boolean
+  readonly recentRepositoriesCount: number
   readonly onCopyPath: (path: string) => void
   readonly onOpenPath: (path: string, reveal?: boolean) => void
   readonly onOpenExternal: (url: string) => void
@@ -3440,7 +3440,7 @@ function DesktopToolbar(props: {
                 selectedRepositoryPath={props.state.selectedRepositoryPath}
                 showBranchName={props.showBranchName}
                 showWorktrees={props.showWorktreesInRepositoryList}
-                showRecentRepositories={props.showRecentRepositories}
+                recentRepositoriesCount={props.recentRepositoriesCount}
                 onCopyPath={props.onCopyPath}
                 onOpenPath={props.onOpenPath}
                 onOpenExternal={props.onOpenExternal}
@@ -6908,8 +6908,12 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
     React.useState<UncommittedChangesStrategy>(
       getStoredUncommittedChangesStrategy
     )
-  const [showRecentRepositories, setShowRecentRepositories] = React.useState(
-    () => getBoolean(webShowRecentRepositoriesStorageKey, true)
+  const [recentRepositoriesCount, setRecentRepositoriesCount] = React.useState(
+    () =>
+      getNumber(
+        webRecentRepositoriesCountStorageKey,
+        getBoolean(webShowRecentRepositoriesStorageKey, true) ? 3 : 0
+      )
   )
   const [showWorktreesInRepositoryList, setShowWorktreesInRepositoryList] =
     React.useState(() =>
@@ -7204,9 +7208,10 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
     localStorage.setItem(webUncommittedChangesStrategyStorageKey, value)
     setUncommittedChangesStrategy(value)
   }
-  const updateShowRecentRepositories = (value: boolean) => {
-    setBoolean(webShowRecentRepositoriesStorageKey, value)
-    setShowRecentRepositories(value)
+  const updateRecentRepositoriesCount = (value: number) => {
+    if (Number.isNaN(value)) return
+    setNumber(webRecentRepositoriesCountStorageKey, value)
+    setRecentRepositoriesCount(value)
   }
   const updateShowWorktreesInRepositoryList = (value: boolean) => {
     setBoolean(webShowWorktreesInRepositoryListStorageKey, value)
@@ -7533,7 +7538,7 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
                 showWorktrees={showWorktrees}
                 showWorktreesInRepositoryList={showWorktreesInRepositoryList}
                 repositoryIndicatorsEnabled={repositoryIndicatorsEnabled}
-                showRecentRepositories={showRecentRepositories}
+                recentRepositoriesCount={recentRepositoriesCount}
                 onCopyPath={path => void dispatcher.copyText(path)}
                 onOpenPath={path => void dispatcher.openPath(path, true)}
                 onOpenExternal={url => dispatcher.openExternal(url)}
@@ -7691,8 +7696,8 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
           onShowCommitLengthWarningChanged={updateShowCommitLengthWarning}
           uncommittedChangesStrategy={uncommittedChangesStrategy}
           onUncommittedChangesStrategyChanged={updateUncommittedChangesStrategy}
-          showRecentRepositories={showRecentRepositories}
-          onShowRecentRepositoriesChanged={updateShowRecentRepositories}
+          recentRepositoriesCount={recentRepositoriesCount}
+          onRecentRepositoriesCountChanged={updateRecentRepositoriesCount}
           editorIntegration={editorIntegration}
           shellIntegration={shellIntegration}
           onEditorIntegrationChanged={updateEditorIntegration}
