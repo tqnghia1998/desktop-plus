@@ -40,7 +40,7 @@
     border-bottom-right-radius: 0;
     border-top-right-radius: 0;
     margin-right: 0;
-    height: 30px;
+    height: var(--dropdown-select-button-height);
     flex-grow: 1;
   }
 
@@ -51,7 +51,7 @@
     border-bottom-left-radius: 0;
     border-top-left-radius: 0;
     min-width: auto;
-    height: 30px;
+    height: var(--dropdown-select-button-height);
     background-color: var(--button-background);
     color: var(--button-text-color);
     border: 1px solid var(--button-background);
