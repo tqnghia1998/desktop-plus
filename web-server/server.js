@@ -42,7 +42,6 @@ const MAX_FILE_CONTENT_BYTES = 1024 * 1024
 const { Router } = require('./src/http')
 const { registerRepositoryRoutes } = require('./routes/repository')
 const { registerFsRoutes } = require('./routes/fs')
-const { registerHostingRoutes } = require('./routes/hosting')
 const { registerSystemRoutes } = require('./routes/system')
 const {
   MAX_ARGUMENT_LENGTH,
@@ -6685,15 +6684,6 @@ registerRepositoryRoutes(router, {
 registerFsRoutes(router, {
   MAX_RESPONSE_BYTES,
   MAX_REQUEST_BYTES,
-})
-registerHostingRoutes(router, {
-  normalizeGitLabEndpoint,
-  gitLabCredentialId,
-  requireGitLabCredential,
-  gitLabCredentialService,
-  githubCredentialService,
-  sendJson,
-  parseJsonBody,
 })
 registerSystemRoutes(router)
 
