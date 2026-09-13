@@ -23,6 +23,9 @@ interface IWorktreeDropdownProps {
   readonly enableFocusTrap: boolean
   readonly worktreeDropdownWidth: IConstrainedValue
   readonly onPruneWorktree?: (path: string) => void
+
+  /** Optional fixed row height for embedded worktree dropdowns. */
+  readonly rowHeight?: number
 }
 
 interface IWorktreeDropdownState {
@@ -138,6 +141,7 @@ export class WorktreeDropdown extends React.Component<
         canCreateNewWorktree={true}
         onCreateNewWorktree={this.onCreateNewWorktree}
         onWorktreeContextMenu={this.onWorktreeContextMenu}
+        rowHeight={this.props.rowHeight}
       />
     )
   }

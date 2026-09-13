@@ -17,7 +17,7 @@
   }
 
   & .toolbar-dropdown-arrow-button {
-    width: 39px;
+    width: calc(var(--toolbar-height) - var(--spacing));
   }
 
   &.open {
