@@ -72,6 +72,9 @@ interface IBranchesContainerProps {
   readonly emoji: Map<string, Emoji>
 
   readonly underlineLinks: boolean
+
+  /** Optional fixed row height for embedded branch dropdowns. */
+  readonly branchRowHeight?: number
 }
 
 interface IBranchesContainerState {
@@ -280,6 +283,7 @@ export class BranchesContainer extends React.Component<
             allBranches={this.props.allBranches}
             recentBranches={this.props.recentBranches}
             branchSortOrder={this.props.branchSortOrder}
+            rowHeight={this.props.branchRowHeight}
             onItemClick={this.onBranchItemClick}
             filterText={this.state.branchFilterText}
             onFilterTextChanged={this.onBranchFilterTextChanged}

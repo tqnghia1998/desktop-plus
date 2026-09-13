@@ -40,7 +40,7 @@
     display: flex;
     align-items: center;
     min-width: 0;
-    height: 30px;
+    height: var(--menu-item-height);
 
     &.disabled {
       opacity: 0.3;
