@@ -152,6 +152,12 @@ button.resize-handle {
   color: var(--app-menu-pane-color);
 }
 
+/* Avoid the desktop app's narrow 400–450px dialogs in the embedded view.
+ * The shared responsive rule still takes precedence below 600px. */
+dialog {
+  min-width: 600px;
+}
+
 /* The host's iframe is compact; keep every semantic type token 3px larger
  * than the desktop default. */
 :root {
@@ -162,6 +168,19 @@ button.resize-handle {
   --font-size-xl: 35px;
   --font-size-xxl: 45px;
   --font-size-xs: 12px;
+
+  /* Keep the shared desktop spacing rhythm so adjacent actions and dialog
+   * padding do not become oversized; control dimensions below carry the
+   * embedded density adjustment. */
+  --spacing: 10px;
+  --button-height: 40px;
+  --text-field-height: 40px;
+  --dropdown-select-button-height: 42px;
+  --menu-item-height: 42px;
+  --toolbar-height: 64px;
+  --tab-bar-height: 40px;
+  --button-border-radius: 10px;
+  --border-radius: 10px;
 }
 
 /* Align the dark theme with the Space App Vibing host application: flat
@@ -249,9 +268,9 @@ body.theme-dark {
     0 100%;
 }
 `,
-  'Browser CSS may only size the renderer root, position the shared menu, align\n' +
-    'the dark theme with the Space App Vibing host, and fit the toolbar in\n' +
-    'narrow viewports'
+  'Browser CSS may only size the renderer root, position shared menus and\n' +
+    'dialogs, align the dark theme with the Space App Vibing host, and fit the\n' +
+    'toolbar in narrow viewports'
 )
 
 const browserSources = fs

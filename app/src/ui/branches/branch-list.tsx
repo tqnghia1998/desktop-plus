@@ -154,6 +154,9 @@ interface IBranchListProps {
 
   /** Optional: Callback if option to fetch branches should exist */
   readonly onPullSingleBranch?: (branchName: string) => void
+
+  /** Optional fixed row height for embedded branch dropdowns. */
+  readonly rowHeight?: number
 }
 
 /** The Branches list component. */
@@ -212,7 +215,7 @@ export class BranchList extends React.Component<IBranchListProps> {
       <SectionFilterList<IBranchListItem>
         ref={this.onBranchesFilterListRef}
         className="branches-list"
-        rowHeight={RowHeight}
+        rowHeight={this.props.rowHeight ?? RowHeight}
         filterText={this.props.filterText}
         onFilterTextChanged={this.props.onFilterTextChanged}
         onFilterKeyDown={this.props.onFilterKeyDown}

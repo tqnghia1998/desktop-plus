@@ -38,6 +38,9 @@ interface IWorktreeListProps {
     worktree: WorktreeEntry,
     event: React.MouseEvent<HTMLDivElement>
   ) => void
+
+  /** Optional fixed row height for embedded worktree dropdowns. */
+  readonly rowHeight?: number
 }
 
 type WorktreeGroupIdentifier = 'main' | 'linked'
@@ -156,7 +159,7 @@ export class WorktreeList extends React.Component<IWorktreeListProps> {
     return (
       <SectionFilterList<IWorktreeListItem, WorktreeGroupIdentifier>
         className="worktree-list"
-        rowHeight={RowHeight}
+        rowHeight={this.props.rowHeight ?? RowHeight}
         filterText={this.props.filterText}
         onFilterTextChanged={this.props.onFilterTextChanged}
         selectedItem={null}
