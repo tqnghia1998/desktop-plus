@@ -2471,8 +2471,8 @@ function DesktopToolbar(props: {
   const [branchToDelete, setBranchToDelete] = React.useState<WebBranch | null>(
     null
   )
-  const [deleteUnusedLocalBranchesOpen, setDeleteUnusedLocalBranchesOpen] =
-    React.useState(false)
+  const [deleteUnusedLocalBranches, setDeleteUnusedLocalBranches] =
+    React.useState<ReadonlyArray<WebBranch> | null>(null)
   const [manageRemotesOpen, setManageRemotesOpen] = React.useState(false)
   const [addRemoteOpen, setAddRemoteOpen] = React.useState(false)
   const [openWithEditorOpen, setOpenWithEditorOpen] = React.useState(false)
@@ -2648,6 +2648,7 @@ function DesktopToolbar(props: {
         showPopup: (popup: {
           readonly type: PopupType
           readonly branch?: Branch
+          readonly branches?: ReadonlyArray<Branch>
           readonly initialName?: string
           readonly initialBranchName?: string
         }) => {
@@ -2684,7 +2685,16 @@ function DesktopToolbar(props: {
               if (webBranch) setBranchToDelete(webBranch)
               break
             case PopupType.DeleteUnusedLocalBranches:
-              setDeleteUnusedLocalBranchesOpen(true)
+              setDeleteUnusedLocalBranches(
+                popup.branches?.flatMap(
+                  branch =>
+                    props.state.branches?.branches?.filter(
+                      candidate =>
+                        candidate.type === 'Local' &&
+                        candidate.ref === branch.ref
+                    ) || []
+                ) || []
+              )
               break
             case PopupType.AddWorktree:
               if (webBranch) {
@@ -2849,7 +2859,7 @@ function DesktopToolbar(props: {
     if (
       requests.deleteUnusedLocalBranches !== previous.deleteUnusedLocalBranches
     )
-      setDeleteUnusedLocalBranchesOpen(true)
+      setDeleteUnusedLocalBranches(props.state.branches?.mergedBranches || [])
     if (requests.manageRemotes !== previous.manageRemotes)
       setManageRemotesOpen(true)
     if (requests.mergeBranch !== previous.mergeBranch)
@@ -3120,7 +3130,10 @@ function DesktopToolbar(props: {
         type: 'item',
         label: 'Delete Unused Local Branches…',
         disabled: (props.state.branches?.mergedBranches?.length || 0) === 0,
-        action: () => setDeleteUnusedLocalBranchesOpen(true),
+        action: () =>
+          setDeleteUnusedLocalBranches(
+            props.state.branches?.mergedBranches || []
+          ),
       },
     ],
     [
@@ -3710,12 +3723,12 @@ function DesktopToolbar(props: {
           />
         )
       ) : null}
-      {deleteUnusedLocalBranchesOpen && props.state.selectedRepositoryPath ? (
+      {deleteUnusedLocalBranches && props.state.selectedRepositoryPath ? (
         <DesktopDeleteUnusedLocalBranchesDialog
-          branches={props.state.branches?.mergedBranches || []}
+          branches={deleteUnusedLocalBranches}
           dispatcher={props.dispatcher}
           onDeleted={() => undefined}
-          onDismiss={() => setDeleteUnusedLocalBranchesOpen(false)}
+          onDismiss={() => setDeleteUnusedLocalBranches(null)}
           repositoryPath={props.state.selectedRepositoryPath}
         />
       ) : null}
