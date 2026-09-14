@@ -6997,6 +6997,14 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
   }, [dispatcher, store])
 
   React.useEffect(() => {
+    const onFocus = () => {
+      requestHostRefresh()
+    }
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  }, [requestHostRefresh])
+
+  React.useEffect(() => {
     const parentOrigin = getEmbeddedParentOrigin()
     if (!parentOrigin) return
     const refreshFromHost = (event: MessageEvent) => {
