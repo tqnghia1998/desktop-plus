@@ -20,11 +20,20 @@ const webApp = fs.readFileSync(
   'utf8'
 )
 assert.match(webApp, /space:desktop-plus-refresh-request/)
+assert.match(webApp, /const isEmbedded = getEmbeddedParentOrigin\(\) !== null/)
+assert.match(webApp, /isEmbedded=\{isEmbedded\}/)
+assert.match(webApp, /!props\.isEmbedded && props\.showWorktrees && repository/)
+assert.match(
+  webApp,
+  /props\.isEmbedded \? null : \(\s*<RepositoryToolbarDropdown/s
+)
 assert.match(webApp, /event\.origin === parentOrigin/)
 assert.match(webApp, /event\.source === window\.parent/)
 assert.match(webApp, /hostRefreshInFlight\.current/)
 assert.match(webApp, /store\.getState\(\)\.loading/)
 assert.doesNotMatch(webApp, /hostRefreshQueued/)
+assert.doesNotMatch(webApp, /historyIdentity/)
+assert.doesNotMatch(webApp, /key=\{historyIdentity\}/)
 assert.match(webApp, /defaultDiffFontSize \+ 3/)
 
 for (const file of sourceFiles) {

@@ -158,29 +158,28 @@ dialog {
   min-width: 600px;
 }
 
-/* The host's iframe is compact; keep every semantic type token 3px larger
+/* The host's iframe is compact; keep every semantic type token 1px larger
  * than the desktop default. */
 :root {
-  --font-size: 15px;
-  --font-size-sm: 14px;
-  --font-size-md: 17px;
-  --font-size-lg: 31px;
-  --font-size-xl: 35px;
-  --font-size-xxl: 45px;
-  --font-size-xs: 12px;
+  --font-size: 13px;
+  --font-size-sm: 12px;
+  --font-size-md: 15px;
+  --font-size-lg: 29px;
+  --font-size-xl: 33px;
+  --font-size-xxl: 43px;
+  --font-size-xs: 10px;
 
-  /* Keep the shared desktop spacing rhythm so adjacent actions and dialog
-   * padding do not become oversized; control dimensions below carry the
-   * embedded density adjustment. */
+  /* Keep the shared desktop spacing rhythm while reducing the embedded
+   * controls by roughly ten percent. */
   --spacing: 10px;
-  --button-height: 40px;
-  --text-field-height: 40px;
-  --dropdown-select-button-height: 42px;
-  --menu-item-height: 42px;
-  --toolbar-height: 64px;
-  --tab-bar-height: 40px;
-  --button-border-radius: 10px;
-  --border-radius: 10px;
+  --button-height: 36px;
+  --text-field-height: 36px;
+  --dropdown-select-button-height: 38px;
+  --menu-item-height: 38px;
+  --toolbar-height: 58px;
+  --tab-bar-height: 36px;
+  --button-border-radius: 8px;
+  --border-radius: 8px;
 }
 
 /* Align the dark theme with the Space App Vibing host application: flat
