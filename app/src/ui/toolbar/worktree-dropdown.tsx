@@ -23,6 +23,7 @@ interface IWorktreeDropdownProps {
   readonly enableFocusTrap: boolean
   readonly worktreeDropdownWidth: IConstrainedValue
   readonly onPruneWorktree?: (path: string) => void
+  readonly disabled?: boolean
 
   /** Optional fixed row height for embedded worktree dropdowns. */
   readonly rowHeight?: number
@@ -180,6 +181,7 @@ export class WorktreeDropdown extends React.Component<
         dropdownContentRenderer={this.renderWorktreeFoldout}
         dropdownState={currentState}
         showDisclosureArrow={true}
+        disabled={this.props.disabled}
         enableFocusTrap={enableFocusTrap}
         foldoutStyleOverrides={
           enableResizingToolbarButtons()
