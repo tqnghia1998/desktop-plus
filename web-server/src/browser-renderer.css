@@ -93,8 +93,8 @@ dialog {
   --spacing: 10px;
   --button-height: 32px;
   --text-field-height: 32px;
-  --dropdown-select-button-height: 34px;
-  --menu-item-height: 38px;
+  --dropdown-select-button-height: 32px;
+  --menu-item-height: 32px;
   --toolbar-height: 58px;
   --tab-bar-height: 36px;
   --button-border-radius: 8px;
