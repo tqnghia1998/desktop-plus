@@ -46,6 +46,22 @@
       white-space: nowrap;
     }
 
+    &.compact {
+      padding: var(--spacing) var(--spacing-double);
+
+      .title-row {
+        margin-bottom: 0;
+      }
+
+      h3 {
+        font-size: var(--font-size-md);
+      }
+
+      .row {
+        margin-top: var(--spacing-half);
+      }
+    }
+
     .row {
       display: flex;
       align-items: center;

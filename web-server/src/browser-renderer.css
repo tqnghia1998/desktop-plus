@@ -53,6 +53,11 @@ button.resize-handle {
   min-width: 105px;
 }
 
+/* The trailing Branch action has no adjacent toolbar control to separate. */
+#desktop-app-toolbar > .toolbar-action-menu:last-child > .toolbar-button > button {
+  border-right: 0;
+}
+
 #desktop-app-toolbar > .sidebar-section,
 #repository-sidebar {
   max-width: calc(100vw - 630px);
@@ -84,12 +89,11 @@ dialog {
   --font-size-xxl: 43px;
   --font-size-xs: 10px;
 
-  /* Keep the shared desktop spacing rhythm while reducing the embedded
-   * controls by roughly ten percent. */
+  /* Keep the shared desktop spacing rhythm with compact controls. */
   --spacing: 10px;
-  --button-height: 36px;
-  --text-field-height: 36px;
-  --dropdown-select-button-height: 38px;
+  --button-height: 32px;
+  --text-field-height: 32px;
+  --dropdown-select-button-height: 34px;
   --menu-item-height: 38px;
   --toolbar-height: 58px;
   --tab-bar-height: 36px;

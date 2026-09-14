@@ -111,6 +111,8 @@ interface IChangesSidebarProps {
 
   /** Whether the list/tree view mode switch is shown */
   readonly showViewModeSwitches: boolean
+  /** Optional fixed row height for embedded Changes lists. */
+  readonly fileListRowHeight?: number
 
   /**
    * Whether or not to skip blocking commit hooks when creating commits
@@ -570,6 +572,7 @@ export class ChangesSidebar extends React.Component<IChangesSidebarProps, {}> {
           showChangesFilter={this.props.showChangesFilter}
           fileTreeView={this.props.fileTreeView}
           showViewModeSwitches={this.props.showViewModeSwitches}
+          rowHeight={this.props.fileListRowHeight}
           skipCommitHooks={this.props.skipCommitHooks}
           signOffCommits={this.props.signOffCommits}
           allowEmptyCommit={this.props.allowEmptyCommit}
