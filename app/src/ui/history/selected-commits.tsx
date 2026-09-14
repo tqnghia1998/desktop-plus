@@ -64,6 +64,8 @@ interface ISelectedCommitsProps {
    */
   readonly externalFileContents?: IFileContents | null
   readonly commitSummaryWidth: IConstrainedValue
+  /** Optional fixed row height for embedded commit file lists. */
+  readonly fileListRowHeight?: number
   readonly selectedDiffType: ImageDiffType
   /** The name of the currently selected external editor */
   readonly externalEditorLabel?: string
@@ -331,6 +333,7 @@ export class SelectedCommits extends DiffPresentationStateComponent<
           onSelectionChanged={this.onFileSelectionChanged}
           selectedFiles={this.state.selectedFiles}
           availableWidth={availableWidth}
+          rowHeight={this.props.fileListRowHeight}
           onContextMenu={this.onContextMenu}
           onRowDoubleClick={this.onRowDoubleClick}
         />
