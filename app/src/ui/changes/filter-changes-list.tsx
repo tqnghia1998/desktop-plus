@@ -259,6 +259,8 @@ interface IFilterChangesListProps {
 
   /** Whether the list/tree view mode switch is shown */
   readonly showViewModeSwitches: boolean
+  /** Optional fixed row height for embedded Changes lists. */
+  readonly rowHeight?: number
 
   /**
    * Whether or not to skip blocking commit hooks when creating commits
@@ -1827,7 +1829,7 @@ export class FilterChangesList extends React.Component<
           <AugmentedSectionFilterList<IChangesListItem>
             ref={this.filterListRef}
             id="changes-list"
-            rowHeight={RowHeight}
+            rowHeight={this.props.rowHeight ?? RowHeight}
             filterText={
               this.props.showChangesFilter
                 ? this.props.fileListFilter.filterText
