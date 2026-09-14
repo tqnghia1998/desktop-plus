@@ -1345,7 +1345,7 @@ function DesktopCommitGraphSidebar(props: {
         max: 400,
       }}
       commitLookup={commitLookup}
-      commitRowHeight={64}
+      commitRowHeight={50}
       compareState={compareState}
       currentBranch={currentBranch}
       currentTipSha={props.state.branches?.branch?.tip?.sha || null}
@@ -2184,7 +2184,7 @@ function DesktopRepositoryPicker(props: {
         }}
         recentRepositories={recentRepositories}
         repositories={desktopRepositories}
-        rowHeight={42}
+        rowHeight={32}
         selectedRepository={
           desktopRepositories.find(
             repository => repository.path === props.selectedRepositoryPath
@@ -3241,7 +3241,7 @@ function DesktopToolbar(props: {
               value: branchDropdownWidth,
             }}
             branchSortOrder={props.branchSortOrder}
-            branchRowHeight={42}
+            branchRowHeight={32}
             currentPullRequest={null}
             dispatcher={desktopBranchDropdownDispatcher}
             emoji={new Map()}
@@ -3303,7 +3303,7 @@ function DesktopToolbar(props: {
                 setToolbarDropdownState('worktree', state)
               }
               repository={desktopWorktreeRepository}
-              rowHeight={42}
+              rowHeight={32}
               worktreeDropdownWidth={{
                 max: webToolbarButtonWidth.max,
                 min: webToolbarButtonWidth.min,
@@ -6086,7 +6086,7 @@ function DesktopCompareView(props: {
           aheadBehindStore={aheadBehindStore}
           askForConfirmationOnCheckoutCommit={true}
           branchSortOrder={DEFAULT_BRANCH_SORT_ORDER}
-          branchRowHeight={42}
+          branchRowHeight={32}
           commitLookup={comparisonLookup}
           compareListScrollTop={Number(
             localStorage.getItem(compareScrollStorageKey) || 0
