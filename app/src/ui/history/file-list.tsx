@@ -21,6 +21,8 @@ interface IFileListProps {
   ) => void
   readonly onRowDoubleClick: (row: number, source: ClickSource) => void
   readonly availableWidth: number
+  /** Optional fixed row height for embedded file lists. */
+  readonly rowHeight?: number
   readonly onContextMenu?: (
     file: CommittedFileChange,
     event: React.MouseEvent<HTMLDivElement>
@@ -197,7 +199,7 @@ export class FileList extends React.Component<IFileListProps, IFileListState> {
         <List
           rowRenderer={this.renderRow}
           rowCount={this.rows.length}
-          rowHeight={29}
+          rowHeight={this.props.rowHeight ?? 29}
           selectionMode="multi"
           selectedRows={this.selectedRowsForFiles()}
           canSelectRow={this.canSelectRow}

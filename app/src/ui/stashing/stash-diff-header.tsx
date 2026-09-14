@@ -47,6 +47,7 @@ interface IStashDiffHeaderProps {
   readonly repository: Repository
   readonly dispatcher: Dispatcher
   readonly askForConfirmationOnDiscardStash: boolean
+  readonly compact?: boolean
 }
 
 interface IStashDiffHeaderState {
@@ -78,7 +79,7 @@ export class StashDiffHeader extends React.Component<
     const { stashEntry } = this.props
 
     return (
-      <div className="header">
+      <div className={this.props.compact ? 'header compact' : 'header'}>
         <div className="title-row">
           <h3>{stashEntry.customName ?? 'Stashed changes'}</h3>
           <Button
