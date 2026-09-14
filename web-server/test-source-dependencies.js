@@ -22,10 +22,11 @@ const webApp = fs.readFileSync(
 assert.match(webApp, /space:desktop-plus-refresh-request/)
 assert.match(webApp, /const isEmbedded = getEmbeddedParentOrigin\(\) !== null/)
 assert.match(webApp, /isEmbedded=\{isEmbedded\}/)
-assert.match(webApp, /!props\.isEmbedded && props\.showWorktrees && repository/)
+assert.match(webApp, /props\.showWorktrees && repository/)
+assert.match(webApp, /<WorktreeDropdown[\s\S]*disabled=\{props\.isEmbedded\}/)
 assert.match(
   webApp,
-  /props\.isEmbedded \? null : \(\s*<RepositoryToolbarDropdown/s
+  /<RepositoryToolbarDropdown[\s\S]*disabled=\{props\.isEmbedded\}/
 )
 assert.match(webApp, /event\.origin === parentOrigin/)
 assert.match(webApp, /event\.source === window\.parent/)
@@ -34,7 +35,35 @@ assert.match(webApp, /store\.getState\(\)\.loading/)
 assert.doesNotMatch(webApp, /hostRefreshQueued/)
 assert.doesNotMatch(webApp, /historyIdentity/)
 assert.doesNotMatch(webApp, /key=\{historyIdentity\}/)
-assert.match(webApp, /defaultDiffFontSize \+ 3/)
+assert.match(webApp, /defaultDiffFontSize \+ 1/)
+assert.match(webApp, /fileListRowHeight=\{32\}/)
+assert.match(webApp, /compactHeader/)
+
+const stashDiffStyles = fs.readFileSync(
+  path.join(root, 'app/styles/ui/_stash-diff-viewer.scss'),
+  'utf8'
+)
+assert.match(
+  stashDiffStyles,
+  /&\.compact \{\s+padding: var\(--spacing\)[\s\S]*title-row \{\s+margin-bottom: 0;\s+\}[\s\S]*\.row \{\s+margin-top: var\(--spacing-half\);/
+)
+
+const changesFileList = fs.readFileSync(
+  path.join(root, 'app/src/ui/changes/filter-changes-list.tsx'),
+  'utf8'
+)
+assert.match(changesFileList, /readonly rowHeight\?: number/)
+assert.match(
+  changesFileList,
+  /rowHeight=\{this\.props\.rowHeight \?\? RowHeight\}/
+)
+
+const committedFileList = fs.readFileSync(
+  path.join(root, 'app/src/ui/history/file-list.tsx'),
+  'utf8'
+)
+assert.match(committedFileList, /readonly rowHeight\?: number/)
+assert.match(committedFileList, /rowHeight=\{this\.props\.rowHeight \?\? 29\}/)
 
 for (const file of sourceFiles) {
   const source = fs.readFileSync(path.join(root, file), 'utf8')

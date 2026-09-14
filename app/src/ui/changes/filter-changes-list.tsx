@@ -238,6 +238,9 @@ interface IFilterChangesListProps {
   /** Whether or not to show the changes filter */
   readonly showChangesFilter: boolean
 
+  /** Optional fixed row height for embedded Changes lists. */
+  readonly rowHeight?: number
+
   /**
    * Whether or not to skip blocking commit hooks when creating commits
    * by means of passing the `--no-verify` flag to git commit
@@ -1480,7 +1483,7 @@ export class FilterChangesList extends React.Component<
           <AugmentedSectionFilterList<IChangesListItem>
             ref={this.filterListRef}
             id="changes-list"
-            rowHeight={RowHeight}
+            rowHeight={this.props.rowHeight ?? RowHeight}
             filterText={
               this.props.showChangesFilter
                 ? this.props.fileListFilter.filterText
