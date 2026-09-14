@@ -122,13 +122,7 @@ import { defaultCopyPathNormalization } from '../models/copy-path-normalization'
 import type { Dispatcher } from './dispatcher'
 import { RepositoryLayout } from './repository-layout'
 import { RepositoryTabs } from './repository-tabs'
-import { AppMenu as AppMenuState } from '../models/app-menu'
-import type {
-  IMenu,
-  IMenuItem,
-  ISubmenuItem,
-  MenuItem,
-} from '../models/app-menu'
+import type { IMenu } from '../models/app-menu'
 import {
   getHideWhitespaceInDiff,
   getImageDiffType,
@@ -325,96 +319,6 @@ const webSuggestedActionsMenu: IMenu = {
     accelerator: null,
     accessKey: null,
   })),
-}
-
-function webMenuItem(
-  id: string,
-  label: string,
-  accelerator: string | null = null
-): IMenuItem {
-  return {
-    type: 'menuItem',
-    id,
-    label,
-    enabled: true,
-    visible: true,
-    accelerator,
-    accessKey: null,
-  }
-}
-
-function webSubmenu(
-  id: string,
-  label: string,
-  items: ReadonlyArray<MenuItem>
-): ISubmenuItem {
-  return {
-    type: 'submenuItem',
-    id,
-    label,
-    enabled: true,
-    visible: true,
-    accessKey: null,
-    menu: { type: 'menu', id, items },
-  }
-}
-
-const webApplicationMenu: IMenu = {
-  type: 'menu',
-  items: [
-    webSubmenu('file', 'File', [
-      webMenuItem('add-repository', 'Add Local Repository…'),
-      webMenuItem('clone-repository', 'Clone Repository…'),
-      webMenuItem('create-repository', 'Create New Repository…'),
-      { type: 'separator', id: 'file-separator', visible: true },
-      webMenuItem('show-preferences', 'Preferences…', 'CmdOrCtrl+,'),
-    ]),
-    webSubmenu('view', 'View', [
-      webMenuItem('show-changes', 'Changes'),
-      webMenuItem('show-history', 'History'),
-      webMenuItem('show-compare', 'Compare'),
-    ]),
-    webSubmenu('repository', 'Repository', [
-      webMenuItem('push', 'Push'),
-      webMenuItem('pull', 'Pull'),
-      webMenuItem('fetch', 'Fetch'),
-      { type: 'separator', id: 'repository-separator', visible: true },
-      webMenuItem('view-repository-in-browser', 'View in your browser'),
-      webMenuItem('open-external-editor', 'Open in External Editor'),
-      webMenuItem('open-with-editor', 'Open With…'),
-      webMenuItem('open-in-shell', 'Open in Terminal'),
-      webMenuItem('open-working-directory', 'Show in File Manager'),
-      webMenuItem('new-worktree', 'New Worktree…'),
-      webMenuItem('repository-settings', 'Repository Settings…'),
-      webMenuItem('manage-remotes', 'Manage Remotes…'),
-      webMenuItem('remove-repository', 'Remove Repository…'),
-    ]),
-    webSubmenu('branch', 'Branch', [
-      webMenuItem('create-branch', 'New Branch…'),
-      webMenuItem('rename-branch', 'Rename…'),
-      webMenuItem('delete-branch', 'Delete…'),
-      webMenuItem(
-        'delete-unused-local-branches',
-        'Delete Unused Local Branches…'
-      ),
-      { type: 'separator', id: 'branch-separator', visible: true },
-      webMenuItem('discard-all-changes', 'Discard All Changes…'),
-      webMenuItem(
-        'permanently-discard-all-changes',
-        'Permanently Discard All Changes…'
-      ),
-      webMenuItem('stash-all-changes', 'Stash All Changes'),
-      { type: 'separator', id: 'branch-changes-separator', visible: true },
-      webMenuItem('update-from-default', 'Update from Default Branch'),
-      webMenuItem('compare-to-branch', 'Compare to Branch'),
-      webMenuItem('merge-branch', 'Merge into Current Branch…'),
-      webMenuItem(
-        'squash-and-merge-branch',
-        'Squash and Merge into Current Branch…'
-      ),
-      webMenuItem('rebase-branch', 'Rebase Current Branch…'),
-    ]),
-  ],
 }
 
 function getStoredIntegrationSelection(key: string): WebIntegrationSelection {
@@ -1214,10 +1118,6 @@ function DesktopCommitGraphSidebar(props: {
     () => props.state.history.map(getDesktopCommit),
     [props.state.history]
   )
-  const historyIdentity = React.useMemo(
-    () => commits.map(commit => commit.sha).join(':'),
-    [commits]
-  )
   const commitLookup = React.useMemo(
     () => new Map(commits.map(commit => [commit.sha, commit])),
     [commits]
@@ -1436,7 +1336,6 @@ function DesktopCommitGraphSidebar(props: {
 
   return (
     <CommitGraphSidebar
-      key={historyIdentity}
       accounts={[]}
       allBranches={branches}
       askForConfirmationOnCheckoutCommit={true}
@@ -2405,6 +2304,7 @@ function DesktopToolbar(props: {
   readonly showBranchName: 'never' | 'always' | 'non-default'
   readonly branchSortOrder: BranchSortOrder
   readonly onBranchSortOrderChanged: (value: BranchSortOrder) => void
+  readonly isEmbedded: boolean
   readonly showWorktrees: boolean
   readonly showWorktreesInRepositoryList: boolean
   readonly repositoryIndicatorsEnabled: boolean
@@ -3393,7 +3293,7 @@ function DesktopToolbar(props: {
           />
         }
         worktree={
-          props.showWorktrees && repository ? (
+          !props.isEmbedded && props.showWorktrees && repository ? (
             <WorktreeDropdown
               dispatcher={desktopWorktreeDispatcher}
               enableFocusTrap={true}
@@ -3418,64 +3318,66 @@ function DesktopToolbar(props: {
           ) : null
         }
         repository={
-          <RepositoryToolbarDropdown
-            description="Current repository"
-            dropdownContentRenderer={() => (
-              <DesktopRepositoryPicker
-                onAdd={() => {
-                  props.onOpenRepositoryDialog()
+          props.isEmbedded ? null : (
+            <RepositoryToolbarDropdown
+              description="Current repository"
+              dropdownContentRenderer={() => (
+                <DesktopRepositoryPicker
+                  onAdd={() => {
+                    props.onOpenRepositoryDialog()
+                    setToolbarDropdownState('repository', 'closed')
+                  }}
+                  onClone={() => {
+                    props.onOpenCloneDialog()
+                    setToolbarDropdownState('repository', 'closed')
+                  }}
+                  onCreate={() => {
+                    props.onOpenInitDialog()
+                    setToolbarDropdownState('repository', 'closed')
+                  }}
+                  onRemove={props.onRemoveRepository}
+                  onSelect={path => {
+                    void props.dispatcher.selectRepository(path)
+                    setToolbarDropdownState('repository', 'closed')
+                  }}
+                  onEdit={props.onChangeRepositoryAlias}
+                  repositories={props.state.repositories}
+                  selectedRepositoryPath={props.state.selectedRepositoryPath}
+                  showBranchName={props.showBranchName}
+                  showWorktrees={props.showWorktreesInRepositoryList}
+                  recentRepositoriesCount={props.recentRepositoriesCount}
+                  onCopyPath={props.onCopyPath}
+                  onOpenPath={props.onOpenPath}
+                  onOpenExternal={props.onOpenExternal}
+                  onOpenNewWindow={props.onOpenNewWindow}
+                  onPullAll={props.onPullAllRepositories}
+                  onCreateGroup={() => {
+                    props.onRenameRepositoryGroup('')
+                    setToolbarDropdownState('repository', 'closed')
+                  }}
+                  branches={props.state.branches?.branches || []}
+                  confirmWorktreeRemoval={props.confirmWorktreeRemoval}
+                  dispatcher={props.dispatcher}
+                  onConfirmWorktreeRemovalChanged={
+                    props.onConfirmWorktreeRemovalChanged
+                  }
+                />
+              )}
+              dropdownState={repositoryPickerOpen ? 'open' : 'closed'}
+              icon={octicons.repo}
+              onKeyDown={event =>
+                closeDropdownOnEscape(event, () =>
                   setToolbarDropdownState('repository', 'closed')
-                }}
-                onClone={() => {
-                  props.onOpenCloneDialog()
-                  setToolbarDropdownState('repository', 'closed')
-                }}
-                onCreate={() => {
-                  props.onOpenInitDialog()
-                  setToolbarDropdownState('repository', 'closed')
-                }}
-                onRemove={props.onRemoveRepository}
-                onSelect={path => {
-                  void props.dispatcher.selectRepository(path)
-                  setToolbarDropdownState('repository', 'closed')
-                }}
-                onEdit={props.onChangeRepositoryAlias}
-                repositories={props.state.repositories}
-                selectedRepositoryPath={props.state.selectedRepositoryPath}
-                showBranchName={props.showBranchName}
-                showWorktrees={props.showWorktreesInRepositoryList}
-                recentRepositoriesCount={props.recentRepositoriesCount}
-                onCopyPath={props.onCopyPath}
-                onOpenPath={props.onOpenPath}
-                onOpenExternal={props.onOpenExternal}
-                onOpenNewWindow={props.onOpenNewWindow}
-                onPullAll={props.onPullAllRepositories}
-                onCreateGroup={() => {
-                  props.onRenameRepositoryGroup('')
-                  setToolbarDropdownState('repository', 'closed')
-                }}
-                branches={props.state.branches?.branches || []}
-                confirmWorktreeRemoval={props.confirmWorktreeRemoval}
-                dispatcher={props.dispatcher}
-                onConfirmWorktreeRemovalChanged={
-                  props.onConfirmWorktreeRemovalChanged
-                }
-              />
-            )}
-            dropdownState={repositoryPickerOpen ? 'open' : 'closed'}
-            icon={octicons.repo}
-            onKeyDown={event =>
-              closeDropdownOnEscape(event, () =>
-                setToolbarDropdownState('repository', 'closed')
-              )
-            }
-            onDropdownStateChanged={state =>
-              setToolbarDropdownState('repository', state)
-            }
-            title={repository?.name || 'Repository'}
-            tooltip={repository?.path}
-            width={props.sidebarWidth}
-          />
+                )
+              }
+              onDropdownStateChanged={state =>
+                setToolbarDropdownState('repository', state)
+              }
+              title={repository?.name || 'Repository'}
+              tooltip={repository?.path}
+              width={props.sidebarWidth}
+            />
+          )
         }
         actions={
           <>
@@ -6817,6 +6719,7 @@ function getEmbeddedParentOrigin(): string | null {
 }
 
 export function WebApp({ store, dispatcher }: WebAppProps) {
+  const isEmbedded = getEmbeddedParentOrigin() !== null
   const state = useApplicationState(store)
   const [undoneCherryPick, setUndoneCherryPick] = React.useState<{
     readonly branch: string
@@ -7364,124 +7267,6 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
     },
     []
   )
-  const executeWebMenuItem = React.useCallback(
-    (item: MenuItem) => {
-      if (item.type !== 'menuItem') return
-      const path = state.selectedRepositoryPath
-      switch (item.id) {
-        case 'add-repository':
-          openRepositoryDialog()
-          break
-        case 'clone-repository':
-          openCloneDialog()
-          break
-        case 'create-repository':
-          openInitDialog()
-          break
-        case 'show-preferences':
-          void warmWebPreferences().then(() => setPreferencesOpen(true))
-          break
-        case 'show-changes':
-          dispatcher.selectSection('changes')
-          break
-        case 'show-history':
-          dispatcher.selectSection('history')
-          break
-        case 'show-compare':
-        case 'compare-to-branch':
-          dispatcher.selectSection('compare')
-          break
-        case 'push':
-          if (path) void dispatcher.runOperation('push')
-          break
-        case 'pull':
-          if (path) void dispatcher.runOperation('pull')
-          break
-        case 'fetch':
-          if (path) void dispatcher.runOperation('fetch')
-          break
-        case 'view-repository-in-browser':
-          if (selectedRepository?.remoteWebURL)
-            dispatcher.openExternal(selectedRepository.remoteWebURL)
-          break
-        case 'open-with-editor':
-          requestToolbarMenu('openWithEditor')
-          break
-        case 'new-worktree':
-          requestToolbarMenu('newWorktree')
-          break
-        case 'repository-settings':
-          if (selectedRepository) setRepositorySettingsOpen(true)
-          break
-        case 'discard-all-changes':
-          requestToolbarMenu('discardAllChanges')
-          break
-        case 'permanently-discard-all-changes':
-          requestToolbarMenu('permanentlyDiscardAllChanges')
-          break
-        case 'stash-all-changes':
-          requestToolbarMenu('stashAllChanges')
-          break
-        case 'delete-unused-local-branches':
-          requestToolbarMenu('deleteUnusedLocalBranches')
-          break
-        case 'create-branch':
-          requestToolbarMenu('createBranch')
-          break
-        case 'rename-branch':
-          requestToolbarMenu('renameBranch')
-          break
-        case 'delete-branch':
-          requestToolbarMenu('deleteBranch')
-          break
-        case 'manage-remotes':
-          requestToolbarMenu('manageRemotes')
-          break
-        case 'merge-branch':
-          requestToolbarMenu('mergeBranch')
-          break
-        case 'squash-and-merge-branch':
-          requestToolbarMenu('squashMergeBranch')
-          break
-        case 'rebase-branch':
-          requestToolbarMenu('rebaseBranch')
-          break
-        case 'update-from-default':
-          if (path)
-            void dispatcher.runOperation('update-from-default', {
-              defaultBranch: state.branches?.defaultBranch || undefined,
-              updateStrategy: getStoredUpdateBranchStrategy(path),
-            })
-          break
-        case 'open-external-editor':
-          if (path)
-            void dispatcher.openIntegration('editor', path, editorIntegration)
-          break
-        case 'open-in-shell':
-          if (path)
-            void dispatcher.openIntegration('shell', path, shellIntegration)
-          break
-        case 'open-working-directory':
-          if (path) void dispatcher.openPath(path, true)
-          break
-        case 'remove-repository':
-          if (path) requestRepositoryRemoval(path)
-          break
-      }
-    },
-    [
-      dispatcher,
-      editorIntegration,
-      openCloneDialog,
-      openInitDialog,
-      requestToolbarMenu,
-      requestRepositoryRemoval,
-      selectedRepository,
-      shellIntegration,
-      state.branches?.defaultBranch,
-      state.selectedRepositoryPath,
-    ]
-  )
   return (
     <WebIntegrationPreferencesContext.Provider
       value={{ editor: editorIntegration, shell: shellIntegration }}
@@ -7540,6 +7325,7 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
                 onBranchSortOrderChanged={updateBranchSortOrder}
                 sidebarWidth={sidebarWidth}
                 showBranchName={showBranchName}
+                isEmbedded={isEmbedded}
                 showWorktrees={showWorktrees}
                 showWorktreesInRepositoryList={showWorktreesInRepositoryList}
                 repositoryIndicatorsEnabled={repositoryIndicatorsEnabled}
