@@ -27,6 +27,10 @@ interface IStashDiffViewerProps {
 
   /** width to use for the files list pane */
   readonly fileListWidth: IConstrainedValue
+  /** Optional fixed row height for embedded stash file lists. */
+  readonly fileListRowHeight?: number
+  /** Use the compact stash header in embedded views. */
+  readonly compactHeader?: boolean
   readonly repository: Repository
   readonly dispatcher: Dispatcher
 
@@ -158,6 +162,7 @@ export class StashDiffViewer extends React.PureComponent<IStashDiffViewerProps> 
           askForConfirmationOnDiscardStash={
             this.props.askForConfirmationOnDiscardStash
           }
+          compact={this.props.compactHeader}
         />
         <div className="commit-details">
           <Resizable
@@ -173,6 +178,7 @@ export class StashDiffViewer extends React.PureComponent<IStashDiffViewerProps> 
               onSelectionChanged={this.onFileSelectionChanged}
               selectedFiles={selectedStashedFile ? [selectedStashedFile] : []}
               availableWidth={availableWidth}
+              rowHeight={this.props.fileListRowHeight}
               onRowDoubleClick={this.onRowDoubleClick}
             />
           </Resizable>

@@ -454,7 +454,7 @@ function useWebDiffPresentationPreferencesState() {
     getNumber('tab-size', 4)
   )
   const [diffFontSize, setDiffFontSizeState] = React.useState(() =>
-    getNumber('diff-font-size', defaultDiffFontSize + 3)
+    getNumber('diff-font-size', defaultDiffFontSize + 1)
   )
   const [diffFontFamily, setDiffFontFamilyState] =
     React.useState<DiffFontFamily>(
@@ -3293,8 +3293,9 @@ function DesktopToolbar(props: {
           />
         }
         worktree={
-          !props.isEmbedded && props.showWorktrees && repository ? (
+          props.showWorktrees && repository ? (
             <WorktreeDropdown
+              disabled={props.isEmbedded}
               dispatcher={desktopWorktreeDispatcher}
               enableFocusTrap={true}
               isOpen={worktreeDropdownOpen}
@@ -3318,66 +3319,65 @@ function DesktopToolbar(props: {
           ) : null
         }
         repository={
-          props.isEmbedded ? null : (
-            <RepositoryToolbarDropdown
-              description="Current repository"
-              dropdownContentRenderer={() => (
-                <DesktopRepositoryPicker
-                  onAdd={() => {
-                    props.onOpenRepositoryDialog()
-                    setToolbarDropdownState('repository', 'closed')
-                  }}
-                  onClone={() => {
-                    props.onOpenCloneDialog()
-                    setToolbarDropdownState('repository', 'closed')
-                  }}
-                  onCreate={() => {
-                    props.onOpenInitDialog()
-                    setToolbarDropdownState('repository', 'closed')
-                  }}
-                  onRemove={props.onRemoveRepository}
-                  onSelect={path => {
-                    void props.dispatcher.selectRepository(path)
-                    setToolbarDropdownState('repository', 'closed')
-                  }}
-                  onEdit={props.onChangeRepositoryAlias}
-                  repositories={props.state.repositories}
-                  selectedRepositoryPath={props.state.selectedRepositoryPath}
-                  showBranchName={props.showBranchName}
-                  showWorktrees={props.showWorktreesInRepositoryList}
-                  recentRepositoriesCount={props.recentRepositoriesCount}
-                  onCopyPath={props.onCopyPath}
-                  onOpenPath={props.onOpenPath}
-                  onOpenExternal={props.onOpenExternal}
-                  onOpenNewWindow={props.onOpenNewWindow}
-                  onPullAll={props.onPullAllRepositories}
-                  onCreateGroup={() => {
-                    props.onRenameRepositoryGroup('')
-                    setToolbarDropdownState('repository', 'closed')
-                  }}
-                  branches={props.state.branches?.branches || []}
-                  confirmWorktreeRemoval={props.confirmWorktreeRemoval}
-                  dispatcher={props.dispatcher}
-                  onConfirmWorktreeRemovalChanged={
-                    props.onConfirmWorktreeRemovalChanged
-                  }
-                />
-              )}
-              dropdownState={repositoryPickerOpen ? 'open' : 'closed'}
-              icon={octicons.repo}
-              onKeyDown={event =>
-                closeDropdownOnEscape(event, () =>
+          <RepositoryToolbarDropdown
+            description="Current repository"
+            disabled={props.isEmbedded}
+            dropdownContentRenderer={() => (
+              <DesktopRepositoryPicker
+                onAdd={() => {
+                  props.onOpenRepositoryDialog()
                   setToolbarDropdownState('repository', 'closed')
-                )
-              }
-              onDropdownStateChanged={state =>
-                setToolbarDropdownState('repository', state)
-              }
-              title={repository?.name || 'Repository'}
-              tooltip={repository?.path}
-              width={props.sidebarWidth}
-            />
-          )
+                }}
+                onClone={() => {
+                  props.onOpenCloneDialog()
+                  setToolbarDropdownState('repository', 'closed')
+                }}
+                onCreate={() => {
+                  props.onOpenInitDialog()
+                  setToolbarDropdownState('repository', 'closed')
+                }}
+                onRemove={props.onRemoveRepository}
+                onSelect={path => {
+                  void props.dispatcher.selectRepository(path)
+                  setToolbarDropdownState('repository', 'closed')
+                }}
+                onEdit={props.onChangeRepositoryAlias}
+                repositories={props.state.repositories}
+                selectedRepositoryPath={props.state.selectedRepositoryPath}
+                showBranchName={props.showBranchName}
+                showWorktrees={props.showWorktreesInRepositoryList}
+                recentRepositoriesCount={props.recentRepositoriesCount}
+                onCopyPath={props.onCopyPath}
+                onOpenPath={props.onOpenPath}
+                onOpenExternal={props.onOpenExternal}
+                onOpenNewWindow={props.onOpenNewWindow}
+                onPullAll={props.onPullAllRepositories}
+                onCreateGroup={() => {
+                  props.onRenameRepositoryGroup('')
+                  setToolbarDropdownState('repository', 'closed')
+                }}
+                branches={props.state.branches?.branches || []}
+                confirmWorktreeRemoval={props.confirmWorktreeRemoval}
+                dispatcher={props.dispatcher}
+                onConfirmWorktreeRemovalChanged={
+                  props.onConfirmWorktreeRemovalChanged
+                }
+              />
+            )}
+            dropdownState={repositoryPickerOpen ? 'open' : 'closed'}
+            icon={octicons.repo}
+            onKeyDown={event =>
+              closeDropdownOnEscape(event, () =>
+                setToolbarDropdownState('repository', 'closed')
+              )
+            }
+            onDropdownStateChanged={state =>
+              setToolbarDropdownState('repository', state)
+            }
+            title={repository?.name || 'Repository'}
+            tooltip={repository?.path}
+            width={props.sidebarWidth}
+          />
         }
         actions={
           <>
@@ -5027,6 +5027,7 @@ function DesktopChangesView(props: {
           shouldNudgeToCommit={false}
           shouldShowGenerateCommitMessageCallOut={false}
           showChangesFilter={props.showChangesFilter}
+          fileListRowHeight={32}
           showCommitAuthorInfo={props.showCommitAuthorInfo}
           showCommitLengthWarning={props.showCommitLengthWarning}
           signOffCommits={props.state.commitOptions.signOff}
@@ -5413,6 +5414,8 @@ function StashDiffView(props: {
           min: 100,
           max: Math.max(100, window.innerWidth - 150),
         }}
+        fileListRowHeight={32}
+        compactHeader={true}
         imageDiffType={preferences.imageDiffType}
         onChangeImageDiffType={preferences.onImageDiffTypeChanged}
         onHideWhitespaceInDiffChanged={
@@ -5570,6 +5573,7 @@ function DesktopSelectedCommits(props: {
       }}
       currentDiff={currentDiff}
       externalFileContents={externalFileContents}
+      fileListRowHeight={32}
       dispatcher={desktopDispatcher}
       emoji={props.state.emoji}
       externalEditorLabel={undefined}
