@@ -975,7 +975,11 @@ export function createWebApplicationStore(
             ? state.historyGraphHiddenRefs
             : defaultHistoryGraphHiddenRefs(branches),
         hasMoreHistory: history.commits.length === historyPageSize,
-        ...(historyInspectionGeneration === inspectionGeneration
+        ...(historyInspectionGeneration === inspectionGeneration &&
+        (!state.selectedHistoryCommitSHA ||
+          !history.commits.some(
+            commit => commit.sha === state.selectedHistoryCommitSHA
+          ))
           ? {
               selectedHistoryCommitSHA: null,
               historyCommitDetails: null,
