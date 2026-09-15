@@ -2994,6 +2994,10 @@ function withGitEnvironment(base, additional) {
   return base ? { ...base, ...additional } : additional
 }
 
+function gitEditorCommand(scriptPath) {
+  return `${JSON.stringify(process.execPath)} ${JSON.stringify(scriptPath)}`
+}
+
 function statusKind(xy) {
   if (xy.includes('U') || xy === 'AA' || xy === 'DD') return 'Conflicted'
   if (xy.includes('?')) return 'Untracked'
@@ -4812,7 +4816,7 @@ async function interactiveRebase(
   )
   const sequenceEditor = path.join(directory, 'sequence-editor.js')
   const environment = {
-    GIT_SEQUENCE_EDITOR: `${process.execPath} ${sequenceEditor}`,
+    GIT_SEQUENCE_EDITOR: gitEditorCommand(sequenceEditor),
     GIT_EDITOR: ':',
     DESKTOP_PLUS_TODO: Buffer.from(todo).toString('base64'),
   }
@@ -4827,7 +4831,7 @@ async function interactiveRebase(
         messageEditor,
         "require('fs').writeFileSync(process.argv[2], Buffer.from(process.env.DESKTOP_PLUS_MESSAGE, 'base64'))\n"
       )
-      environment.GIT_EDITOR = `${process.execPath} ${messageEditor}`
+      environment.GIT_EDITOR = gitEditorCommand(messageEditor)
       environment.DESKTOP_PLUS_MESSAGE = Buffer.from(message).toString('base64')
     }
     const rebaseTarget =
@@ -4897,7 +4901,7 @@ async function continueRebaseWithMessage(
       [0],
       undefined,
       withGitEnvironment(environment, {
-        GIT_EDITOR: `${process.execPath} ${messageEditor}`,
+        GIT_EDITOR: gitEditorCommand(messageEditor),
         DESKTOP_PLUS_MESSAGE: Buffer.from(message).toString('base64'),
       })
     )
