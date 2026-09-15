@@ -2766,17 +2766,25 @@ async function main() {
     const orderThree = makeIndependentCommit('order-three')
     const orderFour = makeIndependentCommit('order-four')
     const reorderUndoSha = orderFour
-    result = await request(base, '/api/git/operation', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        path: repo,
-        operation: 'reorder-commits',
-        base: reorderBase,
-        commits: [orderThree],
-        before: orderOne,
-      }),
-    })
+    const originalExecPath = process.execPath
+    const nodePathWithSpaces = path.join(root, 'node with spaces')
+    await fs.promises.symlink(originalExecPath, nodePathWithSpaces)
+    process.execPath = nodePathWithSpaces
+    try {
+      result = await request(base, '/api/git/operation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          path: repo,
+          operation: 'reorder-commits',
+          base: reorderBase,
+          commits: [orderThree],
+          before: orderOne,
+        }),
+      })
+    } finally {
+      process.execPath = originalExecPath
+    }
     assert.equal(result.response.status, 200, JSON.stringify(result.data))
     assert.equal(
       execFileSync(
