@@ -1184,6 +1184,10 @@ function DesktopCommitGraphSidebar(props: {
         closePopup: () => props.onCommitMessagePopup(null),
         clearDragElement: () => undefined,
         commitGraph_load: () => props.dispatcher.setHistoryGraphMode(true),
+        // ponytail: the web history API has no author-options endpoint; keep
+        // the upstream lifecycle call harmless until author autocomplete is
+        // supported by the web port.
+        commitGraph_loadFilterAuthors: () => Promise.resolve(),
         commitGraph_loadNextCommitBatch: () =>
           props.dispatcher.loadMoreHistory(),
         commitGraph_resetBranchListWidth: () => {
