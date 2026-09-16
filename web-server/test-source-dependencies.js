@@ -35,6 +35,10 @@ assert.match(webApp, /store\.getState\(\)\.loading/)
 assert.doesNotMatch(webApp, /hostRefreshQueued/)
 assert.doesNotMatch(webApp, /historyIdentity/)
 assert.doesNotMatch(webApp, /key=\{historyIdentity\}/)
+assert.match(
+  webApp,
+  /commitGraph_loadFilterAuthors: \(\) => Promise\.resolve\(\)/
+)
 assert.match(webApp, /defaultDiffFontSize \+ 1/)
 assert.match(webApp, /fileListRowHeight=\{32\}/)
 assert.match(webApp, /compactHeader/)
