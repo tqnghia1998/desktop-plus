@@ -6,6 +6,7 @@
 // Usage: node scripts/bundle-desktop-plus-web.mjs [output-dir]
 // Run `yarn build:web` first so web-server/public/ exists.
 
+import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { createRequire } from 'node:module'
@@ -88,8 +89,11 @@ function copyPackage(pkgDir) {
 }
 
 function copyDir(from, to) {
+  if (fs.existsSync(to)) return
   fs.mkdirSync(path.dirname(to), { recursive: true })
-  fs.cpSync(from, to, { recursive: true })
+  // Dugite ships relative git-core aliases. Node otherwise rewrites their
+  // targets to absolute paths in this checkout while copying the package.
+  fs.cpSync(from, to, { recursive: true, verbatimSymlinks: true })
 }
 
 function copyFile(from) {
@@ -143,6 +147,13 @@ fs.rmSync(outRoot, { recursive: true, force: true })
 fs.mkdirSync(outRoot, { recursive: true })
 
 walk(serverEntry)
+// Bare requires from web-server/ resolve through the bundle root, not
+// app/node_modules (where the upstream app installs its dependencies).
+for (const name of ['ignore', 'semver']) {
+  const pkgDir = resolvePackage(name, path.dirname(serverEntry))
+  if (pkgDir) copyDir(pkgDir, path.join(outRoot, 'node_modules', name))
+  else unresolved.push(`web-server/server.js -> ${name}`)
+}
 // Spawned by path for SSH credential flows, never required.
 copyFile(path.join(root, 'web-server', 'ssh-askpass.js'))
 // Built renderer, highlighter worker and static assets.
@@ -185,6 +196,19 @@ if (unresolved.length > 0) {
   console.error('Unresolved requires:\n' + unresolved.join('\n'))
   process.exit(1)
 }
+
+// node_modules is ignored in Vibing, so ship the runtime dependencies as a
+// tracked archive and expand them when creating the packaged server bundle.
+execFileSync('tar', [
+  '-czf',
+  path.join(outRoot, 'runtime-node-modules.tgz'),
+  '-C',
+  outRoot,
+  'node_modules',
+  'app/node_modules',
+])
+fs.rmSync(path.join(outRoot, 'node_modules'), { recursive: true })
+fs.rmSync(path.join(outRoot, 'app', 'node_modules'), { recursive: true })
 
 let totalBytes = 0
 function measure(dir) {
