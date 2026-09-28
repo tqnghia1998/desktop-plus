@@ -634,6 +634,7 @@ function DesktopPreferencesDialog(props: {
     refreshAuthor: () => undefined,
     removeAccount: () => undefined,
     setAlwaysUseCopilotForConflictResolution: () => undefined,
+    setAlwaysShowWorktreeList: () => undefined,
     setBranchPresetScript: () => undefined,
     setBranchSortOrder: props.onBranchSortOrderChanged,
     setConfirmCheckoutCommitSetting: props.onConfirmCheckoutCommitChanged,
@@ -720,6 +721,7 @@ function DesktopPreferencesDialog(props: {
       <Preferences
         accounts={[]}
         alwaysUseCopilotForConflictResolution={false}
+        alwaysShowWorktreeList={false}
         askForConfirmationOnCommitFilteredChanges={
           props.confirmCommitFilteredChanges
         }
@@ -738,6 +740,7 @@ function DesktopPreferencesDialog(props: {
         confirmUndoCommit={props.confirmUndoCommit}
         confirmWorktreeRemoval={props.confirmWorktreeRemoval}
         copilotModelsByAccount={new Map()}
+        copilotAppPath={null}
         copilotQuotaSnapshotsByAccount={new Map()}
         copyPathNormalization={defaultCopyPathNormalization}
         customEditor={props.editorIntegration.custom}
