@@ -3,6 +3,21 @@ const fs = require('fs')
 const path = require('path')
 
 const root = path.join(__dirname, '..')
+const webpackConfig = require('./webpack.config')
+assert.match(
+  fs.readFileSync(path.join(root, 'app/src/lib/feature-flag.ts'), 'utf8'),
+  /process\.env\.DESKTOP_PLUS_WEB !== '1'/
+)
+assert.match(
+  fs.readFileSync(path.join(__dirname, 'src/desktop-process-stub.js'), 'utf8'),
+  /DESKTOP_PLUS_WEB: '1'/
+)
+assert.equal(
+  webpackConfig.resolve.alias[
+    path.join(root, 'app/src/lib/copilot-app/index.ts')
+  ],
+  path.join(__dirname, 'src/desktop-copilot-app-stub.js')
+)
 const sourceFiles = [
   'app/src/ui/web-index.tsx',
   'app/src/ui/web-app.tsx',
