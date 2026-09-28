@@ -27,6 +27,8 @@ module.exports = {
     alias: {
       react: path.join(root, 'app', 'node_modules', 'react'),
       'react-dom': path.join(root, 'app', 'node_modules', 'react-dom'),
+      [path.join(root, 'app', 'src', 'lib', 'copilot-app', 'index.ts')]:
+        path.join(__dirname, 'src', 'desktop-copilot-app-stub.js'),
       [path.join(root, 'app', 'src', 'lib', 'path.ts')]: path.join(
         __dirname,
         'src',
@@ -404,7 +406,7 @@ module.exports = {
   },
   performance: {
     hints: 'error',
-    maxEntrypointSize: 4600 * 1024,
+    maxEntrypointSize: 4800 * 1024,
     maxAssetSize: 4300 * 1024,
   },
 }

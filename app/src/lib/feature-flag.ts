@@ -138,7 +138,9 @@ export const enableWorktreeSupport = () => true
 
 /** Should the app offer handoff to the GitHub Copilot app? */
 export const enableCopilotAppHandoff = () =>
-  (__DARWIN__ || __WIN32__) && enableBetaFeatures()
+  process.env.DESKTOP_PLUS_WEB !== '1' &&
+  (__DARWIN__ || __WIN32__) &&
+  enableBetaFeatures()
 
 /** Should stats be sent to the new telemetry endpoint? */
 export function enableNewStatsEndpoint(): boolean {
