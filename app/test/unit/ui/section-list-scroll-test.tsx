@@ -94,12 +94,16 @@ afterEach(() => {
   }
 })
 
-function renderSectionList(rowCount: ReadonlyArray<number>) {
+function renderSectionList(
+  rowCount: ReadonlyArray<number>,
+  setScrollTop?: number
+) {
   return render(
     <SectionList
       rowCount={rowCount}
       rowHeight={ROW_HEIGHT}
       selectedRows={[]}
+      setScrollTop={setScrollTop}
       rowRenderer={(indexPath: RowIndexPath) => (
         <div>{`row ${indexPath.section}-${indexPath.row}`}</div>
       )}
@@ -140,5 +144,31 @@ describe('SectionList scrolling', () => {
         'a per-section grid was left independently scrollable (overflow-y: auto)'
       )
     }
+  })
+
+  it('clamps a restored scroll position when the list becomes shorter', async () => {
+    const { container } = renderSectionList([2], 1000)
+
+    await waitFor(() => {
+      assert.ok(container.textContent?.includes('row 0-1'))
+    })
+
+    const rows = container.querySelectorAll<HTMLElement>('.list-item')
+
+    assert.equal(rows.length, 2)
+    assert.equal(rows[0].style.top, '0px')
+    assert.equal(rows[1].style.top, `${ROW_HEIGHT}px`)
+  })
+
+  it('preserves a restored scroll position within the current list', async () => {
+    const restoredScrollTop = ROW_HEIGHT * 3
+    const { container } = renderSectionList([20], restoredScrollTop)
+
+    await waitFor(() => {
+      const rootGrid = container.querySelector<HTMLElement>(
+        '.ReactVirtualized__Grid[role="presentation"]'
+      )
+      assert.equal(rootGrid?.scrollTop, restoredScrollTop)
+    })
   })
 })

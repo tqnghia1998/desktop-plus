@@ -1458,6 +1458,16 @@ export class SectionList extends React.Component<
     return this.getSectionHeight(index)
   }
 
+  private getScrollTop(height: number) {
+    const requestedScrollTop = this.props.setScrollTop
+    if (requestedScrollTop === undefined) {
+      return undefined
+    }
+
+    const maximumScrollTop = Math.max(0, this.totalHeight - height)
+    return Math.max(0, Math.min(requestedScrollTop, maximumScrollTop))
+  }
+
   /**
    * Renders the react-virtualized Grid component
    *
@@ -1512,7 +1522,7 @@ export class SectionList extends React.Component<
           rowHeight={this.sectionHeight}
           cellRenderer={this.getSectionGridRenderer(width, height)}
           onScroll={this.onScroll}
-          scrollTop={this.props.setScrollTop}
+          scrollTop={this.getScrollTop(height)}
           overscanRowCount={4}
           style={this.gridStyle}
           tabIndex={tabIndex}
