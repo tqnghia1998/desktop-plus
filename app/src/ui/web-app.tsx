@@ -11,6 +11,7 @@ import { HookFailed } from './hook-failed/hook-failed'
 import { AppContents, FocusedAppChrome } from './app-chrome'
 import { DialogStackContext } from './dialog/dialog'
 import { ApplicationTheme } from './lib/application-theme'
+import { getFileTreeView, setFileTreeView } from './lib/file-tree-folder'
 import { Preferences } from './preferences/preferences'
 import { RepositoriesList } from './repositories-list/repositories-list'
 import { ChangeRepositoryAlias } from './change-repository-alias/change-repository-alias-dialog'
@@ -417,6 +418,8 @@ type WebStashAction = {
 }
 
 interface WebDiffPresentationPreferences {
+  readonly fileTreeView: boolean
+  readonly onFileTreeViewChanged: (value: boolean) => void
   readonly theme: ApplicationTheme
   readonly onThemeChanged: (value: ApplicationTheme) => void
   readonly imageDiffType: ImageDiffType
@@ -445,6 +448,11 @@ const WebDiffPresentationPreferencesContext =
   React.createContext<WebDiffPresentationPreferences | null>(null)
 
 function useWebDiffPresentationPreferencesState() {
+  const [fileTreeView, setFileTreeViewState] = React.useState(getFileTreeView)
+  const updateFileTreeView = React.useCallback((value: boolean) => {
+    setFileTreeView(value)
+    setFileTreeViewState(value)
+  }, [])
   const [imageDiffType, setImageDiffTypeState] =
     React.useState(getImageDiffType)
   const [showDiffCheckMarks, setShowDiffCheckMarksState] = React.useState(
@@ -529,6 +537,8 @@ function useWebDiffPresentationPreferencesState() {
 
   return {
     theme,
+    fileTreeView,
+    onFileTreeViewChanged: updateFileTreeView,
     onThemeChanged: updateTheme,
     imageDiffType,
     onImageDiffTypeChanged: updateImageDiffType,
@@ -1386,6 +1396,7 @@ function DesktopCommitGraphSidebar(props: {
       shasToHighlight={[]}
       showConventionalCommitBadges={props.showConventionalCommitBadges}
       preferAbsoluteDates={props.preferAbsoluteDates}
+      showViewModeSwitches={true}
       tagsToPush={props.state.branches?.tagsToPush || []}
     />
   )
@@ -4640,6 +4651,7 @@ function DesktopChangesView(props: {
   const isCommitting =
     props.state.operationTask?.operation === 'commit' &&
     props.state.operationTask.status === 'running'
+  const preferences = useWebDiffPresentationPreferences()
   const desktopFiles = React.useMemo(
     () =>
       (props.state.status?.workingDirectory.files || []).map(file =>
@@ -4891,6 +4903,7 @@ function DesktopChangesView(props: {
         },
         setChangesListFilterText: (_repository: Repository, text: string) =>
           props.dispatcher.setChangesFilterText(text),
+        setFileTreeView: preferences.onFileTreeViewChanged,
         setCoAuthors: () => undefined,
         setCommitMessage: (_repository: Repository, message: ICommitMessage) =>
           props.dispatcher.setCommitDraft(
@@ -4974,6 +4987,7 @@ function DesktopChangesView(props: {
       props.dispatcher,
       props.onStashActionChanged,
       props.state.commitOptions,
+      preferences.onFileTreeViewChanged,
       sourceFiles,
       webStashBySha,
     ]
@@ -4984,6 +4998,8 @@ function DesktopChangesView(props: {
       <>
         <ChangesSidebar
           accounts={[]}
+          fileTreeView={preferences.fileTreeView}
+          showViewModeSwitches={true}
           aheadBehind={props.state.branches?.aheadBehind || null}
           askForConfirmationOnCommitFilteredChanges={true}
           askForConfirmationOnDiscardChanges={true}
@@ -5428,6 +5444,7 @@ function StashDiffView(props: {
   return (
     <>
       <StashDiffViewer
+        fileTreeView={preferences.fileTreeView}
         askForConfirmationOnDiscardStash={true}
         dispatcher={desktopDispatcher}
         fileListWidth={{
@@ -5581,6 +5598,7 @@ function DesktopSelectedCommits(props: {
 
   return (
     <SelectedCommits
+      fileTreeView={preferences.fileTreeView}
       accounts={[]}
       changesetData={{
         files,
