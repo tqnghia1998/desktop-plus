@@ -60,6 +60,11 @@ assert.match(webApp, /compactHeader/)
 assert.match(webApp, /readonly branches\?: ReadonlyArray<Branch>/)
 assert.match(webApp, /popup\.branches\?\.flatMap/)
 assert.match(webApp, /branches=\{deleteUnusedLocalBranches\}/)
+assert.match(
+  webApp,
+  /filteredHistoryCommitSearchQuery: props\.state\.historyFilterText/
+)
+assert.match(webApp, /filteredHistoryCommitSearchQuery: ''/)
 
 const stashDiffStyles = fs.readFileSync(
   path.join(root, 'app/styles/ui/_stash-diff-viewer.scss'),
