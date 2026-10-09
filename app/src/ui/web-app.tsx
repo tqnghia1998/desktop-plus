@@ -1328,6 +1328,7 @@ function DesktopCommitGraphSidebar(props: {
     showBranchList: false,
     filterText: '',
     commitSearchQuery: props.state.historyFilterText,
+    filteredHistoryCommitSearchQuery: props.state.historyFilterText,
     tip: props.state.branches?.branch?.tip?.sha || null,
     allHistoryCommitSHAs: historySHAs,
     commitGraphCommitSHAs: historySHAs,
@@ -6090,6 +6091,7 @@ function DesktopCompareView(props: {
     commitGraphFilterAuthorsList: null,
     commitGraphRefs: [],
     commitSearchQuery: '',
+    filteredHistoryCommitSearchQuery: '',
     compareCommitSHAs: comparisonCommits.map(commit => commit.sha),
     defaultBranch:
       branches.find(
