@@ -1,10 +1,10 @@
 import * as React from 'react'
 import * as ReactDOM from 'react-dom'
 
-import { WebApp } from './web-app'
-import { webGitClient, webHostingClient } from './web/client'
-import { webPlatform } from './web/platform'
-import { createWebApplicationStore } from './web/store'
+import { WebApp } from './application'
+import { webGitClient, webHostingClient } from './client'
+import { webPlatform } from './platform'
+import { createWebApplicationStore } from './store'
 ;(
   window as Window & { __DESKTOP_PLUS_SOURCE_RENDERER__?: boolean }
 ).__DESKTOP_PLUS_SOURCE_RENDERER__ = true
