@@ -11,7 +11,7 @@ module.exports = {
   devtool: false,
   entry: {
     app: [
-      path.join(root, 'app/src/ui/web-index.tsx'),
+      path.join(root, 'app/src/patches/web/index.tsx'),
       path.join(root, 'app/styles/web-desktop.scss'),
       path.join(__dirname, 'src/browser-renderer.css'),
     ],

@@ -34,7 +34,7 @@ import {
 } from './contracts'
 import { cancelCopilotRequest } from './client'
 import { DiffSelection, DiffSelectionType } from '../../models/diff'
-import webEmoji from '../web-emoji'
+import webEmoji from './emoji'
 import { TutorialStep } from '../../models/tutorial-step'
 
 const storageKey = 'desktop-plus-web-source-state'

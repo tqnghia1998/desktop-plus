@@ -9,8 +9,9 @@
   },
   "include": [
     "../app/src/lib/globals.d.ts",
-    "../app/src/ui/web-index.tsx",
-    "../app/src/ui/web-app.tsx",
-    "../app/src/ui/web/**/*.ts"
+    "../app/src/patches/web/index.tsx",
+    "../app/src/patches/web/application.tsx",
+    "../app/src/patches/**/*.ts",
+    "../app/src/patches/**/*.tsx"
   ]
 }
