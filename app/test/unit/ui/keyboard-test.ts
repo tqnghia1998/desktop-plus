@@ -1,7 +1,10 @@
 import assert from 'node:assert'
 import { describe, it } from 'node:test'
 
-import { isMacPlatform, isPrimaryModifier } from '../../../src/ui/lib/keyboard'
+import {
+  isMacPlatform,
+  isPrimaryModifier,
+} from '../../../src/patches/web/keyboard'
 
 describe('keyboard modifiers', () => {
   it('uses Command on macOS and Control elsewhere', () => {
