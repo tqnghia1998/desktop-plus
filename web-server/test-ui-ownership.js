@@ -74,7 +74,12 @@ assert.equal(
   fs.readFileSync(
     path.join(root, 'web-server/src/browser-renderer.css'),
     'utf8'
-  ),
+  ) +
+    '\n' +
+    fs.readFileSync(
+      path.join(root, 'app/src/patches/vibing/appearance.css'),
+      'utf8'
+    ),
   `html,
 body {
   width: 100%;

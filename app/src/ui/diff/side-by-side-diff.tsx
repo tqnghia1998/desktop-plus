@@ -73,7 +73,7 @@ import { findDOMNode } from 'react-dom'
 import escapeRegExp from 'lodash/escapeRegExp'
 import ReactDOM from 'react-dom'
 import { AriaLiveContainer } from '../accessibility/aria-live-container'
-import { isPrimaryModifier } from '../lib/keyboard'
+import { isPrimaryModifier } from '../../patches/web/keyboard'
 import { DiffMinimap } from './diff-minimap'
 import { getNumber, setNumber } from '../../lib/local-storage'
 

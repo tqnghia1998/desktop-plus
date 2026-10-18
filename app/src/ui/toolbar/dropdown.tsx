@@ -16,6 +16,7 @@ import { Options as FocusTrapOptions } from 'focus-trap'
 import { TooltipTarget } from '../lib/tooltip'
 import { AriaHasPopupType } from '../lib/aria-types'
 import { enableResizingToolbarButtons } from '../../lib/feature-flag'
+import { getFoldoutViewportStyle } from '../../patches/web/viewport'
 
 export type DropdownState = 'open' | 'closed'
 
@@ -409,41 +410,16 @@ export class ToolbarDropdown extends React.Component<
         ? { maxHeight: '100%', width: rect.width }
         : { height: '100%', minWidth: rect.width }
 
-    // Re-anchor the foldout when its natural content width would overflow the
-    // right edge of the window (e.g. long repository names in an embedded web
-    // view where a host panel narrows the available width): shift it left so
-    // its right edge stays visible and clamp it to the remaining space.
-    const { foldoutWidth } = this.state
-    let marginLeft = rect.left
-    if (foldoutWidth !== null) {
-      const viewportWidth = document.documentElement.clientWidth
-      const naturalWidth = Math.max(foldoutWidth, rect.width)
-      if (marginLeft + naturalWidth > viewportWidth) {
-        marginLeft = Math.max(
-          marginLeft - (marginLeft + naturalWidth - viewportWidth),
-          0
-        )
-      }
-
-      const overrides: React.CSSProperties =
-        this.props.foldoutStyleOverrides ?? {}
-
-      return {
-        position: 'absolute',
-        marginLeft,
-        top: 0,
-        maxWidth: Math.max(viewportWidth - marginLeft, 0),
-        ...heightStyle,
-        ...overrides,
-      }
-    }
-
     const overrides: React.CSSProperties =
       this.props.foldoutStyleOverrides ?? {}
 
     return {
       position: 'absolute',
-      marginLeft,
+      ...getFoldoutViewportStyle(
+        rect,
+        this.state.foldoutWidth,
+        document.documentElement.clientWidth
+      ),
       top: 0,
       ...heightStyle,
       ...overrides,
