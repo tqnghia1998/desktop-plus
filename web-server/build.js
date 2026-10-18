@@ -1,3 +1,4 @@
+const { rendererEntry, rendererSources } = require('./src/renderer-sources')
 const crypto = require('crypto')
 const fs = require('fs')
 const path = require('path')
@@ -343,16 +344,8 @@ async function main() {
   const manifest = {
     ...buildInfo,
     renderer: {
-      entry: 'app/src/ui/web-index.tsx',
-      source: [
-        'app/src/ui/web-index.tsx',
-        'app/src/ui/web-app.tsx',
-        'app/src/ui/web-emoji.ts',
-        'app/src/ui/web/contracts.ts',
-        'app/src/ui/web/client.ts',
-        'app/src/ui/web/platform.ts',
-        'app/src/ui/web/store.ts',
-      ],
+      entry: rendererEntry,
+      source: rendererSources,
       capabilities,
     },
     assets: {
