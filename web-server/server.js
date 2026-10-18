@@ -23,7 +23,10 @@ const {
   normalizeGitLabEndpoint,
 } = require('./gitlab')
 const { getDesktopRepositories } = require('./desktop-data')
-const { applyEmbedding } = require('./src/embedding')
+const { applyEmbedding } = require('./src/patches/vibing/embedding')
+const {
+  credentialLookupEnvironment,
+} = require('./src/patches/web/git-credentials')
 const {
   operations: webOperationNames,
 } = require('./src/web-operation-contract')
@@ -63,8 +66,6 @@ const STALE_GIT_CONFIG_LOCK_AGE_MS = 5 * 60 * 1000
 const SSH_AUTH_PROMPT_TIMEOUT_MS = 120_000
 const SSH_ASKPASS_SCRIPT_PATH = path.join(__dirname, 'ssh-askpass.js')
 const SSH_CREDENTIAL_SERVICE = 'desktop-plus-web-ssh'
-let macOSCredentialHelperExecPath
-let resolvedMacOSCredentialHelperExecPath = false
 const EMPTY_TREE_SHA = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
 const operationContext = new AsyncLocalStorage()
 const IMAGE_MEDIA_TYPES = Object.freeze({
@@ -2899,61 +2900,6 @@ async function readStoredGitCredential(repoPath, remoteURL) {
   const username = values.get('username')
   const password = values.get('password')
   return username && password ? { username, password } : null
-}
-
-function credentialLookupEnvironment() {
-  return {
-    ...process.env,
-    // Drop transient config inherited from an editor, while retaining helpers
-    // configured in the user's Git config (such as osxkeychain or GCM).
-    GIT_CONFIG_PARAMETERS: '',
-    GIT_TERMINAL_PROMPT: '0',
-    GIT_ASKPASS: process.execPath,
-    SSH_ASKPASS: process.execPath,
-    GCM_INTERACTIVE: 'never',
-    GIT_CONFIG_COUNT: '2',
-    GIT_CONFIG_KEY_0: 'credential.interactive',
-    GIT_CONFIG_VALUE_0: 'false',
-    GIT_CONFIG_KEY_1: 'core.askPass',
-    GIT_CONFIG_VALUE_1: '',
-    ...macOSCredentialHelperEnvironment(),
-  }
-}
-
-function macOSCredentialHelperEnvironment() {
-  if (process.platform !== 'darwin') return {}
-
-  // Dugite's macOS Git intentionally does not bundle the Keychain helper. If
-  // the user selected `credential.helper=osxkeychain`, point Git at a system
-  // Git exec directory that does include it. This preserves the user's helper
-  // configuration instead of replacing it with an app-specific credential.
-  if (!resolvedMacOSCredentialHelperExecPath) {
-    resolvedMacOSCredentialHelperExecPath = true
-    try {
-      const execPath = execFileSync('git', ['--exec-path'], {
-        encoding: 'utf8',
-        env: { ...process.env, GIT_EXEC_PATH: '' },
-        timeout: 5_000,
-      }).trim()
-      if (fs.existsSync(path.join(execPath, 'git-credential-osxkeychain')))
-        macOSCredentialHelperExecPath = execPath
-    } catch {}
-  }
-  if (macOSCredentialHelperExecPath)
-    return { GIT_EXEC_PATH: macOSCredentialHelperExecPath }
-
-  for (const execPath of [
-    '/opt/homebrew/opt/git/libexec/git-core',
-    '/usr/local/opt/git/libexec/git-core',
-    '/Library/Developer/CommandLineTools/usr/libexec/git-core',
-    '/Applications/Xcode.app/Contents/Developer/usr/libexec/git-core',
-  ]) {
-    if (fs.existsSync(path.join(execPath, 'git-credential-osxkeychain'))) {
-      macOSCredentialHelperExecPath = execPath
-      return { GIT_EXEC_PATH: execPath }
-    }
-  }
-  return {}
 }
 
 function nonInteractiveGitEnvironment() {

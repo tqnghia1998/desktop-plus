@@ -1,3 +1,8 @@
+import {
+  getEmbeddedParentOrigin,
+  useHostRefresh,
+  useRepositoryQuery,
+} from '../vibing/embedding'
 import * as React from 'react'
 import { SuccessfulCherryPick } from '../../ui/banners/successful-cherry-pick'
 import { CherryPickUndone } from '../../ui/banners/cherry-pick-undone'
@@ -100,22 +105,6 @@ function useApplicationState(store: WebApplicationStore) {
     [store]
   )
   return state
-}
-
-function getEmbeddedParentOrigin(): string | null {
-  const raw = new URLSearchParams(window.location.search).get('parentOrigin')
-  if (!raw) return null
-  try {
-    const url = new URL(raw)
-    if (
-      (url.protocol !== 'http:' && url.protocol !== 'https:') ||
-      url.origin !== raw
-    )
-      return null
-    return raw
-  } catch {
-    return null
-  }
 }
 
 export function WebApp({ store, dispatcher }: WebAppProps) {
@@ -383,38 +372,7 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
     ).__DESKTOP_PLUS_WEB_REPOSITORY_PATH__ = state.selectedRepositoryPath
   }, [state.selectedRepositoryPath])
 
-  const hostRefreshInFlight = React.useRef(false)
-  const requestHostRefresh = React.useCallback(() => {
-    if (hostRefreshInFlight.current || store.getState().loading) return
-    hostRefreshInFlight.current = true
-    void dispatcher.refresh().finally(() => {
-      hostRefreshInFlight.current = false
-    })
-  }, [dispatcher, store])
-
-  React.useEffect(() => {
-    const onFocus = () => {
-      requestHostRefresh()
-    }
-    window.addEventListener('focus', onFocus)
-    return () => window.removeEventListener('focus', onFocus)
-  }, [requestHostRefresh])
-
-  React.useEffect(() => {
-    const parentOrigin = getEmbeddedParentOrigin()
-    if (!parentOrigin) return
-    const refreshFromHost = (event: MessageEvent) => {
-      if (
-        event.origin === parentOrigin &&
-        event.source === window.parent &&
-        event.data?.type === 'space:desktop-plus-refresh-request'
-      ) {
-        requestHostRefresh()
-      }
-    }
-    window.addEventListener('message', refreshFromHost)
-    return () => window.removeEventListener('message', refreshFromHost)
-  }, [requestHostRefresh])
+  useHostRefresh(store, dispatcher)
 
   React.useEffect(() => {
     if (repositoryIndicatorsEnabled)
@@ -443,20 +401,7 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
     state.selectedRepositoryPath,
   ])
 
-  const openedRepositoryQuery = React.useRef<string | null>(null)
-  React.useEffect(() => {
-    const requestedPath = new URLSearchParams(window.location.search).get(
-      'repository'
-    )
-    if (
-      requestedPath &&
-      openedRepositoryQuery.current !== requestedPath &&
-      requestedPath !== state.selectedRepositoryPath
-    ) {
-      openedRepositoryQuery.current = requestedPath
-      void dispatcher.addRepositoryWithWorktrees(requestedPath)
-    }
-  }, [dispatcher, state.selectedRepositoryPath])
+  useRepositoryQuery(dispatcher, state.selectedRepositoryPath)
 
   const openRepositoryDialog = () => setRepositoryDialogOpen(true)
   const openCloneDialog = (url = '') => {
