@@ -4,15 +4,7 @@ const path = require('path')
 const ts = require('typescript')
 
 const root = path.join(__dirname, '..')
-const webUiSources = [
-  'app/src/ui/web-index.tsx',
-  'app/src/ui/web-app.tsx',
-  'app/src/ui/web-emoji.ts',
-  ...fs
-    .readdirSync(path.join(root, 'app/src/ui/web'))
-    .filter(file => /\.(?:ts|tsx)$/.test(file))
-    .map(file => `app/src/ui/web/${file}`),
-]
+const { rendererSources: webUiSources } = require('./src/renderer-sources')
 const forbiddenVisualPrimitives = new Set([
   'Dialog',
   'DialogContent',

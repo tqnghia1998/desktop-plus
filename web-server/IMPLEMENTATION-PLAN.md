@@ -1,7 +1,7 @@
 # Web implementation status
 
-The browser application is source-owned: `app/src/ui/web-index.tsx`,
-`app/src/ui/web-app.tsx`, and `app/src/ui/web/` provide the renderer, while the
+The browser application is source-owned: `app/src/patches/web/index.tsx`,
+`app/src/patches/web/application.tsx`, and `app/src/patches/web/` provide the renderer, while the
 local companion in `web-server/` performs Git and filesystem work. The browser
 does not execute Git itself and does not load the retired desktop snapshot.
 

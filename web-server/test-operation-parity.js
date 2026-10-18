@@ -5,15 +5,15 @@ const { operations } = require('./src/web-operation-contract')
 
 const root = path.join(__dirname, '..')
 const contracts = fs.readFileSync(
-  path.join(root, 'app/src/ui/web/contracts.ts'),
+  path.join(root, 'app/src/patches/web/contracts.ts'),
   'utf8'
 )
 const client = fs.readFileSync(
-  path.join(root, 'app/src/ui/web/client.ts'),
+  path.join(root, 'app/src/patches/web/client.ts'),
   'utf8'
 )
 const store = fs.readFileSync(
-  path.join(root, 'app/src/ui/web/store.ts'),
+  path.join(root, 'app/src/patches/web/store.ts'),
   'utf8'
 )
 

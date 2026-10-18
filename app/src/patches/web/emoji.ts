@@ -1,5 +1,5 @@
-import definitions from '../../../gemoji/db/emoji.json'
-import { Emoji } from '../lib/emoji'
+import definitions from '../../../../gemoji/db/emoji.json'
+import { Emoji } from '../../lib/emoji'
 
 type EmojiDefinition = {
   readonly emoji?: string

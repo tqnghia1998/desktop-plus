@@ -18,22 +18,13 @@ assert.equal(
   ],
   path.join(__dirname, 'src/desktop-copilot-app-stub.js')
 )
-const sourceFiles = [
-  'app/src/ui/web-index.tsx',
-  'app/src/ui/web-app.tsx',
-  'app/src/ui/web-emoji.ts',
-  'app/src/ui/web/contracts.ts',
-  'app/src/ui/web/client.ts',
-  'app/src/ui/web/platform.ts',
-  'app/src/ui/web/store.ts',
-]
+const { rendererSources: sourceFiles } = require('./src/renderer-sources')
 const forbiddenImports =
   /(?:from\s+['"](?:electron|node:|child_process|crypto|fs|http|https|os|path|stream|url)['"]|require\(['"](?:electron|node:|child_process|crypto|fs|http|https|os|path|stream|url)['"]\))/u
 
-const webApp = fs.readFileSync(
-  path.join(root, 'app/src/ui/web-app.tsx'),
-  'utf8'
-)
+const webApp = sourceFiles
+  .map(file => fs.readFileSync(path.join(root, file), 'utf8'))
+  .join('\n')
 assert.match(webApp, /space:desktop-plus-refresh-request/)
 assert.match(webApp, /const isEmbedded = getEmbeddedParentOrigin\(\) !== null/)
 assert.match(webApp, /isEmbedded=\{isEmbedded\}/)
