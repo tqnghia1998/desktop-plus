@@ -7,15 +7,7 @@ const path = require('path')
 const { createServer } = require('./server')
 
 const root = path.join(__dirname, '..')
-const sourceFiles = [
-  'app/src/ui/web-index.tsx',
-  'app/src/ui/web-app.tsx',
-  'app/src/ui/web-emoji.ts',
-  'app/src/ui/web/contracts.ts',
-  'app/src/ui/web/client.ts',
-  'app/src/ui/web/platform.ts',
-  'app/src/ui/web/store.ts',
-]
+const { rendererSources: sourceFiles } = require('./src/renderer-sources')
 
 function digestGeneratedBuild() {
   const manifest = JSON.parse(
@@ -149,7 +141,10 @@ async function main() {
     require('../app/package.json').version
   )
   assert.equal(secondBuild.manifest.platform, 'web')
-  assert.equal(secondBuild.manifest.renderer.entry, 'app/src/ui/web-index.tsx')
+  assert.equal(
+    secondBuild.manifest.renderer.entry,
+    'app/src/patches/web/index.tsx'
+  )
   assert.deepEqual(secondBuild.manifest.renderer.source, sourceFiles)
   assert.equal(Object.hasOwn(secondBuild.manifest, 'snapshot'), false)
   assert.equal(secondBuild.manifest.assets.highlighter.entry, 'highlighter.js')
