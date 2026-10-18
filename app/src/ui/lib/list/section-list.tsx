@@ -1,9 +1,10 @@
 import * as React from 'react'
 import * as ReactDOM from 'react-dom'
+import { clampScrollTop } from '../../../patches/web/viewport'
 import { Grid, AutoSizer, Index } from 'react-virtualized'
 import { shallowEquals, structuralEquals } from '../../../lib/equality'
 import { FocusContainer } from '../../lib/focus-container'
-import { isMacPlatform, isPrimaryModifier } from '../keyboard'
+import { isMacPlatform, isPrimaryModifier } from '../../../patches/web/keyboard'
 import { ListRow } from './list-row'
 import {
   findNextSelectableRow,
@@ -1458,16 +1459,6 @@ export class SectionList extends React.Component<
     return this.getSectionHeight(index)
   }
 
-  private getScrollTop(height: number) {
-    const requestedScrollTop = this.props.setScrollTop
-    if (requestedScrollTop === undefined) {
-      return undefined
-    }
-
-    const maximumScrollTop = Math.max(0, this.totalHeight - height)
-    return Math.max(0, Math.min(requestedScrollTop, maximumScrollTop))
-  }
-
   /**
    * Renders the react-virtualized Grid component
    *
@@ -1522,7 +1513,11 @@ export class SectionList extends React.Component<
           rowHeight={this.sectionHeight}
           cellRenderer={this.getSectionGridRenderer(width, height)}
           onScroll={this.onScroll}
-          scrollTop={this.getScrollTop(height)}
+          scrollTop={clampScrollTop(
+            this.props.setScrollTop,
+            this.totalHeight,
+            height
+          )}
           overscanRowCount={4}
           style={this.gridStyle}
           tabIndex={tabIndex}
