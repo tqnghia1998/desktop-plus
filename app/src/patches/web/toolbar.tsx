@@ -1294,6 +1294,7 @@ export function DesktopToolbar(props: {
         <DialogStackContext.Provider value={{ isTopMost: true }}>
           <DeleteWorktreeDialog
             askForConfirmationOnWorktreeRemoval={props.confirmWorktreeRemoval}
+            options={{}}
             onConfirmWorktreeRemovalChanged={
               props.onConfirmWorktreeRemovalChanged
             }
@@ -1318,8 +1319,9 @@ export function DesktopToolbar(props: {
         <DialogStackContext.Provider value={{ isTopMost: true }}>
           <DeleteWorktreeFailedDialog
             error={worktreeDeleteFailure.error}
-            onDeleteWorktree={async (_repository, worktreePath, force) => {
-              await runWorktreeOperation(worktreePath, force)
+            options={{}}
+            onDeleteWorktree={async (_repository, worktreePath, options) => {
+              await runWorktreeOperation(worktreePath, options?.force === true)
               setWorktreeDeleteFailure(null)
             }}
             onDismissed={() => setWorktreeDeleteFailure(null)}
