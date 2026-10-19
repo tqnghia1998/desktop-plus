@@ -3464,6 +3464,7 @@ export class App extends React.Component<IAppProps, IAppState> {
             key="add-remote"
             repository={popup.repository}
             existingRemoteNames={popup.existingRemoteNames}
+            remote={popup.remote}
             dispatcher={this.props.dispatcher}
             onDismissed={onPopupDismissedFn}
           />
