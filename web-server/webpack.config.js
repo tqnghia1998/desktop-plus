@@ -1,6 +1,6 @@
 const MiniCssExtractPlugin = require('mini-css-extract-plugin')
 const path = require('path')
-const TerserPlugin = require('terser-webpack-plugin')
+const MinimizerPlugin = require('minimizer-webpack-plugin')
 const webpack = require('webpack')
 
 const root = path.resolve(__dirname, '..')
@@ -380,7 +380,7 @@ module.exports = {
   optimization: {
     minimize: true,
     minimizer: [
-      new TerserPlugin({
+      new MinimizerPlugin({
         extractComments: false,
       }),
     ],
