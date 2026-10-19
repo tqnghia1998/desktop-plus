@@ -14,8 +14,8 @@ The current inventory contains 134 rows: 99 Supported, 10 Partial, 1 Missing,
 and 24 Deferred.
 
 - **Supported**: implemented and covered by an automated browser workflow.
-- **Partial**: a visible source control and companion path exist, but the
-  workflow or evidence is incomplete.
+- **Partial**: some renderer or companion paths exist, but the complete
+  workflow or native execution evidence is incomplete.
 - **Missing**: not yet implemented by the web renderer.
 - **Deferred**: intentionally outside the current release scope and not exposed.
 
@@ -30,8 +30,8 @@ and 24 Deferred.
 | repositoryListIndicators | Supported | Repository rows can show changed-file and ahead/behind indicators, with a persisted preference to enable or disable them. |
 | repositoryRecovery | Supported | Stale remembered repositories expose check-again, relocate, clone-again, and remove recovery actions; add and persisted-path flows classify regular, bare, missing, and unsafe repositories. |
 | updateFromDefaultBranch | Supported | The sync menu fetches the latest remotes and updates the current non-default branch from the fetched default-branch ref using merge or rebase. |
-| stashes | Supported | The Changes view exposes inline stash inspection, apply, pop, rename, and drop actions; Repository Tools also exposes stash creation and the same lifecycle controls. Source browser evidence covers inspection and diff rendering from Changes, lifecycle actions, and stash-pop conflict recovery through the visible Changes resolver. |
-| worktrees | Supported | The Tools view exposes worktree create, open, move, and remove. Source browser evidence covers the complete lifecycle, including open/switch and removal, on the in-scope Chrome/macOS target. |
+| stashes | Supported | The Changes view exposes inline stash inspection, apply, pop, rename, and drop actions; The toolbar exposes stash creation and lifecycle controls. Source browser evidence covers inspection and diff rendering from Changes, lifecycle actions, and stash-pop conflict recovery through the visible Changes resolver. |
+| worktrees | Supported | The worktree dropdown exposes create, open, move, and remove. Source browser evidence covers the complete lifecycle, including open/switch and removal, on the in-scope Chrome/macOS target. |
 | advancedHistoryRewrites | Supported | The History view exposes guarded reorder with an exact insertion point, squash with an editable commit message, and exact-tip undo. Source browser evidence exercises both configured rewrites, confirmation, and undo against a disposable repository. |
 | inProgressGitOperations | Supported | Source browser evidence covers shared live progress and cancellation plus merge abort and resolution/continuation, rebase resolution/continuation/skip, cherry-pick resolution/continuation, and revert conflict recovery after a refresh. |
 | pullRequests | Deferred | Hosted Pull Request and merge-request controls are not exposed by the source renderer in the local-only release. |
@@ -41,12 +41,12 @@ and 24 Deferred.
 | filesystemIntegration | Partial | Repository and worktree reveal, default-open, and Trash controls are source-owned and use the typed companion contract. Injected browser services validate the visible flows, but real native filesystem execution still needs macOS execution evidence. |
 | browserNotifications | Supported | Preferences expose a persisted browser-notification toggle and permission guidance; hosted notification feeds and native notifications remain deferred. |
 | nativeNotifications | Deferred | Native desktop notification infrastructure is not part of the web release. |
-| automaticUpdates | Partial | Repository Tools checks for signed updates, downloads and verifies artifacts with progress and cancellation, and requires confirmation before installer handoff. The browser fixture validates the state machine with an injected service; real signed artifact and installer execution still needs macOS evidence. |
+| automaticUpdates | Partial | The companion retains signed update check, download, verification, cancellation, and installer-handoff APIs. The current renderer does not expose an update screen; the embedded runtime is refreshed through the Space App Vibing bundle. |
 | copilot | Deferred | Copilot controls are not exposed by the source renderer. |
 | pushProtectionBypass | Deferred | Hosted push-protection controls are not exposed by the source renderer. |
 | repositoryRules | Deferred | Hosted repository-rule controls are not exposed by the source renderer. |
-| globalLfsInstall | Partial | Repository Tools exposes confirmed global Git LFS filter installation through the typed companion contract. Browser evidence uses an injected LFS service; native Git LFS installation still needs macOS execution evidence. |
-| gitLfs | Partial | Repository Tools exposes Git LFS status, local filter installation, hook repair, transfer progress, and cancellation. Browser evidence uses an injected LFS service; native Git LFS execution still needs macOS execution evidence. |
+| globalLfsInstall | Partial | The companion retains confirmed global Git LFS filter installation APIs. The current renderer does not expose an installation control. |
+| gitLfs | Partial | The companion retains Git LFS status, local filter installation, hook repair, transfer progress, and cancellation APIs. The current renderer does not expose Git LFS management controls. |
 
 ## Local desktop parity gaps
 
