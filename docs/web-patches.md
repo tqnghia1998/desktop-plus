@@ -21,7 +21,7 @@ behavior are preserved by this organization.
 | `app/src/patches/web/toolbar.tsx` | Branch, worktree, network, and repository actions |
 | `app/src/patches/web/changes.tsx` | Changed files, working diffs, and stash views |
 | `app/src/patches/web/history.tsx` | Commit graph, history, selected commits, and comparison views |
-| `app/src/patches/web/contracts.ts`, `client.ts`, `platform.ts`, `store.ts` | Typed companion contract, HTTP clients, platform calls, and browser state |
+| `app/src/patches/web/contracts.ts`, `client.ts`, `platform.ts`, `store.ts` | Typed companion contract, shared authenticated JSON transport, platform calls, and browser state |
 | `app/src/patches/web/keyboard.ts`, `viewport.ts` | Browser input and viewport policies used by shared controls |
 | `app/src/patches/vibing/embedding.ts` | Trusted parent origin, host refresh, and worktree query hooks |
 | `app/src/patches/vibing/appearance.css` | Vibing colors, typography, compact controls, and narrow toolbar sizing |

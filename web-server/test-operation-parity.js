@@ -32,9 +32,9 @@ assert.deepEqual(
 )
 
 assert.match(client, /runOperation\(/)
-assert.match(client, /request\(['"]\/api\/git\/operation['"]/)
+assert.match(client, /postJSON\(['"]\/api\/git\/operation['"]/)
 assert.match(client, /startOperation\(/)
-assert.match(client, /request\(['"]\/api\/git\/operations['"]/)
+assert.match(client, /postJSON\(['"]\/api\/git\/operations['"]/)
 assert.match(client, /getOperation\(/)
 assert.match(client, /cancelOperation\(/)
 assert.match(store, /async runOperation\(/)
