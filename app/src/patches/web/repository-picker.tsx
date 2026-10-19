@@ -367,6 +367,7 @@ export function DesktopRepositoryPicker(props: {
         <DialogStackContext.Provider value={{ isTopMost: true }}>
           <DeleteWorktreeDialog
             askForConfirmationOnWorktreeRemoval={props.confirmWorktreeRemoval}
+            options={{}}
             onConfirmWorktreeRemovalChanged={
               props.onConfirmWorktreeRemovalChanged
             }
