@@ -13,7 +13,7 @@ behavior are preserved by this organization.
 | `app/src/patches/web/index.tsx` | Browser renderer entry point |
 | `app/src/patches/web/application.tsx` | Application state, preference wiring, and top-level composition |
 | `app/src/patches/web/models.ts` | Convert companion data into shared Desktop models |
-| `app/src/patches/web/preferences.tsx` | Saved settings, presentation context, and the shared Preferences dialog adapter |
+| `app/src/patches/web/preferences.tsx`, `preferences-state.ts` | Saved settings, shared persisted-boolean hook, presentation context, and the shared Preferences dialog adapter |
 | `app/src/patches/web/repository.tsx` | Repository layout, operation state, home, and tutorial adapters |
 | `app/src/patches/web/repository-picker.tsx` | Repository and worktree picker adapter |
 | `app/src/patches/web/repository-dialogs.tsx` | Repository setup, settings, groups, and recovery dialogs |
