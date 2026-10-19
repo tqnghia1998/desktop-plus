@@ -21,7 +21,7 @@ import {
   WebGitConfigScope,
   WebRepositoryDeleteMode,
 } from './contracts'
-import { request } from './platform'
+import { postJSON, request } from './platform'
 
 function repositoryQuery(path: string, values: Record<string, string> = {}) {
   const params = new URLSearchParams({ path, ...values })
@@ -39,43 +39,23 @@ export const webGitClient: WebGitClient = {
       'name' | 'parentPath' | 'createReadme'
     >
   ): Promise<WebRepositorySetupPreview> {
-    return request('/api/repository-setup/preview', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(options),
-    })
+    return postJSON('/api/repository-setup/preview', options)
   },
 
   previewCloneRepository(url, path): Promise<WebCloneSetupPreview> {
-    return request('/api/repository-setup/clone-preview', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url, path }),
-    })
+    return postJSON('/api/repository-setup/clone-preview', { url, path })
   },
 
   inspectRepository(path): Promise<WebRepositoryInspection> {
-    return request('/api/repository/inspect', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path }),
-    })
+    return postJSON('/api/repository/inspect', { path })
   },
 
   async trustRepository(path) {
-    await request('/api/repository/trust', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path }),
-    })
+    await postJSON('/api/repository/trust', { path })
   },
 
   async deleteRepository(path: string, mode: WebRepositoryDeleteMode) {
-    await request('/api/repository/delete', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path, mode, confirmed: true }),
-    })
+    await postJSON('/api/repository/delete', { path, mode, confirmed: true })
   },
 
   getStatus(path): Promise<WebStatus> {
@@ -164,19 +144,11 @@ export const webGitClient: WebGitClient = {
     name: string,
     email: string
   ): Promise<WebGitIdentity> {
-    return request('/api/git/identity', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path, scope, name, email }),
-    })
+    return postJSON('/api/git/identity', { path, scope, name, email })
   },
 
   async recoverGitConfigLock(path, scope, confirmed) {
-    await request('/api/git/config-lock', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path, scope, confirmed }),
-    })
+    await postJSON('/api/git/config-lock', { path, scope, confirmed })
   },
 
   async getGlobalGitConfigPath() {
@@ -188,19 +160,11 @@ export const webGitClient: WebGitClient = {
   },
 
   saveGitIgnore(path, text): Promise<WebStatus> {
-    return request('/api/gitignore', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path, text }),
-    })
+    return postJSON('/api/gitignore', { path, text })
   },
 
   appendIgnore(path, body): Promise<WebStatus> {
-    return request('/api/gitignore', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path, ...body }),
-    })
+    return postJSON('/api/gitignore', { path, ...body })
   },
 
   runOperation(
@@ -209,11 +173,7 @@ export const webGitClient: WebGitClient = {
     options: WebOperationOptions = {}
   ): Promise<WebOperationResult> {
     const { values = [], ...body } = options
-    return request('/api/git/operation', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path, operation, values, ...body }),
-    })
+    return postJSON('/api/git/operation', { path, operation, values, ...body })
   },
 
   startOperation(
@@ -222,11 +182,7 @@ export const webGitClient: WebGitClient = {
     options: WebOperationOptions = {}
   ): Promise<WebOperationTask> {
     const { values = [], ...body } = options
-    return request('/api/git/operations', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path, operation, values, ...body }),
-    })
+    return postJSON('/api/git/operations', { path, operation, values, ...body })
   },
 
   getOperation(id: string): Promise<WebOperationTask> {
@@ -234,10 +190,8 @@ export const webGitClient: WebGitClient = {
   },
 
   cancelOperation(id: string): Promise<WebOperationTask> {
-    return request(`/api/git/operations/${encodeURIComponent(id)}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'cancel' }),
+    return postJSON(`/api/git/operations/${encodeURIComponent(id)}`, {
+      action: 'cancel',
     })
   },
 
@@ -246,10 +200,10 @@ export const webGitClient: WebGitClient = {
     response: string,
     remember = false
   ): Promise<WebOperationTask> {
-    return request(`/api/git/operations/${encodeURIComponent(id)}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'auth-response', response, remember }),
+    return postJSON(`/api/git/operations/${encodeURIComponent(id)}`, {
+      action: 'auth-response',
+      response,
+      remember,
     })
   },
 }
