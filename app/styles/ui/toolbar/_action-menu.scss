@@ -23,7 +23,7 @@
       display: block;
       width: 100%;
       min-width: var(--toolbar-action-menu-width);
-      height: var(--menu-item-height);
+      height: var(--menu-item-height, 30px);
       padding: 0 var(--spacing-double);
       color: var(--text-color);
       overflow: hidden;
