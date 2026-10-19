@@ -143,13 +143,6 @@ module.exports = {
         'src',
         'desktop-preferences-app-store-stub.js'
       ),
-      [`${path.join(root, 'app', 'src', 'lib', 'stores')}$`]: path.join(
-        __dirname,
-        'src',
-        'desktop-changes-stores-stub.js'
-      ),
-      [`${path.join(root, 'app', 'src', 'lib', 'stores', 'index.ts')}$`]:
-        path.join(__dirname, 'src', 'desktop-changes-stores-stub.js'),
       [path.join(root, 'app', 'src', 'lib', 'stores', 'ahead-behind-store.ts')]:
         path.join(__dirname, 'src', 'desktop-ahead-behind-store-stub.js'),
       [path.join(root, 'app', 'src', 'lib', 'git', 'lfs.ts')]: path.join(
@@ -194,16 +187,6 @@ module.exports = {
           'src',
           'desktop-preferences-copilot-store-stub.js'
         ),
-      [path.join(root, 'app', 'src', 'lib', 'copilot', 'byok')]: path.join(
-        __dirname,
-        'src',
-        'desktop-preferences-byok-stub.js'
-      ),
-      [path.join(root, 'app', 'src', 'lib', 'copilot', 'byok.ts')]: path.join(
-        __dirname,
-        'src',
-        'desktop-preferences-byok-stub.js'
-      ),
       [path.join(root, 'app', 'src', 'lib', 'git', 'worktree-include.ts')]:
         path.join(__dirname, 'src', 'desktop-worktree-include-stub.js'),
       [path.join(root, 'app', 'src', 'ui', 'main-process-proxy.ts')]: path.join(
@@ -270,7 +253,6 @@ module.exports = {
         ),
       [path.join(root, 'app', 'src', 'ui', 'preferences', 'copilot.tsx')]:
         path.join(__dirname, 'src', 'desktop-preferences-copilot-stub.js'),
-      electron: path.join(__dirname, 'src', 'desktop-electron-stub.js'),
       [path.join(
         root,
         'app',

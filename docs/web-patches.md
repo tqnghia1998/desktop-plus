@@ -51,7 +51,7 @@ or establish full native Desktop feature parity; see
 | Changes/history file lists and stash headers | Optional row-height and compact-header props let the browser select its density while retaining shared rendering |
 | Repository/worktree dropdowns | Optional disabled props keep host-selected navigation locked inside an embed |
 | App chrome, repository layout/tabs, toolbar menus, and other shared controls | Composed views and narrow adapter props let the web port reuse the Desktop visual system |
-| Feature flags and patch formatting | Browser-native capability gating and the existing partial-selection correctness fix |
+| Feature flags | Browser-native capability gating |
 
 Paths in this table are relative to `app/src/`. Shared visual components stay
 there so desktop and browser behavior continue to use the same implementation.
