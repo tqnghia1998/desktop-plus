@@ -41,6 +41,13 @@ port. Moving ownership into directories does not remove that implementation
 or establish full native Desktop feature parity; see
 [`web-server/CAPABILITIES.md`](../web-server/CAPABILITIES.md).
 
+The browser store models only Changes, History, and Compare. Deferred hosted,
+PR, Copilot, LFS-management, and updater actions are not injected into that
+store. Their companion APIs remain independent and unchanged. Saved account
+metadata stays compatible with older local state, and generic Git credential
+lookup, one-time authentication retries, SSH prompts, and notifications remain
+on the active Git operation path.
+
 ## Remaining shared-code hooks
 
 | Shared code | Why the hook remains |
