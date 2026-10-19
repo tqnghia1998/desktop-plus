@@ -138,15 +138,19 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   return payload
 }
 
+export function postJSON<T>(path: string, body: unknown): Promise<T> {
+  return request<T>(path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+}
+
 export const webPlatform: WebPlatform = {
   async chooseDirectory() {
-    const result = await request<{ path: string | null }>(
+    const result = await postJSON<{ path: string | null }>(
       '/api/dialog/show-open-dialog',
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      }
+      {}
     )
     return result.path
   },
@@ -156,11 +160,7 @@ export const webPlatform: WebPlatform = {
   },
 
   async openPath(path, reveal = false) {
-    await request('/api/os/open', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path, reveal }),
-    })
+    await postJSON('/api/os/open', { path, reveal })
   },
 
   openRepositoryInNewWindow(path) {
@@ -170,15 +170,11 @@ export const webPlatform: WebPlatform = {
   },
 
   async openIntegration(kind, path, selection) {
-    await request('/api/integrations/launch', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        kind,
-        target: path,
-        name: selection?.name || null,
-        custom: selection?.custom || null,
-      }),
+    await postJSON('/api/integrations/launch', {
+      kind,
+      target: path,
+      name: selection?.name || null,
+      custom: selection?.custom || null,
     })
   },
 
@@ -206,10 +202,11 @@ export const webPlatform: WebPlatform = {
   },
 
   async launchIntegration(kind, target, name, custom) {
-    await request('/api/integrations/launch', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ kind, target, name, custom: custom || null }),
+    await postJSON('/api/integrations/launch', {
+      kind,
+      target,
+      name,
+      custom: custom || null,
     })
   },
 }
