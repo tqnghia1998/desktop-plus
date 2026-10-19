@@ -118,17 +118,13 @@ button.resize-handle {
 /* Fit the app inside narrow viewports (e.g. embedded next to a host details
  * panel): let the resizable toolbar buttons shrink instead of pushing the
  * trailing Repository/Branch menu buttons past the right edge, and clamp the
- * sidebar (the toolbar section and the sidebar column share one clamp so they
- * stay aligned). 630px ≈ the floor space the remaining toolbar buttons need
+ * toolbar sidebar section. 630px ≈ the floor space the remaining toolbar
+ * buttons need
  * (3 resizable buttons at 140px + 2 action menus at 105px). */
 #desktop-app-toolbar > *,
 #desktop-app-toolbar .resizable-component {
   flex-shrink: 1;
   min-width: 0;
-}
-
-#desktop-app-toolbar .resizable-component {
-  min-width: 140px;
 }
 
 #desktop-app-toolbar .toolbar-action-menu {
@@ -140,18 +136,15 @@ button.resize-handle {
   border-right: 0;
 }
 
-#desktop-app-toolbar > .sidebar-section,
-#repository-sidebar {
+#desktop-app-toolbar > .sidebar-section {
   max-width: calc(100vw - 630px);
 }
 
 /* Reuse the shared AppMenu markup, with the same visual elevation as desktop
  * popovers so it remains distinct over a diff or other dark surfaces. */
 #web-context-menu .menu-pane {
-  background: var(--app-menu-pane-background-color);
   border-radius: var(--border-radius);
   box-shadow: var(--base-box-shadow);
-  color: var(--app-menu-pane-color);
 }
 
 /* Avoid the desktop app's narrow 400–450px dialogs in the embedded view.
@@ -172,7 +165,6 @@ dialog {
   --font-size-xs: 10px;
 
   /* Keep the shared desktop spacing rhythm with compact controls. */
-  --spacing: 10px;
   --button-height: 32px;
   --text-field-height: 32px;
   --dropdown-select-button-height: 32px;
@@ -193,11 +185,9 @@ body.theme-dark {
 
   --button-background: #3a96dd;
   --button-hover-background: #55a8e3;
-  --button-focus-border-color: #3a96dd;
   --link-button-color: #3a96dd;
   --link-button-hover-color: #55a8e3;
   --secondary-button-background: #252526;
-  --secondary-button-border-color: #2c2c30;
   --secondary-button-hover-border-color: #3f3f46;
 
   --box-background-color: #1a1a1a;
@@ -240,7 +230,6 @@ body.theme-dark {
   --accent-color: #55a8e3;
   --overlay-background-color: rgba(0, 0, 0, 0.6);
   --path-segment-background: #2d2d30;
-  --path-segment-background-focus: #3f3f46;
   --tooltip-background-color: #252526;
   --commit-warning-badge-background-color: #1a1a1a;
   --commit-warning-badge-border-color: #3f3f46;
