@@ -163,6 +163,9 @@ function DesktopCommitGraphSidebar(props: {
         // the upstream lifecycle call harmless until author autocomplete is
         // supported by the web port.
         commitGraph_loadFilterAuthors: () => Promise.resolve(),
+        // updateCompareForm already fetches 100 server-filtered matches, more
+        // than the native graph's minimum; scrolling loads subsequent pages.
+        commitGraph_ensureEnoughFilteredCommits: () => Promise.resolve(),
         commitGraph_loadNextCommitBatch: () =>
           props.dispatcher.loadMoreHistory(),
         commitGraph_resetBranchListWidth: () => {
