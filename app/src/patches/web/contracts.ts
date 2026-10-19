@@ -508,128 +508,6 @@ export interface WebHostingAccount {
   readonly provider?: 'github' | 'gitlab'
 }
 
-export interface WebPullRequest {
-  readonly number: number
-  readonly title: string
-  readonly html_url?: string
-  readonly state?: string
-  readonly user?: {
-    readonly login: string
-  }
-  readonly head?: {
-    readonly ref: string
-    readonly sha?: string
-    readonly repo?: {
-      readonly clone_url?: string
-      readonly owner?: {
-        readonly login: string
-      }
-    }
-  }
-  readonly base?: {
-    readonly sha?: string
-  }
-}
-
-export interface WebPullRequestDetails {
-  readonly pullRequest: WebPullRequest
-  readonly commitSHAs: ReadonlyArray<string>
-  readonly files: ReadonlyArray<
-    WebFile & {
-      readonly additions: number
-      readonly deletions: number
-      readonly patch: string | null
-    }
-  >
-}
-
-export interface WebCheckRun {
-  readonly id: number
-  readonly name: string
-  readonly description: string
-  readonly status: string
-  readonly conclusion: string | null
-  readonly appName: string
-  readonly htmlUrl: string | null
-  readonly checkSuiteId: number | null
-}
-
-export interface WebChecks {
-  readonly status: string
-  readonly conclusion: string | null
-  readonly checks: ReadonlyArray<WebCheckRun>
-}
-
-export interface WebNotification {
-  readonly id: string
-  readonly reason: string
-  readonly updatedAt: string
-  readonly title: string
-  readonly type: string
-  readonly target: {
-    readonly owner: string
-    readonly repository: string
-    readonly pullRequestNumber: number
-  } | null
-}
-
-export interface WebLfsStatus {
-  readonly available: boolean
-  readonly version: string | null
-  readonly filtersConfigured: boolean
-  readonly hooksInstalled: boolean
-  readonly trackedPatterns: ReadonlyArray<string>
-  readonly mismatches: ReadonlyArray<{
-    readonly kind: string
-    readonly message: string
-  }>
-}
-
-export interface WebLfsOperation {
-  readonly id: string
-  readonly command: string
-  readonly status: 'running' | 'completed' | 'failed' | 'cancelled'
-  readonly output: string
-  readonly progress: number | null
-}
-
-export interface WebUpdateStatus {
-  readonly status: 'manual' | 'up-to-date' | 'available'
-  readonly currentVersion: string
-  readonly platform: string
-  readonly availableVersion: string | null
-  readonly releaseNotes: string
-  readonly message: string
-}
-
-export interface WebUpdateOperation {
-  readonly id: string
-  readonly status:
-    | 'downloading'
-    | 'downloaded'
-    | 'cancelled'
-    | 'failed'
-    | 'opened'
-  readonly downloadedBytes: number
-  readonly totalBytes: number
-  readonly artifactName: string
-  readonly error: string | null
-}
-
-export interface WebIntegrations {
-  readonly platform: string
-  readonly editors: ReadonlyArray<{
-    readonly name: string
-    readonly path: string
-  }>
-  readonly shells: ReadonlyArray<{
-    readonly name: string
-    readonly path: string
-  }>
-  readonly dependencies: Record<string, boolean>
-  readonly guidance: string | null
-}
-
 export interface WebCustomIntegration {
   readonly path: string
   readonly arguments: string
@@ -638,45 +516,6 @@ export interface WebCustomIntegration {
 export interface WebIntegrationSelection {
   readonly name: string | null
   readonly custom: WebCustomIntegration | null
-}
-
-export interface WebRepositoryRuleset {
-  readonly id: number
-  readonly name: string
-  readonly target: string
-  readonly enforcement: string
-  readonly ruleTypes: ReadonlyArray<string>
-  readonly bypassEligible: boolean
-  readonly bypassMode: string | null
-  readonly source: string
-}
-
-export interface WebPushBypassRequest {
-  readonly number: number
-  readonly status: string
-  readonly comment: string
-  readonly htmlURL: string | null
-  readonly violations: ReadonlyArray<string>
-}
-
-export interface WebRepositoryPolicies {
-  readonly branch: string
-  readonly rulesets: ReadonlyArray<WebRepositoryRuleset>
-  readonly effectiveRuleTypes: ReadonlyArray<string>
-  readonly bypassRequests: ReadonlyArray<WebPushBypassRequest>
-}
-
-export interface WebCopilotMetadata {
-  readonly models: ReadonlyArray<{ readonly id: string; readonly name: string }>
-  readonly quota: Record<string, unknown>
-}
-
-export interface PublishRepositoryOptions {
-  readonly path: string
-  readonly name: string
-  readonly organization: string
-  readonly description: string
-  readonly private: boolean
 }
 
 export interface WebApplicationState {
@@ -705,15 +544,7 @@ export interface WebApplicationState {
   readonly historyGraphMode: boolean
   readonly historyGraphHiddenRefs: ReadonlyArray<string>
   readonly historyGraphCollapsedGroups: ReadonlyArray<string>
-  readonly selectedSection:
-    | 'changes'
-    | 'history'
-    | 'compare'
-    | 'pull-requests'
-    | 'notifications'
-    | 'account'
-    | 'copilot'
-    | 'updates'
+  readonly selectedSection: 'changes' | 'history' | 'compare'
   readonly status: WebStatus | null
   readonly branches: WebBranches | null
   readonly history: ReadonlyArray<WebCommit>
@@ -737,18 +568,6 @@ export interface WebApplicationState {
   readonly selectedStashFilePath: string | null
   readonly stashDiff: WebDiff | null
   readonly hostingAccount: WebHostingAccount | null
-  readonly pullRequests: ReadonlyArray<WebPullRequest>
-  readonly pullRequestDetails: WebPullRequestDetails | null
-  readonly checks: WebChecks | null
-  readonly notifications: ReadonlyArray<WebNotification>
-  readonly lfsStatus: WebLfsStatus | null
-  readonly lfsOperation: WebLfsOperation | null
-  readonly updateStatus: WebUpdateStatus | null
-  readonly updateOperation: WebUpdateOperation | null
-  readonly integrations: WebIntegrations | null
-  readonly repositoryPolicies: WebRepositoryPolicies | null
-  readonly copilotMetadata: WebCopilotMetadata | null
-  readonly copilotContent: string | null
   readonly loading: boolean
   readonly error: string | null
   readonly errorCode: string | null
@@ -888,17 +707,7 @@ export interface WebDispatcher {
     confirmed: boolean,
     permanently?: boolean
   ): Promise<void>
-  selectSection(
-    section:
-      | 'changes'
-      | 'history'
-      | 'compare'
-      | 'pull-requests'
-      | 'notifications'
-      | 'account'
-      | 'copilot'
-      | 'updates'
-  ): Promise<void>
+  selectSection(section: WebApplicationState['selectedSection']): Promise<void>
   loadMoreHistory(): Promise<void>
   removeRepository(path: string): void
   deleteRepository(path: string, mode: WebRepositoryDeleteMode): Promise<void>
@@ -906,34 +715,6 @@ export interface WebDispatcher {
   pullRepositoryGroup(group: string | null): Promise<void>
   dismissError(): void
   openErrorAction(): void
-  signIn(
-    provider: 'github' | 'gitlab',
-    endpoint: string,
-    token: string
-  ): Promise<void>
-  signOut(): Promise<void>
-  publishRepository(options: PublishRepositoryOptions): Promise<void>
-  loadPullRequests(owner: string, repository: string): Promise<void>
-  createPullRequest(
-    owner: string,
-    repository: string,
-    title: string,
-    head: string,
-    base: string,
-    body: string
-  ): Promise<void>
-  checkoutPullRequest(pullRequest: WebPullRequest): Promise<void>
-  loadPullRequestDetails(
-    owner: string,
-    repository: string,
-    pullRequestNumber: number
-  ): Promise<void>
-  loadChecks(owner: string, repository: string, ref: string): Promise<void>
-  rerunCheckSuites(
-    owner: string,
-    repository: string,
-    checkSuiteIds: ReadonlyArray<number>
-  ): Promise<void>
   retryLastAction(): Promise<void>
   retryLastActionWithCredentials(
     username: string,
@@ -941,31 +722,12 @@ export interface WebDispatcher {
   ): Promise<void>
   dismissHistoryRewriteUndo(): void
   dismissCherryPickUndo(): void
-  loadLfsStatus(): Promise<void>
-  installLfs(scope: 'local' | 'global', confirmed: boolean): Promise<void>
-  repairLfs(confirmed: boolean): Promise<void>
-  startLfsTransfer(command: 'pull' | 'push' | 'fetch'): Promise<void>
-  cancelLfsTransfer(): Promise<void>
-  checkForUpdates(): Promise<void>
-  downloadUpdate(): Promise<void>
-  cancelUpdateDownload(): Promise<void>
-  openDownloadedUpdate(confirmed: boolean): Promise<void>
-  loadIntegrations(): Promise<void>
   launchIntegration(
     kind: 'editor' | 'shell',
     name: string | null,
     custom?: WebCustomIntegration | null,
     target?: string
   ): Promise<void>
-  loadRepositoryPolicies(owner: string, repository: string): Promise<void>
-  pushRepository(owner: string, repository: string): Promise<void>
-  loadCopilotMetadata(): Promise<void>
-  generateCopilotCommitMessage(model: string): Promise<void>
-  resolveCopilotConflicts(model: string): Promise<void>
-  cancelCopilot(): void
-  requestNotificationPermission(): Promise<NotificationPermission>
-  loadNotifications(): Promise<void>
-  checkoutNotification(notification: WebNotification): Promise<void>
   openExternal(url: string): void
 }
 
@@ -1026,19 +788,6 @@ export interface WebGitClient {
   readGitIgnore(path: string): Promise<WebGitIgnore>
   saveGitIgnore(path: string, text: string): Promise<WebStatus>
   appendIgnore(path: string, request: WebGitIgnoreRequest): Promise<WebStatus>
-  getLfsStatus(path: string): Promise<WebLfsStatus>
-  installLfs(
-    path: string,
-    scope: 'local' | 'global',
-    confirmed: boolean
-  ): Promise<WebLfsStatus>
-  repairLfs(path: string, confirmed: boolean): Promise<WebLfsStatus>
-  startLfsTransfer(
-    path: string,
-    command: 'pull' | 'push' | 'fetch'
-  ): Promise<WebLfsOperation>
-  getLfsOperation(id: string): Promise<WebLfsOperation>
-  cancelLfsOperation(id: string): Promise<WebLfsOperation>
   runOperation(
     path: string,
     operation: WebGitOperation,
@@ -1058,90 +807,6 @@ export interface WebGitClient {
   ): Promise<WebOperationTask>
 }
 
-export interface WebHostingClient {
-  signIn(
-    provider: 'github' | 'gitlab',
-    endpoint: string,
-    token: string
-  ): Promise<WebHostingAccount>
-  signOut(account: WebHostingAccount): Promise<void>
-  publish(
-    account: WebHostingAccount,
-    options: PublishRepositoryOptions
-  ): Promise<void>
-  getPullRequests(
-    account: WebHostingAccount,
-    owner: string,
-    repository: string
-  ): Promise<ReadonlyArray<WebPullRequest>>
-  createPullRequest(
-    account: WebHostingAccount,
-    owner: string,
-    repository: string,
-    title: string,
-    head: string,
-    base: string,
-    body: string
-  ): Promise<WebPullRequest>
-  checkoutPullRequest(
-    account: WebHostingAccount,
-    path: string,
-    pullRequest: WebPullRequest
-  ): Promise<void>
-  getPullRequestDetails(
-    account: WebHostingAccount,
-    owner: string,
-    repository: string,
-    pullRequestNumber: number
-  ): Promise<WebPullRequestDetails>
-  getChecks(
-    account: WebHostingAccount,
-    owner: string,
-    repository: string,
-    ref: string
-  ): Promise<WebChecks | null>
-  rerunCheckSuites(
-    account: WebHostingAccount,
-    owner: string,
-    repository: string,
-    checkSuiteIds: ReadonlyArray<number>
-  ): Promise<void>
-  getNotifications(
-    account: WebHostingAccount
-  ): Promise<ReadonlyArray<WebNotification>>
-  markNotificationRead(
-    account: WebHostingAccount,
-    notificationId: string
-  ): Promise<void>
-  getRepositoryPolicies(
-    account: WebHostingAccount,
-    owner: string,
-    repository: string,
-    branch: string
-  ): Promise<WebRepositoryPolicies>
-  pushRepository(
-    account: WebHostingAccount,
-    path: string,
-    owner: string,
-    repository: string,
-    branch: string
-  ): Promise<void>
-  getCopilotMetadata(
-    account: WebHostingAccount,
-    path: string
-  ): Promise<WebCopilotMetadata>
-  generateCopilotCommitMessage(
-    account: WebHostingAccount,
-    path: string,
-    model: string
-  ): Promise<string>
-  resolveCopilotConflicts(
-    account: WebHostingAccount,
-    path: string,
-    model: string
-  ): Promise<string>
-}
-
 export interface WebPlatform {
   chooseDirectory(): Promise<string | null>
   copy(text: string): Promise<void>
@@ -1153,17 +818,7 @@ export interface WebPlatform {
     selection?: WebIntegrationSelection
   ): Promise<void>
   openExternal(url: string): void
-  requestNotificationPermission(): Promise<NotificationPermission>
   notify(title: string, body: string, onClick?: () => void): void
-  checkForUpdates(): Promise<WebUpdateStatus>
-  downloadUpdate(): Promise<WebUpdateOperation>
-  getUpdateOperation(id: string): Promise<WebUpdateOperation>
-  cancelUpdateOperation(id: string): Promise<WebUpdateOperation>
-  openDownloadedUpdate(
-    id: string,
-    confirmed: boolean
-  ): Promise<WebUpdateOperation>
-  getIntegrations(): Promise<WebIntegrations>
   launchIntegration(
     kind: 'editor' | 'shell',
     target: string,

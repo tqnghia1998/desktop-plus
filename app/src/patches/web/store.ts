@@ -5,15 +5,10 @@ import {
   WebGitClient,
   WebHistory,
   WebHostingAccount,
-  WebHostingClient,
-  WebNotification,
-  WebRepositoryPolicies,
   WebStash,
   WebPlatform,
-  WebPullRequestDetails,
   WebRepository,
   WebChangesFilter,
-  PublishRepositoryOptions,
   WebGitOperation,
   WebOperationOptions,
   WebRepositoryInitializationOptions,
@@ -32,7 +27,6 @@ import {
   WebOperationTask,
   WebDiff,
 } from './contracts'
-import { cancelCopilotRequest } from './client'
 import { DiffSelection, DiffSelectionType } from '../../models/diff'
 import webEmoji from './emoji'
 import { TutorialStep } from '../../models/tutorial-step'
@@ -494,18 +488,6 @@ function initialState(): WebApplicationState {
     stashDiff: null,
     gitIdentity: null,
     hostingAccount: persisted.hostingAccount,
-    pullRequests: [],
-    pullRequestDetails: null,
-    checks: null,
-    notifications: [],
-    lfsStatus: null,
-    lfsOperation: null,
-    updateStatus: null,
-    updateOperation: null,
-    integrations: null,
-    repositoryPolicies: null,
-    copilotMetadata: null,
-    copilotContent: null,
     loading: false,
     error: null,
     errorCode: null,
@@ -520,8 +502,7 @@ function initialState(): WebApplicationState {
 
 export function createWebApplicationStore(
   git: WebGitClient,
-  platform: WebPlatform,
-  hosting: WebHostingClient
+  platform: WebPlatform
 ): WebApplicationStore & { readonly dispatcher: WebDispatcher } {
   let state = initialState()
   let persisted = loadPersistedState()
@@ -531,7 +512,6 @@ export function createWebApplicationStore(
     readonly username: string
     readonly password: string
   } | null = null
-  const deliveredNotificationIds = new Set<string>()
   let historyRefreshGeneration = 0
   let historyInspectionGeneration = 0
   let comparisonGeneration = 0
@@ -682,44 +662,6 @@ export function createWebApplicationStore(
       canRetry: Boolean(retryLastAction),
     })
   }
-  const createPoller = <T>(
-    fetch: (id: string) => Promise<T>,
-    isRunning: (result: T) => boolean,
-    onUpdate: (result: T) => void
-  ) => {
-    let timer: number | null = null
-    const stop = () => {
-      if (timer !== null) window.clearTimeout(timer)
-      timer = null
-    }
-    const poll = (id: string) => {
-      stop()
-      timer = window.setTimeout(async () => {
-        try {
-          const result = await fetch(id)
-          onUpdate(result)
-          if (isRunning(result)) poll(id)
-        } catch (error) {
-          fail(error)
-        }
-      }, 500)
-    }
-    return { poll, stop }
-  }
-  const updatePoller = createPoller(
-    id => platform.getUpdateOperation(id),
-    updateOperation => updateOperation.status === 'downloading',
-    updateOperation => update({ updateOperation })
-  )
-  const lfsPoller = createPoller(
-    id => git.getLfsOperation(id),
-    lfsOperation => lfsOperation.status === 'running',
-    lfsOperation => update({ lfsOperation })
-  )
-  const stopUpdatePolling = updatePoller.stop
-  const stopLfsPolling = lfsPoller.stop
-  const pollUpdateOperation = updatePoller.poll
-  const pollLfsOperation = lfsPoller.poll
   const waitForOperation = (
     task: WebOperationTask
   ): Promise<WebOperationTask> =>
@@ -1513,8 +1455,6 @@ export function createWebApplicationStore(
         stashFiles: [],
         selectedStashFilePath: null,
         stashDiff: null,
-        lfsStatus: null,
-        lfsOperation: null,
       })
       try {
         const inspection = await git.inspectRepository(path)
@@ -2633,287 +2573,6 @@ export function createWebApplicationStore(
       platform.openRepositoryInNewWindow(path)
     },
 
-    async signIn(provider, endpoint, token) {
-      begin()
-      try {
-        update({
-          hostingAccount: await hosting.signIn(provider, endpoint, token),
-        })
-      } catch (error) {
-        fail(error, () => dispatcher.signIn(provider, endpoint, token))
-      } finally {
-        update({ loading: false })
-      }
-    },
-
-    async signOut() {
-      if (!state.hostingAccount) return
-      begin()
-      try {
-        await hosting.signOut(state.hostingAccount)
-        update({
-          hostingAccount: null,
-          pullRequests: [],
-          pullRequestDetails: null,
-          checks: null,
-          notifications: [],
-        })
-        deliveredNotificationIds.clear()
-      } catch (error) {
-        fail(error, () => dispatcher.signOut())
-      } finally {
-        update({ loading: false })
-      }
-    },
-
-    async publishRepository(options: PublishRepositoryOptions) {
-      if (!state.hostingAccount)
-        throw new Error(
-          'Sign in to a hosting provider before publishing a repository.'
-        )
-      begin()
-      try {
-        await hosting.publish(state.hostingAccount, options)
-      } catch (error) {
-        fail(error, () => dispatcher.publishRepository(options))
-      } finally {
-        update({ loading: false })
-      }
-    },
-
-    async loadPullRequests(owner, repository) {
-      if (!state.hostingAccount)
-        throw new Error(
-          'Sign in to a hosting provider before loading pull requests.'
-        )
-      begin()
-      try {
-        const pullRequests = await hosting.getPullRequests(
-          state.hostingAccount,
-          owner,
-          repository
-        )
-        update({ pullRequests, pullRequestDetails: null, checks: null })
-      } catch (error) {
-        fail(error, () => dispatcher.loadPullRequests(owner, repository))
-      } finally {
-        update({ loading: false })
-      }
-    },
-
-    async createPullRequest(owner, repository, title, head, base, body) {
-      if (!state.hostingAccount)
-        throw new Error(
-          'Sign in to a hosting provider before creating a pull request.'
-        )
-      begin()
-      try {
-        const pullRequest = await hosting.createPullRequest(
-          state.hostingAccount,
-          owner,
-          repository,
-          title,
-          head,
-          base,
-          body
-        )
-        update({ pullRequests: [pullRequest, ...state.pullRequests] })
-      } catch (error) {
-        fail(error, () =>
-          dispatcher.createPullRequest(
-            owner,
-            repository,
-            title,
-            head,
-            base,
-            body
-          )
-        )
-      } finally {
-        update({ loading: false })
-      }
-    },
-
-    async checkoutPullRequest(pullRequest) {
-      if (!state.hostingAccount)
-        throw new Error(
-          'Sign in to a hosting provider before checking out a pull request.'
-        )
-      const path = selectedPath()
-      begin()
-      try {
-        await hosting.checkoutPullRequest(
-          state.hostingAccount,
-          path,
-          pullRequest
-        )
-        await refreshRepository(path)
-      } catch (error) {
-        fail(error, () => dispatcher.checkoutPullRequest(pullRequest))
-      } finally {
-        update({ loading: false })
-      }
-    },
-
-    async loadPullRequestDetails(owner, repository, pullRequestNumber) {
-      if (!state.hostingAccount)
-        throw new Error(
-          'Sign in to a hosting provider before loading pull request details.'
-        )
-      begin()
-      try {
-        const pullRequestDetails: WebPullRequestDetails =
-          await hosting.getPullRequestDetails(
-            state.hostingAccount,
-            owner,
-            repository,
-            pullRequestNumber
-          )
-        update({ pullRequestDetails, checks: null })
-      } catch (error) {
-        fail(error, () =>
-          dispatcher.loadPullRequestDetails(
-            owner,
-            repository,
-            pullRequestNumber
-          )
-        )
-      } finally {
-        update({ loading: false })
-      }
-    },
-
-    async loadChecks(owner, repository, ref) {
-      if (!state.hostingAccount)
-        throw new Error('Sign in to a hosting provider before loading checks.')
-      begin()
-      try {
-        update({
-          checks: await hosting.getChecks(
-            state.hostingAccount,
-            owner,
-            repository,
-            ref
-          ),
-        })
-      } catch (error) {
-        fail(error, () => dispatcher.loadChecks(owner, repository, ref))
-      } finally {
-        update({ loading: false })
-      }
-    },
-
-    async rerunCheckSuites(owner, repository, checkSuiteIds) {
-      if (!state.hostingAccount)
-        throw new Error(
-          'Sign in to a hosting provider before rerunning checks.'
-        )
-      begin()
-      try {
-        await hosting.rerunCheckSuites(
-          state.hostingAccount,
-          owner,
-          repository,
-          checkSuiteIds
-        )
-        const ref = state.pullRequestDetails?.pullRequest.head?.sha
-        if (ref)
-          update({
-            checks: await hosting.getChecks(
-              state.hostingAccount,
-              owner,
-              repository,
-              ref
-            ),
-          })
-      } catch (error) {
-        fail(error, () =>
-          dispatcher.rerunCheckSuites(owner, repository, checkSuiteIds)
-        )
-      } finally {
-        update({ loading: false })
-      }
-    },
-
-    async requestNotificationPermission() {
-      const permission = await platform.requestNotificationPermission()
-      if (permission !== 'granted')
-        update({
-          error:
-            'Browser notification permission was not granted. Notifications remain available in this view.',
-          canRetry: false,
-        })
-      return permission
-    },
-
-    async loadNotifications() {
-      if (!state.hostingAccount)
-        throw new Error('Sign in to GitHub before loading notifications.')
-      begin()
-      try {
-        const notifications = await hosting.getNotifications(
-          state.hostingAccount
-        )
-        update({ notifications })
-        for (const notification of notifications) {
-          if (!notification.target) continue
-          const deliveryId = `${state.hostingAccount.provider || 'github'}:${
-            state.hostingAccount.credentialId
-          }:${notification.id}`
-          if (deliveredNotificationIds.has(deliveryId)) continue
-          deliveredNotificationIds.add(deliveryId)
-          platform.notify(
-            'GitHub pull request',
-            notification.title,
-            () => void dispatcher.checkoutNotification(notification)
-          )
-        }
-      } catch (error) {
-        fail(error, () => dispatcher.loadNotifications())
-      } finally {
-        update({ loading: false })
-      }
-    },
-
-    async checkoutNotification(notification: WebNotification) {
-      if (!state.hostingAccount)
-        throw new Error('Sign in to GitHub before checking out a notification.')
-      if (!notification.target)
-        throw new Error(
-          'This notification is not associated with a pull request that can be checked out.'
-        )
-      const path = selectedPath()
-      begin()
-      try {
-        const details = await hosting.getPullRequestDetails(
-          state.hostingAccount,
-          notification.target.owner,
-          notification.target.repository,
-          notification.target.pullRequestNumber
-        )
-        await hosting.checkoutPullRequest(
-          state.hostingAccount,
-          path,
-          details.pullRequest
-        )
-        await hosting.markNotificationRead(
-          state.hostingAccount,
-          notification.id
-        )
-        update({
-          notifications: state.notifications.filter(
-            item => item.id !== notification.id
-          ),
-          pullRequestDetails: details,
-        })
-        await refreshRepository(path)
-      } catch (error) {
-        fail(error, () => dispatcher.checkoutNotification(notification))
-      } finally {
-        update({ loading: false })
-      }
-    },
-
     async retryLastAction() {
       const action = retryLastAction
       if (action) await action()
@@ -2934,141 +2593,6 @@ export function createWebApplicationStore(
       update({ cherryPickUndo: null })
     },
 
-    async loadLfsStatus() {
-      const path = selectedPath()
-      begin()
-      try {
-        update({ lfsStatus: await git.getLfsStatus(path) })
-      } catch (error) {
-        fail(error, () => dispatcher.loadLfsStatus())
-      } finally {
-        update({ loading: false })
-      }
-    },
-
-    async installLfs(scope, confirmed) {
-      const path = selectedPath()
-      begin()
-      try {
-        update({ lfsStatus: await git.installLfs(path, scope, confirmed) })
-      } catch (error) {
-        fail(error, () => dispatcher.installLfs(scope, confirmed))
-      } finally {
-        update({ loading: false })
-      }
-    },
-
-    async repairLfs(confirmed) {
-      const path = selectedPath()
-      begin()
-      try {
-        update({ lfsStatus: await git.repairLfs(path, confirmed) })
-      } catch (error) {
-        fail(error, () => dispatcher.repairLfs(confirmed))
-      } finally {
-        update({ loading: false })
-      }
-    },
-
-    async startLfsTransfer(command) {
-      const path = selectedPath()
-      begin()
-      try {
-        const lfsOperation = await git.startLfsTransfer(path, command)
-        update({ lfsOperation })
-        pollLfsOperation(lfsOperation.id)
-      } catch (error) {
-        fail(error, () => dispatcher.startLfsTransfer(command))
-      } finally {
-        update({ loading: false })
-      }
-    },
-
-    async cancelLfsTransfer() {
-      if (!state.lfsOperation || state.lfsOperation.status !== 'running') return
-      begin()
-      try {
-        stopLfsPolling()
-        update({
-          lfsOperation: await git.cancelLfsOperation(state.lfsOperation.id),
-        })
-      } catch (error) {
-        fail(error, () => dispatcher.cancelLfsTransfer())
-      } finally {
-        update({ loading: false })
-      }
-    },
-
-    async checkForUpdates() {
-      begin()
-      try {
-        update({ updateStatus: await platform.checkForUpdates() })
-      } catch (error) {
-        fail(error, () => dispatcher.checkForUpdates())
-      } finally {
-        update({ loading: false })
-      }
-    },
-
-    async downloadUpdate() {
-      begin()
-      try {
-        const updateOperation = await platform.downloadUpdate()
-        update({ updateOperation })
-        pollUpdateOperation(updateOperation.id)
-      } catch (error) {
-        fail(error, () => dispatcher.downloadUpdate())
-      } finally {
-        update({ loading: false })
-      }
-    },
-
-    async cancelUpdateDownload() {
-      if (state.updateOperation?.status !== 'downloading') return
-      begin()
-      try {
-        stopUpdatePolling()
-        update({
-          updateOperation: await platform.cancelUpdateOperation(
-            state.updateOperation.id
-          ),
-        })
-      } catch (error) {
-        fail(error, () => dispatcher.cancelUpdateDownload())
-      } finally {
-        update({ loading: false })
-      }
-    },
-
-    async openDownloadedUpdate(confirmed) {
-      if (state.updateOperation?.status !== 'downloaded')
-        throw new Error('Download and verify an update before opening it.')
-      begin()
-      try {
-        update({
-          updateOperation: await platform.openDownloadedUpdate(
-            state.updateOperation.id,
-            confirmed
-          ),
-        })
-      } catch (error) {
-        fail(error, () => dispatcher.openDownloadedUpdate(confirmed))
-      } finally {
-        update({ loading: false })
-      }
-    },
-
-    async loadIntegrations() {
-      begin()
-      try {
-        update({ integrations: await platform.getIntegrations() })
-      } catch (error) {
-        fail(error, () => dispatcher.loadIntegrations())
-      } finally {
-        update({ loading: false })
-      }
-    },
-
     async launchIntegration(kind, name, custom = null, requestedTarget) {
       const target = requestedTarget || selectedPath()
       begin()
@@ -3081,118 +2605,6 @@ export function createWebApplicationStore(
       } finally {
         update({ loading: false })
       }
-    },
-
-    async loadRepositoryPolicies(owner, repository) {
-      if (!state.hostingAccount)
-        throw new Error('Sign in to GitHub before loading repository policies.')
-      const branch = state.branches?.branch?.name
-      if (!branch) throw new Error('Choose a branch before loading policies.')
-      begin()
-      try {
-        const repositoryPolicies: WebRepositoryPolicies =
-          await hosting.getRepositoryPolicies(
-            state.hostingAccount,
-            owner,
-            repository,
-            branch
-          )
-        update({ repositoryPolicies })
-      } catch (error) {
-        fail(error, () => dispatcher.loadRepositoryPolicies(owner, repository))
-      } finally {
-        update({ loading: false })
-      }
-    },
-
-    async pushRepository(owner, repository) {
-      if (!state.hostingAccount)
-        throw new Error('Sign in to a hosting provider before pushing.')
-      const branch = state.branches?.branch?.name
-      if (!branch) throw new Error('Choose a branch before pushing.')
-      const path = selectedPath()
-      begin()
-      try {
-        await hosting.pushRepository(
-          state.hostingAccount,
-          path,
-          owner,
-          repository,
-          branch
-        )
-        await refreshRepository(path)
-      } catch (error) {
-        fail(error, () => dispatcher.pushRepository(owner, repository))
-      } finally {
-        update({ loading: false })
-      }
-    },
-
-    async loadCopilotMetadata() {
-      if (!state.hostingAccount)
-        throw new Error('Sign in to GitHub before loading Copilot.')
-      const path = selectedPath()
-      begin()
-      try {
-        update({
-          copilotMetadata: await hosting.getCopilotMetadata(
-            state.hostingAccount,
-            path
-          ),
-          copilotContent: null,
-        })
-      } catch (error) {
-        fail(error, () => dispatcher.loadCopilotMetadata())
-      } finally {
-        update({ loading: false })
-      }
-    },
-
-    async generateCopilotCommitMessage(model) {
-      if (!state.hostingAccount)
-        throw new Error('Sign in to GitHub before using Copilot.')
-      const path = selectedPath()
-      begin()
-      try {
-        update({
-          copilotContent: await hosting.generateCopilotCommitMessage(
-            state.hostingAccount,
-            path,
-            model
-          ),
-        })
-      } catch (error) {
-        if (error instanceof DOMException && error.name === 'AbortError') return
-        fail(error, () => dispatcher.generateCopilotCommitMessage(model))
-      } finally {
-        update({ loading: false })
-      }
-    },
-
-    async resolveCopilotConflicts(model) {
-      if (!state.hostingAccount)
-        throw new Error('Sign in to GitHub before using Copilot.')
-      const path = selectedPath()
-      begin()
-      try {
-        update({
-          copilotContent: await hosting.resolveCopilotConflicts(
-            state.hostingAccount,
-            path,
-            model
-          ),
-        })
-      } catch (error) {
-        if (error instanceof DOMException && error.name === 'AbortError') return
-        fail(error, () => dispatcher.resolveCopilotConflicts(model))
-      } finally {
-        update({ loading: false })
-      }
-    },
-
-    cancelCopilot() {
-      cancelCopilotRequest()
-      update({ loading: false })
     },
   }
 
