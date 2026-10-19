@@ -626,6 +626,7 @@ export type PopupDetail =
       type: PopupType.AddRemote
       repository: Repository
       existingRemoteNames: ReadonlyArray<string>
+      remote?: IRemote
     }
   | {
       type: PopupType.DeleteWorktreeFailed

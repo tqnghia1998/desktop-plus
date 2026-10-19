@@ -23,9 +23,10 @@ import { MergeChooseBranchDialog } from '../../ui/multi-commit-operation/choose-
 import { RebaseChooseBranchDialog } from '../../ui/multi-commit-operation/choose-branch/rebase-choose-branch-dialog'
 import { BranchSortOrder } from '../../models/branch-sort-order'
 import { Repository } from '../../models/repository'
+import { IRemote } from '../../models/remote'
 import { Branch, BranchType } from '../../models/branch'
 import { BranchesTab } from '../../models/branches-tab'
-import { PopupType } from '../../models/popup'
+import { Popup, PopupType } from '../../models/popup'
 import { Tip, TipState } from '../../models/tip'
 import { FoldoutType } from '../../lib/app-state'
 import type { Progress } from '../../models/progress'
@@ -293,6 +294,7 @@ export function DesktopToolbar(props: {
     React.useState<ReadonlyArray<WebBranch> | null>(null)
   const [manageRemotesOpen, setManageRemotesOpen] = React.useState(false)
   const [addRemoteOpen, setAddRemoteOpen] = React.useState(false)
+  const [remoteToEdit, setRemoteToEdit] = React.useState<IRemote | undefined>()
   const [openWithEditorOpen, setOpenWithEditorOpen] = React.useState(false)
   const [forcePushOpen, setForcePushOpen] = React.useState(false)
   const [mergeOperation, setMergeOperation] = React.useState<{
@@ -1061,6 +1063,40 @@ export function DesktopToolbar(props: {
     ]
   )
 
+  const remoteDispatcher = React.useMemo(
+    () =>
+      ({
+        getRemotes: () =>
+          Promise.resolve(
+            (props.state.branches?.remotes || []).map(remote => ({
+              name: remote.name,
+              url: remote.url,
+            }))
+          ),
+        postError: () => Promise.resolve(),
+        addRemote: (_repository: Repository, name: string, url: string) =>
+          props.dispatcher.runOperationOrThrow('remote-add', {
+            values: [name, url],
+          }),
+        removeRemote: (_repository: Repository, name: string) =>
+          props.dispatcher.runOperationOrThrow('remote-remove', {
+            values: [name],
+          }),
+        setRemoteURL: (_repository: Repository, name: string, url: string) =>
+          props.dispatcher.runOperationOrThrow('remote-set-url', {
+            values: [name, url],
+          }),
+        showPopup: (popup: Popup) => {
+          if (popup.type === PopupType.AddRemote) {
+            setRemoteToEdit(popup.remote)
+            setAddRemoteOpen(true)
+          }
+          return Promise.resolve()
+        },
+      } as unknown as Dispatcher),
+    [props.dispatcher, props.state.branches?.remotes]
+  )
+
   return (
     <>
       <ApplicationToolbar
@@ -1553,34 +1589,7 @@ export function DesktopToolbar(props: {
       {manageRemotesOpen && props.state.selectedRepositoryPath ? (
         <DialogStackContext.Provider value={{ isTopMost: !addRemoteOpen }}>
           <ManageRemotesDialog
-            dispatcher={
-              {
-                getRemotes: () =>
-                  Promise.resolve(
-                    (props.state.branches?.remotes || []).map(remote => ({
-                      name: remote.name,
-                      url: remote.url,
-                    }))
-                  ),
-                postError: () => Promise.resolve(),
-                removeRemote: (_repository: Repository, name: string) =>
-                  props.dispatcher.runOperationOrThrow('remote-remove', {
-                    values: [name],
-                  }),
-                setRemoteURL: (
-                  _repository: Repository,
-                  name: string,
-                  url: string
-                ) =>
-                  props.dispatcher.runOperationOrThrow('remote-set-url', {
-                    values: [name, url],
-                  }),
-                showPopup: (popup: { readonly type: PopupType }) => {
-                  if (popup.type === PopupType.AddRemote) setAddRemoteOpen(true)
-                  return Promise.resolve()
-                },
-              } as unknown as Dispatcher
-            }
+            dispatcher={remoteDispatcher}
             isTopMost={!addRemoteOpen}
             onDismissed={() => setManageRemotesOpen(false)}
             repository={getDesktopRepository(
@@ -1592,23 +1601,15 @@ export function DesktopToolbar(props: {
       {addRemoteOpen && props.state.selectedRepositoryPath ? (
         <DialogStackContext.Provider value={{ isTopMost: true }}>
           <AddRemoteDialog
-            dispatcher={
-              {
-                addRemote: (
-                  _repository: Repository,
-                  name: string,
-                  url: string
-                ) =>
-                  props.dispatcher.runOperationOrThrow('remote-add', {
-                    values: [name, url],
-                  }),
-                postError: () => Promise.resolve(),
-              } as unknown as Dispatcher
-            }
+            dispatcher={remoteDispatcher}
             existingRemoteNames={(props.state.branches?.remotes || []).map(
               remote => remote.name
             )}
-            onDismissed={() => setAddRemoteOpen(false)}
+            onDismissed={() => {
+              setAddRemoteOpen(false)
+              setRemoteToEdit(undefined)
+            }}
+            remote={remoteToEdit}
             repository={getDesktopRepository(
               props.state.selectedRepositoryPath
             )}
