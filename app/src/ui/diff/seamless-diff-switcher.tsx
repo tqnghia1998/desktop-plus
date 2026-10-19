@@ -20,6 +20,7 @@ import { Loading } from '../lib/loading'
 import { getFileContents, IFileContents } from './syntax-highlighting'
 import { getTextDiffWithBottomDummyHunk } from './text-diff-expansion'
 import { textDiffEquals } from './diff-helpers'
+import { arrayEquals } from '../../lib/equality'
 import noop from 'lodash/noop'
 
 /**
@@ -184,26 +185,12 @@ function isSameFile(prevFile: ChangedFile, newFile: ChangedFile) {
 }
 
 function isSameFileContents(previous: IFileContents, next: IFileContents) {
-  if (previous === next) {
-    return true
-  }
-
-  if (
-    previous.file.id !== next.file.id ||
-    previous.canBeExpanded !== next.canBeExpanded ||
-    previous.oldContents.length !== next.oldContents.length ||
-    previous.newContents.length !== next.newContents.length
-  ) {
-    return false
-  }
-
   return (
-    previous.oldContents.every(
-      (line, index) => line === next.oldContents[index]
-    ) &&
-    previous.newContents.every(
-      (line, index) => line === next.newContents[index]
-    )
+    previous === next ||
+    (previous.file.id === next.file.id &&
+      previous.canBeExpanded === next.canBeExpanded &&
+      arrayEquals(previous.oldContents, next.oldContents) &&
+      arrayEquals(previous.newContents, next.newContents))
   )
 }
 
@@ -339,30 +326,16 @@ export class SeamlessDiffSwitcher extends React.Component<
   public constructor(props: ISeamlessDiffSwitcherProps) {
     super(props)
 
-    const externalFileContents =
-      props.externalFileContents !== undefined &&
-      props.externalFileContents !== null &&
-      isSameFile(props.externalFileContents.file, props.file)
-        ? props.externalFileContents
-        : null
-    const isLoadingDiff =
-      props.diff === null ||
-      (isTextDiff(props.diff) &&
-        (props.externalFileContents === undefined ||
-          externalFileContents === null))
-    const initialDiff =
-      externalFileContents !== null &&
-      props.diff !== null &&
-      isTextDiff(props.diff)
-        ? getNormalizedTextDiff(props.diff, externalFileContents)
-        : props.diff
-
-    this.state = {
-      isLoadingDiff,
+    const initialState: ISeamlessDiffSwitcherState = {
+      isLoadingDiff: props.diff === null || isTextDiff(props.diff),
       isLoadingSlow: false,
       propSnapshot: props,
-      diff: initialDiff,
-      fileContents: externalFileContents,
+      diff: props.diff,
+      fileContents: null,
+    }
+    this.state = {
+      ...initialState,
+      ...SeamlessDiffSwitcher.getDerivedStateFromProps(props, initialState),
     }
   }
 
@@ -483,16 +456,7 @@ export class SeamlessDiffSwitcher extends React.Component<
     diff: ITextDiff | ILargeTextDiff,
     fileContents: IFileContents
   ) {
-    const newDiff =
-      fileContents.canBeExpanded && diff.kind === DiffType.Text
-        ? getTextDiffWithBottomDummyHunk(
-            diff,
-            diff.hunks,
-            fileContents.oldContents.length,
-            fileContents.newContents.length
-          )
-        : null
-    const nextDiff = newDiff ?? diff
+    const nextDiff = getNormalizedTextDiff(diff, fileContents)
     if (
       this.state.fileContents !== null &&
       isSameFileContents(this.state.fileContents, fileContents) &&
