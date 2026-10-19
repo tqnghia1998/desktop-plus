@@ -4,18 +4,14 @@ import {
   useRepositoryQuery,
 } from '../vibing/embedding'
 import * as React from 'react'
+import { useStoredBoolean } from './preferences-state'
 import { SuccessfulCherryPick } from '../../ui/banners/successful-cherry-pick'
 import { CherryPickUndone } from '../../ui/banners/cherry-pick-undone'
 import {
   BranchSortOrder,
   DEFAULT_BRANCH_SORT_ORDER,
 } from '../../models/branch-sort-order'
-import {
-  getBoolean,
-  getNumber,
-  setBoolean,
-  setNumber,
-} from '../../lib/local-storage'
+import { getBoolean, getNumber, setNumber } from '../../lib/local-storage'
 import {
   WebApplicationState,
   WebApplicationStore,
@@ -143,10 +139,8 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
     squashMergeBranch: 0,
     rebaseBranch: 0,
   })
-  const [browserNotificationsEnabled, setBrowserNotificationsEnabled] =
-    React.useState(() =>
-      getBoolean(webBrowserNotificationsEnabledStorageKey, true)
-    )
+  const [browserNotificationsEnabled, updateBrowserNotificationsEnabled] =
+    useStoredBoolean(webBrowserNotificationsEnabledStorageKey, true)
   const [showChangesFilter] = React.useState(() =>
     getBoolean(webShowChangesFilterStorageKey, true)
   )
@@ -179,19 +173,18 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
         : DEFAULT_BRANCH_SORT_ORDER
     }
   )
-  const [preferAbsoluteDates, setPreferAbsoluteDates] = React.useState(() =>
-    getBoolean(webPreferAbsoluteDatesStorageKey, false)
+  const [preferAbsoluteDates, updatePreferAbsoluteDates] = useStoredBoolean(
+    webPreferAbsoluteDatesStorageKey,
+    false
   )
-  const [showConventionalCommitBadges, setShowConventionalCommitBadges] =
-    React.useState(() =>
-      getBoolean(webShowConventionalCommitBadgesStorageKey, true)
-    )
-  const [confirmStashActions, setConfirmStashActions] = React.useState(() =>
-    getBoolean(webConfirmStashActionsStorageKey, true)
+  const [showConventionalCommitBadges, updateShowConventionalCommitBadges] =
+    useStoredBoolean(webShowConventionalCommitBadgesStorageKey, true)
+  const [confirmStashActions, updateConfirmStashActions] = useStoredBoolean(
+    webConfirmStashActionsStorageKey,
+    true
   )
-  const [showCommitLengthWarning, setShowCommitLengthWarning] = React.useState(
-    () => getBoolean(webShowCommitLengthWarningStorageKey, true)
-  )
+  const [showCommitLengthWarning, updateShowCommitLengthWarning] =
+    useStoredBoolean(webShowCommitLengthWarningStorageKey, true)
   const [commitSummaryLengthWarningThreshold] = React.useState(() =>
     Math.min(
       72,
@@ -212,71 +205,67 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
         getBoolean(webShowRecentRepositoriesStorageKey, true) ? 3 : 0
       )
   )
-  const [showWorktreesInRepositoryList, setShowWorktreesInRepositoryList] =
-    React.useState(() =>
-      getBoolean(webShowWorktreesInRepositoryListStorageKey, false)
-    )
-  const [repositoryIndicatorsEnabled, setRepositoryIndicatorsEnabled] =
-    React.useState(() =>
-      getBoolean(webRepositoryIndicatorsEnabledStorageKey, true)
-    )
-  const [confirmRepositoryRemoval, setConfirmRepositoryRemoval] =
-    React.useState(() =>
-      getBoolean(webConfirmRepositoryRemovalStorageKey, true)
-    )
-  const [confirmWorktreeRemoval, setConfirmWorktreeRemoval] = React.useState(
-    () => getBoolean(webConfirmWorktreeRemovalStorageKey, true)
+  const [showWorktreesInRepositoryList, updateShowWorktreesInRepositoryList] =
+    useStoredBoolean(webShowWorktreesInRepositoryListStorageKey, false)
+  const [repositoryIndicatorsEnabled, updateRepositoryIndicatorsEnabled] =
+    useStoredBoolean(webRepositoryIndicatorsEnabledStorageKey, true)
+  const [confirmRepositoryRemoval, updateConfirmRepositoryRemoval] =
+    useStoredBoolean(webConfirmRepositoryRemovalStorageKey, true)
+  const [confirmWorktreeRemoval, updateConfirmWorktreeRemoval] =
+    useStoredBoolean(webConfirmWorktreeRemovalStorageKey, true)
+  const [confirmCheckoutCommit, updateConfirmCheckoutCommit] = useStoredBoolean(
+    webConfirmCheckoutCommitStorageKey,
+    true
   )
-  const [confirmCheckoutCommit, setConfirmCheckoutCommit] = React.useState(() =>
-    getBoolean(webConfirmCheckoutCommitStorageKey, true)
+  const [confirmDiscardChanges, updateConfirmDiscardChanges] = useStoredBoolean(
+    webConfirmDiscardChangesStorageKey,
+    true
   )
-  const [confirmDiscardChanges, setConfirmDiscardChanges] = React.useState(() =>
-    getBoolean(webConfirmDiscardChangesStorageKey, true)
-  )
-  const [confirmCommitFilteredChanges, setConfirmCommitFilteredChanges] =
-    React.useState(() =>
-      getBoolean(webConfirmCommitFilteredChangesStorageKey, true)
-    )
-  const [confirmCommitMessageOverride, setConfirmCommitMessageOverride] =
-    React.useState(() =>
-      getBoolean(webConfirmCommitMessageOverrideStorageKey, true)
-    )
+  const [confirmCommitFilteredChanges, updateConfirmCommitFilteredChanges] =
+    useStoredBoolean(webConfirmCommitFilteredChangesStorageKey, true)
+  const [confirmCommitMessageOverride, updateConfirmCommitMessageOverride] =
+    useStoredBoolean(webConfirmCommitMessageOverrideStorageKey, true)
   const [
     confirmDiscardChangesPermanently,
-    setConfirmDiscardChangesPermanently,
-  ] = React.useState(() =>
-    getBoolean(webConfirmDiscardChangesPermanentlyStorageKey, true)
+    updateConfirmDiscardChangesPermanently,
+  ] = useStoredBoolean(webConfirmDiscardChangesPermanentlyStorageKey, true)
+  const [confirmForcePush, updateConfirmForcePush] = useStoredBoolean(
+    webConfirmForcePushStorageKey,
+    true
   )
-  const [confirmForcePush, setConfirmForcePush] = React.useState(() =>
-    getBoolean(webConfirmForcePushStorageKey, true)
+  const [confirmUndoCommit, updateConfirmUndoCommit] = useStoredBoolean(
+    webConfirmUndoCommitStorageKey,
+    true
   )
-  const [confirmUndoCommit, setConfirmUndoCommit] = React.useState(() =>
-    getBoolean(webConfirmUndoCommitStorageKey, true)
+  const [hideWindowOnQuit, updateHideWindowOnQuit] = useStoredBoolean(
+    webHideWindowOnQuitStorageKey,
+    false
   )
-  const [hideWindowOnQuit, setHideWindowOnQuit] = React.useState(() =>
-    getBoolean(webHideWindowOnQuitStorageKey, false)
+  const [optOutOfUsageTracking, updateOptOutOfUsageTracking] = useStoredBoolean(
+    webOptOutOfUsageTrackingStorageKey,
+    false
   )
-  const [optOutOfUsageTracking, setOptOutOfUsageTracking] = React.useState(() =>
-    getBoolean(webOptOutOfUsageTrackingStorageKey, false)
+  const [showCommitAuthorInfo, updateShowCommitAuthorInfo] = useStoredBoolean(
+    webShowCommitAuthorInfoStorageKey,
+    false
   )
-  const [showCommitAuthorInfo, setShowCommitAuthorInfo] = React.useState(() =>
-    getBoolean(webShowCommitAuthorInfoStorageKey, false)
+  const [showCompareTab, updateShowCompareTab] = useStoredBoolean(
+    webShowCompareTabStorageKey,
+    true
   )
-  const [showCompareTab, setShowCompareTab] = React.useState(() =>
-    getBoolean(webShowCompareTabStorageKey, true)
+  const [showWorktrees, updateShowWorktrees] = useStoredBoolean(
+    webShowWorktreesStorageKey,
+    true
   )
-  const [showWorktrees, setShowWorktrees] = React.useState(() =>
-    getBoolean(webShowWorktreesStorageKey, true)
+  const [useExternalCredentialHelper, updateUseExternalCredentialHelper] =
+    useStoredBoolean(webUseExternalCredentialHelperStorageKey, false)
+  const [useWindowsOpenSSH, updateUseWindowsOpenSSH] = useStoredBoolean(
+    webUseWindowsOpenSSHStorageKey,
+    false
   )
-  const [useExternalCredentialHelper, setUseExternalCredentialHelper] =
-    React.useState(() =>
-      getBoolean(webUseExternalCredentialHelperStorageKey, false)
-    )
-  const [useWindowsOpenSSH, setUseWindowsOpenSSH] = React.useState(() =>
-    getBoolean(webUseWindowsOpenSSHStorageKey, false)
-  )
-  const [underlineLinks, setUnderlineLinks] = React.useState(() =>
-    getBoolean('underline-links', false)
+  const [underlineLinks, updateUnderlineLinks] = useStoredBoolean(
+    'underline-links',
+    false
   )
   const [editorIntegration, setEditorIntegration] =
     React.useState<WebIntegrationSelection>(() =>
@@ -441,22 +430,6 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
     localStorage.setItem('branch-sort-order', value)
     setBranchSortOrder(value)
   }
-  const updatePreferAbsoluteDates = (value: boolean) => {
-    setBoolean(webPreferAbsoluteDatesStorageKey, value)
-    setPreferAbsoluteDates(value)
-  }
-  const updateShowConventionalCommitBadges = (value: boolean) => {
-    setBoolean(webShowConventionalCommitBadgesStorageKey, value)
-    setShowConventionalCommitBadges(value)
-  }
-  const updateConfirmStashActions = (value: boolean) => {
-    setBoolean(webConfirmStashActionsStorageKey, value)
-    setConfirmStashActions(value)
-  }
-  const updateShowCommitLengthWarning = (value: boolean) => {
-    setBoolean(webShowCommitLengthWarningStorageKey, value)
-    setShowCommitLengthWarning(value)
-  }
   const updateUncommittedChangesStrategy = (
     value: UncommittedChangesStrategy
   ) => {
@@ -474,110 +447,6 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
     setNumber(webRecentRepositoriesCountStorageKey, value)
     setRecentRepositoriesCount(value)
   }
-  const updateShowWorktreesInRepositoryList = (value: boolean) => {
-    setBoolean(webShowWorktreesInRepositoryListStorageKey, value)
-    setShowWorktreesInRepositoryList(value)
-  }
-  const updateRepositoryIndicatorsEnabled = (value: boolean) => {
-    setBoolean(webRepositoryIndicatorsEnabledStorageKey, value)
-    setRepositoryIndicatorsEnabled(value)
-  }
-  const updateConfirmRepositoryRemoval = (value: boolean) => {
-    setBoolean(webConfirmRepositoryRemovalStorageKey, value)
-    setConfirmRepositoryRemoval(value)
-  }
-  const updateConfirmWorktreeRemoval = (value: boolean) => {
-    setBoolean(webConfirmWorktreeRemovalStorageKey, value)
-    setConfirmWorktreeRemoval(value)
-  }
-  const updateConfirmCheckoutCommit = (value: boolean) => {
-    setBoolean(webConfirmCheckoutCommitStorageKey, value)
-    setConfirmCheckoutCommit(value)
-  }
-  const updateConfirmDiscardChanges = (value: boolean) => {
-    setBoolean(webConfirmDiscardChangesStorageKey, value)
-    setConfirmDiscardChanges(value)
-  }
-  const updateBooleanPreference = (
-    key: string,
-    setter: React.Dispatch<React.SetStateAction<boolean>>,
-    value: boolean
-  ) => {
-    setBoolean(key, value)
-    setter(value)
-  }
-  const updateConfirmCommitFilteredChanges = (value: boolean) =>
-    updateBooleanPreference(
-      webConfirmCommitFilteredChangesStorageKey,
-      setConfirmCommitFilteredChanges,
-      value
-    )
-  const updateConfirmCommitMessageOverride = (value: boolean) =>
-    updateBooleanPreference(
-      webConfirmCommitMessageOverrideStorageKey,
-      setConfirmCommitMessageOverride,
-      value
-    )
-  const updateConfirmDiscardChangesPermanently = (value: boolean) =>
-    updateBooleanPreference(
-      webConfirmDiscardChangesPermanentlyStorageKey,
-      setConfirmDiscardChangesPermanently,
-      value
-    )
-  const updateConfirmForcePush = (value: boolean) =>
-    updateBooleanPreference(
-      webConfirmForcePushStorageKey,
-      setConfirmForcePush,
-      value
-    )
-  const updateConfirmUndoCommit = (value: boolean) =>
-    updateBooleanPreference(
-      webConfirmUndoCommitStorageKey,
-      setConfirmUndoCommit,
-      value
-    )
-  const updateHideWindowOnQuit = (value: boolean) =>
-    updateBooleanPreference(
-      webHideWindowOnQuitStorageKey,
-      setHideWindowOnQuit,
-      value
-    )
-  const updateOptOutOfUsageTracking = (value: boolean) =>
-    updateBooleanPreference(
-      webOptOutOfUsageTrackingStorageKey,
-      setOptOutOfUsageTracking,
-      value
-    )
-  const updateShowCommitAuthorInfo = (value: boolean) =>
-    updateBooleanPreference(
-      webShowCommitAuthorInfoStorageKey,
-      setShowCommitAuthorInfo,
-      value
-    )
-  const updateShowCompareTab = (value: boolean) =>
-    updateBooleanPreference(
-      webShowCompareTabStorageKey,
-      setShowCompareTab,
-      value
-    )
-  const updateShowWorktrees = (value: boolean) =>
-    updateBooleanPreference(webShowWorktreesStorageKey, setShowWorktrees, value)
-  const updateUseExternalCredentialHelper = (value: boolean) =>
-    updateBooleanPreference(
-      webUseExternalCredentialHelperStorageKey,
-      setUseExternalCredentialHelper,
-      value
-    )
-  const updateUseWindowsOpenSSH = (value: boolean) =>
-    updateBooleanPreference(
-      webUseWindowsOpenSSHStorageKey,
-      setUseWindowsOpenSSH,
-      value
-    )
-  const updateUnderlineLinks = (value: boolean) => {
-    setBoolean('underline-links', value)
-    setUnderlineLinks(value)
-  }
   const updateEditorIntegration = (value: WebIntegrationSelection) => {
     setStoredIntegrationSelection(webEditorIntegrationStorageKey, value)
     setEditorIntegration(value)
@@ -585,10 +454,6 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
   const updateShellIntegration = (value: WebIntegrationSelection) => {
     setStoredIntegrationSelection(webShellIntegrationStorageKey, value)
     setShellIntegration(value)
-  }
-  const updateBrowserNotificationsEnabled = (value: boolean) => {
-    setBoolean(webBrowserNotificationsEnabledStorageKey, value)
-    setBrowserNotificationsEnabled(value)
   }
   const updateSidebarWidth = (width: number) => {
     const normalized = Math.min(
