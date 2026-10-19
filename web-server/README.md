@@ -53,14 +53,15 @@ Hosted provider workflows, Pull Requests or merge requests, hosted
 notifications, native notifications, Copilot, repository rules, push
 protection, and automated Git installation are not exposed by the current source
 renderer and remain deferred. Preferences expose browser notification
-permission guidance, and Repository Tools exposes macOS folder pickers, editor
-and shell launch, signed update checks/downloads, and Git LFS status,
-configuration, transfer, and cancellation controls.
+permission guidance, folder pickers, and editor and shell selection. Toolbar
+actions launch the configured editor or shell. The companion retains its signed
+update and Git LFS APIs without loading unused frontend clients, state, or
+pollers into the renderer; those management screens are not exposed.
 
 The current release gate covers branded Google Chrome with the local companion
-on macOS. The Chrome/macOS browser fixtures also cover persisted view state,
-folder-picker entry points, editor/shell launch, verified updates, browser
-notification permission guidance, filesystem actions, and Git LFS controls.
+on macOS. The current renderer covers persisted view state, folder-picker entry points,
+editor/shell launch, browser notification permission guidance, and filesystem
+actions. Companion tests cover the retained update and Git LFS APIs.
 Firefox, Edge, Safari, Windows, and Linux are not completion blockers for this
 narrowed local-only release promise.
 
@@ -76,10 +77,9 @@ View, Repository, and Branch actions, in addition to the toolbar menus, and
 keeps the Preferences keyboard shortcut. The full Electron application menu
 and native macOS menu-bar lifecycle remain outside web-renderer ownership.
 
-Editor and shell launch, filesystem actions, verified updates, and Git LFS
-controls are also Partial: the source renderer and typed companion contracts
-are covered by browser fixtures, but native process, installer, filesystem,
-and Git LFS execution still require macOS evidence.
+Editor and shell launch and filesystem actions remain Partial pending broader
+native execution evidence. Updates and Git LFS remain companion-only APIs.
+Removing dormant renderer adapters does not remove or change those endpoints.
 
 ## Build ownership
 

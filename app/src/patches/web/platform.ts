@@ -1,9 +1,4 @@
-import {
-  WebIntegrations,
-  WebPlatform,
-  WebUpdateOperation,
-  WebUpdateStatus,
-} from './contracts'
+import { WebPlatform } from './contracts'
 
 interface IWebRuntime {
   readonly session?: string
@@ -191,11 +186,6 @@ export const webPlatform: WebPlatform = {
     window.open(url, '_blank', 'noopener,noreferrer')
   },
 
-  requestNotificationPermission() {
-    if (!('Notification' in window)) return Promise.resolve('denied')
-    return Notification.requestPermission()
-  },
-
   notify(title, body, onClick) {
     if (localStorage.getItem('browser-notifications-enabled') === 'false')
       return
@@ -213,62 +203,6 @@ export const webPlatform: WebPlatform = {
       return
     }
     console.info(`${title}: ${body}`)
-  },
-
-  async checkForUpdates(): Promise<WebUpdateStatus> {
-    const result = await request<{ update: WebUpdateStatus }>('/api/updates', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'check' }),
-    })
-    return result.update
-  },
-
-  async downloadUpdate(): Promise<WebUpdateOperation> {
-    const result = await request<{ operation: WebUpdateOperation }>(
-      '/api/updates',
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'download' }),
-      }
-    )
-    return result.operation
-  },
-
-  async getUpdateOperation(id): Promise<WebUpdateOperation> {
-    const result = await request<{ operation: WebUpdateOperation }>(
-      `/api/updates/operations/${encodeURIComponent(id)}`
-    )
-    return result.operation
-  },
-
-  async cancelUpdateOperation(id): Promise<WebUpdateOperation> {
-    const result = await request<{ operation: WebUpdateOperation }>(
-      `/api/updates/operations/${encodeURIComponent(id)}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'cancel' }),
-      }
-    )
-    return result.operation
-  },
-
-  async openDownloadedUpdate(id, confirmed): Promise<WebUpdateOperation> {
-    const result = await request<{ operation: WebUpdateOperation }>(
-      '/api/updates',
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'open', operationId: id, confirmed }),
-      }
-    )
-    return result.operation
-  },
-
-  getIntegrations(): Promise<WebIntegrations> {
-    return request('/api/integrations')
   },
 
   async launchIntegration(kind, target, name, custom) {
