@@ -70,6 +70,7 @@ import classNames from 'classnames'
 const BlankSlateImage = encodePathAsUrl(__dirname, 'static/empty-no-repo.svg')
 
 interface IRepositoriesListProps {
+  readonly enableRepositorySnoozing?: boolean
   readonly selectedRepository: Repositoryish | null
   readonly repositories: ReadonlyArray<Repositoryish>
   readonly recentRepositories: ReadonlyArray<number>
@@ -1230,7 +1231,10 @@ export class RepositoriesList extends React.Component<
     const items = generateRepositoryListContextMenu({
       worktreePath: item.worktree?.path,
       onRemoveRepository: this.props.onRemoveRepository,
-      onSnoozeRepository: this.onSnoozeRepository,
+      onSnoozeRepository:
+        this.props.enableRepositorySnoozing === false
+          ? undefined
+          : this.onSnoozeRepository,
       onShowRepository: this.props.onShowRepository,
       onOpenInNewWindow: this.props.onOpenInNewWindow,
       onOpenInShell: this.props.onOpenInShell,
