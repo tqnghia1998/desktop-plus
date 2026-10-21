@@ -12,6 +12,8 @@ import { WebApplicationState, WebDispatcher, WebBranch } from './contracts'
 import { useWebIntegrationSelection } from './preferences'
 import { getDesktopBranch } from './models'
 
+const snoozedRepositories: ReadonlyMap<number, number> = new Map()
+
 export function DesktopRepositoryPicker(props: {
   readonly repositories: ReadonlyArray<
     WebApplicationState['repositories'][number]
@@ -286,6 +288,7 @@ export function DesktopRepositoryPicker(props: {
   return (
     <>
       <RepositoriesList
+        enableRepositorySnoozing={false}
         askForConfirmationOnRemoveRepository={true}
         dispatcher={desktopDispatcher}
         externalEditorLabel={undefined}
@@ -332,6 +335,7 @@ export function DesktopRepositoryPicker(props: {
             repository => repository.path === props.selectedRepositoryPath
           ) || null
         }
+        snoozedRepositories={snoozedRepositories}
         shellLabel={undefined}
         showBranchNameInRepoList={
           props.showBranchName === 'always'
