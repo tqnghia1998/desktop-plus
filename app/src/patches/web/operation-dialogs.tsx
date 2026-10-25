@@ -699,11 +699,17 @@ export function DesktopChooseCherryPickTargetDialog(props: {
         }
         onCherryPick={targetBranch => {
           void props.dispatcher
-            .runOperation('checkout', { values: [targetBranch.name] })
-            .then(() =>
-              props.dispatcher.runOperation('cherry-pick', {
-                values: props.commits.map(commit => commit.sha),
-              })
+            .cherryPickToBranches(
+              [targetBranch.name],
+              props.commits.map(commit => commit.sha)
+            )
+            .then(props.onDismiss)
+        }}
+        onCherryPickToMultipleBranches={targetBranches => {
+          void props.dispatcher
+            .cherryPickToBranches(
+              targetBranches.map(branch => branch.name),
+              props.commits.map(commit => commit.sha)
             )
             .then(props.onDismiss)
         }}

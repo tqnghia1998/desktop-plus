@@ -2258,6 +2258,36 @@ export function createWebApplicationStore(
       }
     },
 
+    async cherryPickToBranches(branches, commits) {
+      const path = selectedPath()
+      begin()
+      let failure: unknown = null
+      try {
+        for (const branch of branches) {
+          if (
+            !(await executeTrackedOperation(path, 'checkout', {
+              values: [branch],
+            }))
+          )
+            return
+          const options = { values: commits }
+          const result = await executeTrackedOperation(
+            path,
+            'cherry-pick',
+            options
+          )
+          if (!result) return
+          publishOperationUndo('cherry-pick', options, result)
+        }
+      } catch (error) {
+        failure = error
+      } finally {
+        await refreshRepository(path)
+        if (failure) fail(failure)
+        update({ loading: false, operationTask: null })
+      }
+    },
+
     async cancelOperation() {
       const task = state.operationTask
       if (!task || task.status !== 'running') return

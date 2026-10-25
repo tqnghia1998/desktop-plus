@@ -5682,6 +5682,7 @@ async function runOperation(repoPath, body, services = null) {
         ...(body.mainline === true ? ['-m', '1'] : []),
         ...(body.noVerify === true ? ['--no-verify'] : []),
         value(0, 'commit'),
+        ...values.slice(1).map((_, index) => value(index + 1, 'commit')),
       ]
       gitEnvironment = withGitEnvironment(gitEnvironment, { GIT_EDITOR: ':' })
       break

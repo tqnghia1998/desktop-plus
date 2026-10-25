@@ -37,6 +37,16 @@ new intentional difference added later must be added to this table.
 | Repository snoozing capability | `app/src/patches/web/repository-picker.tsx`, `app/src/ui/repositories-list/` | The browser passes an empty snoozed-repository map and disables the Snooze menu capability until the companion implements snoozing. Native Desktop retains its Snooze action and dialogs. |
 | Browser JavaScript minimizer | `web-server/webpack.config.js` | Use the upstream Webpack dependency `minimizer-webpack-plugin` and keep comment extraction disabled, so browser builds do not depend on the retired transitive `terser-webpack-plugin` package. |
 
+The browser adapters support upstream multi-commit revert and multi-branch
+cherry-pick through the existing tracked Git operations. A cherry-pick batch
+holds its repository path, stops on checkout failure, conflict or cancellation,
+and leaves earlier successful targets intact; its error survives the final
+refresh. The last successful target retains the existing cherry-pick Undo.
+Preferences stores **System Default Program** in the existing editor selection,
+and the companion opens that target with its native default handler.
+`test:web:multi-cherry-pick`, `test:web:api` and `test:web:platform` cover these
+contracts.
+
 ## Sync verification
 
 ```sh
@@ -44,6 +54,7 @@ yarn check:web                 # types, format, docs, source-dependencies, ui-ow
 yarn test:web:contract
 yarn test:web:payload
 yarn test:web:platform
+yarn test:web:multi-cherry-pick
 yarn test:web:security         # see the pre-existing failure note below
 yarn build:web
 ```

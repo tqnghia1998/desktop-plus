@@ -56,6 +56,7 @@ function DesktopCommitGraphSidebar(props: {
   readonly onUndoCommit: (commit: Commit) => void
   readonly onResetToCommit: (commit: Commit) => void
   readonly onRevertCommit: (commit: Commit) => void
+  readonly onRevertCommits: (commits: ReadonlyArray<Commit>) => void
   readonly onAmendCommit: (commit: Commit) => void
   readonly onCreateBranch: (commit: Commit) => void
   readonly onCreateTag: (commit: Commit) => void
@@ -356,6 +357,7 @@ function DesktopCommitGraphSidebar(props: {
       }}
       compareListScrollTop={compareListScrollTop}
       onRevertCommit={commit => props.onRevertCommit(commit)}
+      onRevertCommits={props.onRevertCommits}
       onViewCommitOnGitHub={() => undefined}
       repository={repository}
       selectedCommitShas={props.selectedSHAs}
@@ -592,6 +594,11 @@ export function DesktopHistoryView(props: {
             props.onSelectedSHAsChanged([commit.sha])
             setResetDialogOpen(true)
           }}
+          onRevertCommits={commits =>
+            void props.dispatcher.runOperation('revert', {
+              values: commits.map(commit => commit.sha),
+            })
+          }
           onRevertCommit={commit =>
             void props.dispatcher
               .runOperation('revert', { values: [commit.sha] })
@@ -1019,6 +1026,11 @@ export function DesktopCompareView(props: {
           }
           onCompareListScrolled={scrollTop =>
             localStorage.setItem(compareScrollStorageKey, String(scrollTop))
+          }
+          onRevertCommits={commits =>
+            void props.dispatcher.runOperation('revert', {
+              values: commits.map(commit => commit.sha),
+            })
           }
           onRevertCommit={commit =>
             void props.dispatcher.runOperation('revert', {

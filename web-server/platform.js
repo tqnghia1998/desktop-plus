@@ -397,6 +397,9 @@ async function launchIntegration(body, runtime = {}) {
     )
   }
 
+  if (kind === 'editor' && body.name === 'System Default Program')
+    return openPath(target, false, runtime)
+
   const integrations = await integrationsForHost()
   const available =
     kind === 'shell' ? integrations.shells : integrations.editors
