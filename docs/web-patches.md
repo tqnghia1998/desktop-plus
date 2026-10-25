@@ -75,6 +75,7 @@ yarn check:web
 yarn test:web:operation-parity
 yarn test:web:payload
 yarn test:web:platform
+yarn test:web:multi-cherry-pick
 yarn test:web:api
 node script/test.mjs app/test/unit/ui/keyboard-test.ts app/test/unit/ui/section-list-scroll-test.tsx
 NODE_ENV=production yarn build:web
