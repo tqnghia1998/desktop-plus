@@ -3249,6 +3249,42 @@ async function main() {
     assert.equal(fs.existsSync(path.join(repo, 'merge-child.txt')), false)
     git(repo, 'checkout', 'main')
 
+    const multiRevertRepo = path.join(root, 'multi-revert-repo')
+    await fs.promises.mkdir(multiRevertRepo)
+    git(multiRevertRepo, 'init', '-b', 'main')
+    git(multiRevertRepo, 'config', 'user.name', 'Revert Test')
+    git(multiRevertRepo, 'config', 'user.email', 'revert@example.com')
+    git(multiRevertRepo, 'commit', '--allow-empty', '-m', 'base')
+    const revertSHAs = []
+    for (const name of ['first', 'second']) {
+      await fs.promises.writeFile(path.join(multiRevertRepo, name), name)
+      git(multiRevertRepo, 'add', name)
+      git(multiRevertRepo, 'commit', '-m', name)
+      revertSHAs.unshift(
+        execFileSync('git', ['rev-parse', 'HEAD'], {
+          cwd: multiRevertRepo,
+          encoding: 'utf8',
+        }).trim()
+      )
+    }
+    result = await request(base, '/api/git/operation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        path: multiRevertRepo,
+        operation: 'revert',
+        values: revertSHAs,
+      }),
+    })
+    assert.equal(result.response.status, 200, JSON.stringify(result.data))
+    for (const name of ['first', 'second']) {
+      assert.equal(
+        fs.existsSync(path.join(multiRevertRepo, name)),
+        false,
+        `reverting multiple commits must remove ${name}`
+      )
+    }
+
     const revertConflictRepo = path.join(root, 'revert-conflict-repo')
     await fs.promises.mkdir(revertConflictRepo)
     git(revertConflictRepo, 'init', '-b', 'main')
