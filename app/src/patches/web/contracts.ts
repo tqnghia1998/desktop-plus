@@ -691,6 +691,10 @@ export interface WebDispatcher {
     operation: WebGitOperation,
     options?: WebOperationOptions
   ): Promise<void>
+  cherryPickToBranches(
+    branches: ReadonlyArray<string>,
+    commits: ReadonlyArray<string>
+  ): Promise<void>
   cancelOperation(): Promise<void>
   respondOperationAuth(
     id: string,
