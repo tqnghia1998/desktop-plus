@@ -492,6 +492,10 @@ export function DesktopPreferencesDialog(props: {
 }) {
   if (!props.open) return null
 
+  let useSystemDefaultProgram =
+    props.editorIntegration.name === 'System Default Program'
+  let useCustomEditor = props.editorIntegration.custom !== null
+
   const desktopDispatcher = {
     fetchCopilotModels: () => undefined,
     fetchCopilotQuotaSnapshots: () => undefined,
@@ -519,13 +523,27 @@ export function DesktopPreferencesDialog(props: {
       setBoolean(webConfirmWorktreeRemovalStorageKey, value)
       props.onConfirmWorktreeRemovalChanged(value)
     },
-    setCustomEditor: (custom: WebIntegrationSelection['custom']) =>
-      props.onEditorIntegrationChanged({ name: null, custom }),
+    setCustomEditor: (custom: WebIntegrationSelection['custom']) => {
+      if (!useSystemDefaultProgram && useCustomEditor)
+        props.onEditorIntegrationChanged({ name: null, custom })
+    },
     setCustomShell: (custom: WebIntegrationSelection['custom']) =>
       props.onShellIntegrationChanged({ name: null, custom }),
     setDiffCheckMarksSetting: props.preferences.onShowDiffCheckMarksChanged,
-    setExternalEditor: (name: string) =>
-      props.onEditorIntegrationChanged({ name, custom: null }),
+    setExternalEditor: (name: string) => {
+      if (!useSystemDefaultProgram && !useCustomEditor)
+        props.onEditorIntegrationChanged({ name, custom: null })
+    },
+    setUseSystemDefaultProgram: (value: boolean) => {
+      useSystemDefaultProgram = value
+      if (value)
+        props.onEditorIntegrationChanged({
+          name: 'System Default Program',
+          custom: null,
+        })
+      else if (props.editorIntegration.name === 'System Default Program')
+        props.onEditorIntegrationChanged({ name: null, custom: null })
+    },
     setHideWindowOnQuit: props.onHideWindowOnQuitChanged,
     setNotificationsEnabled: props.onBrowserNotificationsEnabledChanged,
     setPreferAbsoluteDates: props.onPreferAbsoluteDatesChanged,
@@ -565,7 +583,12 @@ export function DesktopPreferencesDialog(props: {
       props.onUncommittedChangesStrategyChanged(value)
     },
     setUseCustomEditor: (useCustom: boolean) => {
-      if (!useCustom && props.editorIntegration.custom)
+      useCustomEditor = useCustom
+      if (
+        !useSystemDefaultProgram &&
+        !useCustom &&
+        props.editorIntegration.custom
+      )
         props.onEditorIntegrationChanged({ name: null, custom: null })
     },
     setUseCustomShell: (useCustom: boolean) => {
@@ -648,6 +671,7 @@ export function DesktopPreferencesDialog(props: {
         titleBarStyle="native"
         underlineLinks={props.underlineLinks}
         uncommittedChangesStrategy={props.uncommittedChangesStrategy}
+        useSystemDefaultProgram={useSystemDefaultProgram}
         useCustomEditor={props.editorIntegration.custom !== null}
         useCustomShell={props.shellIntegration.custom !== null}
         useExternalCredentialHelper={props.useExternalCredentialHelper}

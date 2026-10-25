@@ -272,6 +272,21 @@ async function main() {
     },
   ])
   assert.ok(windows.spawned.every(child => child.unrefCalled))
+
+  for (const [platformName, command, target] of [
+    ['darwin', 'open', '/tmp/default editor.txt'],
+    ['linux', 'xdg-open', '/tmp/default editor.txt'],
+    ['win32', 'explorer.exe', 'C:\\default editor.txt'],
+  ]) {
+    const host = createRuntime(platformName, { editors: [], shells: [] })
+    await host.services.launchIntegration({
+      kind: 'editor',
+      target,
+      name: 'System Default Program',
+    })
+    assert.deepEqual(host.commands, [{ command, args: [target] }])
+  }
+
   console.log(
     `Web platform smoke passed: ${process.platform}, ${integrations.editors.length} editors, ${integrations.shells.length} shells, injected macOS, Windows, and Linux process services`
   )
