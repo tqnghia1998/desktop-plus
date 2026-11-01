@@ -504,6 +504,8 @@ export function DesktopPreferencesDialog(props: {
     refreshAuthor: () => undefined,
     removeAccount: () => undefined,
     setAlwaysUseCopilotForConflictResolution: () => undefined,
+    // The browser companion has no native updater to configure.
+    setAutoInstallUpdates: () => undefined,
     setAlwaysShowWorktreeList: () => undefined,
     setBranchPresetScript: () => undefined,
     setBranchSortOrder: props.onBranchSortOrderChanged,
@@ -611,6 +613,7 @@ export function DesktopPreferencesDialog(props: {
         accounts={[]}
         alwaysUseCopilotForConflictResolution={false}
         alwaysShowWorktreeList={false}
+        autoInstallUpdates={false}
         askForConfirmationOnCommitFilteredChanges={
           props.confirmCommitFilteredChanges
         }
