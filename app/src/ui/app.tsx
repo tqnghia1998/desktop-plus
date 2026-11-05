@@ -38,10 +38,6 @@ import {
 } from '../models/repository'
 import { getNonGitHubUrl } from '../lib/repository-remote-url'
 import { Branch } from '../models/branch'
-import {
-  getDiffFontFamilyCssValue,
-  getDiffLineHeight,
-} from '../models/diff-font'
 import { PreferencesTab } from '../models/preferences'
 import { findItemByAccessKey, itemIsSelectable } from '../models/app-menu'
 import { Account, isDotComAccount } from '../models/account'
@@ -66,8 +62,6 @@ import { CantDeleteMainBranch } from './delete-branch/cant-delete-main-branch'
 import { CloningRepositoryView } from './cloning-repository'
 import {
   ApplicationToolbar,
-  Toolbar,
-  ToolbarDropdown,
   DropdownState,
   PushPullButton,
   BranchDropdown,
@@ -130,7 +124,6 @@ import { UpstreamAlreadyExists } from './upstream-already-exists'
 import { ReleaseNotes } from './release-notes'
 import { DeletePullRequest } from './delete-branch/delete-pull-request-dialog'
 import { CommitConflictsWarning } from './merge-conflicts'
-import { AppTheme } from './app-theme'
 import { AppChrome, AppContents } from './app-chrome'
 import { ApplicationTheme } from './lib/application-theme'
 import { RepositoryStateCache } from '../lib/stores/repository-state-cache'

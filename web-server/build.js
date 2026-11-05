@@ -8,7 +8,6 @@ const webpackConfig = require('./webpack.config')
 const highlighterWebpackConfig = require('./highlighter-webpack.config')
 
 const root = __dirname
-const sourceDir = path.join(root, 'src')
 const publicDir = path.join(root, 'public')
 const assetsDir = path.join(publicDir, 'assets')
 const desktopStaticDir = path.join(root, '..', 'app', 'static', 'common')

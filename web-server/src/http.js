@@ -1,6 +1,3 @@
-const path = require('path')
-const fs = require('fs')
-const os = require('os')
 const { applyEmbedding } = require('./patches/vibing/embedding')
 
 function securityHeaders(headers = {}) {
