@@ -2,7 +2,6 @@ const {
   requireString,
   requireAbsolutePath,
   requireText,
-  requireBoolean,
 } = require('../src/validation')
 
 function registerRepositoryRoutes(router, options) {
