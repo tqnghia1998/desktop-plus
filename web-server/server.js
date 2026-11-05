@@ -3,7 +3,7 @@ const path = require('path')
 const fs = require('fs')
 const os = require('os')
 const crypto = require('crypto')
-const { execFile, execFileSync, spawn } = require('child_process')
+const { execFile, spawn } = require('child_process')
 const { AsyncLocalStorage } = require('async_hooks')
 const ignore = require('ignore')
 const platform = require('./platform')
@@ -53,13 +53,9 @@ const {
   requireText,
   requireGitValue,
   requireAbsolutePath,
-  requireArray,
-  requireBoolean,
-  requireInteger,
 } = require('./src/validation')
 const {
   DESKTOP_STASH_ENTRY_MARKER,
-  DESKTOP_STASH_ENTRY_MESSAGE_RE,
   parseDesktopStashMessage,
 } = require('./src/git-stash-parser')
 const STALE_GIT_CONFIG_LOCK_AGE_MS = 5 * 60 * 1000
@@ -4136,35 +4132,6 @@ async function setGitIdentity(repoPath, scope, name, email) {
   return getGitIdentity(repoPath)
 }
 
-function parseChangedFiles(raw, commitish, parentCommitish) {
-  const parts = raw.split('\0')
-  const files = []
-  for (let i = 0; i < parts.length - 1; ) {
-    const status = parts[i++]
-    if (!status) continue
-    if (status.startsWith('R') || status.startsWith('C')) {
-      const oldPath = parts[i++]
-      const filePath = parts[i++]
-      files.push({
-        path: filePath,
-        oldPath,
-        status: { kind: changedFileKind(status) },
-        commitish,
-        parentCommitish,
-      })
-    } else {
-      const filePath = parts[i++]
-      files.push({
-        path: filePath,
-        status: { kind: changedFileKind(status) },
-        commitish,
-        parentCommitish,
-      })
-    }
-  }
-  return files
-}
-
 function submoduleStatusFromModes(status, sourceMode, destinationMode) {
   if (
     sourceMode === '160000' &&
@@ -5011,18 +4978,6 @@ async function createDesktopStash(repoPath, values, body) {
       })()),
     ])
   return result
-}
-
-function checkoutWasBlockedByLocalChanges(error) {
-  const result = error && typeof error === 'object' ? error.result : null
-  const detail = [
-    error instanceof Error ? error.message : String(error),
-    result?.stdout || '',
-    result?.stderr || '',
-  ].join('\n')
-  return /(?:would be overwritten by checkout|would be overwritten by merge|local changes .*(?:would be|will be) overwritten|please commit your changes or stash them)/i.test(
-    detail
-  )
 }
 
 async function checkoutWithChanges(
@@ -8454,7 +8409,7 @@ async function routeApi(req, res, url, services) {
     const body = await parseJsonBody(req)
     if (!services.keytar)
       return sendJson(res, 501, { error: 'OS credential store is unavailable' })
-    const { credentialId, endpoint } = requireGitHubCredential(body)
+    const { credentialId } = requireGitHubCredential(body)
     const token = await services.keytar.getPassword(
       githubCredentialService,
       credentialId

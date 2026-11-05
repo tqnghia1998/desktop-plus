@@ -1,10 +1,5 @@
 const fs = require('fs')
-const {
-  requireAbsolutePath,
-  requireString,
-  requireInteger,
-  requireBoolean,
-} = require('../src/validation')
+const { requireAbsolutePath, requireString } = require('../src/validation')
 
 function registerFsRoutes(router, options) {
   const { MAX_RESPONSE_BYTES, MAX_REQUEST_BYTES } = options
