@@ -86,3 +86,12 @@ Then one manual browser pass:
   (`AssertionError 400 !== 415`). This failure is pre-existing on a clean
   tree and unrelated to the overlay; the embedding assertions above it still
   pass.
+
+## Upstream refresh 2026-11-09
+
+Rebased onto Desktop Plus 3.6.11-beta1 (`e86afd65a1`). Browser adapters
+provide upstream's account-selection props without a native account catalog.
+Clone URL discovery preserves the entered URL through a browser replacement;
+the companion still owns cloning and configured Git authentication. The new
+changed-file-count preference persists in browser storage and reaches both
+the shared Preferences dialog and repository picker.
