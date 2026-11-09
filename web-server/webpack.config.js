@@ -26,6 +26,11 @@ module.exports = {
   resolve: {
     extensions: ['.ts', '.tsx', '.js'],
     alias: {
+      [path.join(root, 'app', 'src', 'lib', 'clone-info.ts')]: path.join(
+        __dirname,
+        'src',
+        'desktop-clone-info-stub.js'
+      ),
       react: path.join(root, 'app', 'node_modules', 'react'),
       'react-dom': path.join(root, 'app', 'node_modules', 'react-dom'),
       [path.join(root, 'app', 'src', 'lib', 'copilot-app', 'index.ts')]:

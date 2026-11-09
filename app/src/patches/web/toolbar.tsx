@@ -120,6 +120,7 @@ export function DesktopToolbar(props: {
     repository: WebApplicationState['repositories'][number]
   ) => void
   readonly onRemoveRepository: (path: string) => void
+  readonly showChangedFileCount: boolean
   readonly showBranchName: 'never' | 'always' | 'non-default'
   readonly branchSortOrder: BranchSortOrder
   readonly onBranchSortOrderChanged: (value: BranchSortOrder) => void
@@ -1191,6 +1192,7 @@ export function DesktopToolbar(props: {
             disabled={props.isEmbedded}
             dropdownContentRenderer={() => (
               <DesktopRepositoryPicker
+                showChangedFileCount={props.showChangedFileCount}
                 onAdd={() => {
                   props.onOpenRepositoryDialog()
                   setToolbarDropdownState('repository', 'closed')

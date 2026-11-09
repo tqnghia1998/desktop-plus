@@ -439,6 +439,8 @@ export function DesktopPreferencesDialog(props: {
   readonly onConfirmStashActionsChanged: (value: boolean) => void
   readonly showWorktreesInRepositoryList: boolean
   readonly onShowWorktreesInRepositoryListChanged: (value: boolean) => void
+  readonly showChangedFileCount: boolean
+  readonly onShowChangedFileCountChanged: (value: boolean) => void
   readonly repositoryIndicatorsEnabled: boolean
   readonly onRepositoryIndicatorsEnabledChanged: (value: boolean) => void
   readonly confirmRepositoryRemoval: boolean
@@ -549,6 +551,7 @@ export function DesktopPreferencesDialog(props: {
     setHideWindowOnQuit: props.onHideWindowOnQuitChanged,
     setNotificationsEnabled: props.onBrowserNotificationsEnabledChanged,
     setPreferAbsoluteDates: props.onPreferAbsoluteDatesChanged,
+    setShowChangedFileCount: props.onShowChangedFileCountChanged,
     setRepositoryIndicatorsEnabled: props.onRepositoryIndicatorsEnabledChanged,
     setSelectedCopilotModelsByAccount: () => undefined,
     setSelectedDiffFontFamily: props.preferences.onDiffFontFamilyChanged,
@@ -648,6 +651,7 @@ export function DesktopPreferencesDialog(props: {
             ? getDesktopRepository(props.selectedRepositoryPath)
             : null
         }
+        showChangedFileCount={props.showChangedFileCount}
         repositoryIndicatorsEnabled={props.repositoryIndicatorsEnabled}
         selectedCopilotModelsByAccount={new Map()}
         selectedDiffFontFamily={props.preferences.diffFontFamily}

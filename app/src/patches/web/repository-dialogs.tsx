@@ -206,6 +206,7 @@ export function DesktopCloneRepositoryDialog(props: {
   return (
     <DialogStackContext.Provider value={{ isTopMost: true }}>
       <CloneRepository
+        selectedAccount={null}
         accounts={[]}
         apiRepositories={new Map()}
         dispatcher={desktopDispatcher}

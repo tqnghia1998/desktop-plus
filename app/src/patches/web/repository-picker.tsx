@@ -28,6 +28,7 @@ export function DesktopRepositoryPicker(props: {
     repository: WebApplicationState['repositories'][number]
   ) => void
   readonly showBranchName: 'never' | 'always' | 'non-default'
+  readonly showChangedFileCount: boolean
   readonly showWorktrees: boolean
   readonly onCopyPath: (path: string) => void
   readonly onOpenPath: (path: string, reveal?: boolean) => void
@@ -288,6 +289,15 @@ export function DesktopRepositoryPicker(props: {
   return (
     <>
       <RepositoriesList
+        accounts={[]}
+        showChangedFileCount={props.showChangedFileCount}
+        onChangeRepositoryAccount={() => undefined}
+        onShowRepositorySettings={repository => {
+          const webRepository = getWebRepository(repository)
+          if (webRepository) {
+            props.onEdit(webRepository)
+          }
+        }}
         enableRepositorySnoozing={false}
         askForConfirmationOnRemoveRepository={true}
         dispatcher={desktopDispatcher}

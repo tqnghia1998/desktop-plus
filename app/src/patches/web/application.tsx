@@ -207,6 +207,10 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
   )
   const [showWorktreesInRepositoryList, updateShowWorktreesInRepositoryList] =
     useStoredBoolean(webShowWorktreesInRepositoryListStorageKey, false)
+  const [showChangedFileCount, updateShowChangedFileCount] = useStoredBoolean(
+    'show-changed-file-count',
+    false
+  )
   const [repositoryIndicatorsEnabled, updateRepositoryIndicatorsEnabled] =
     useStoredBoolean(webRepositoryIndicatorsEnabledStorageKey, true)
   const [confirmRepositoryRemoval, updateConfirmRepositoryRemoval] =
@@ -543,6 +547,7 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
                 onBranchSortOrderChanged={updateBranchSortOrder}
                 sidebarWidth={sidebarWidth}
                 showBranchName={showBranchName}
+                showChangedFileCount={showChangedFileCount}
                 isEmbedded={isEmbedded}
                 showWorktrees={showWorktrees}
                 showWorktreesInRepositoryList={showWorktreesInRepositoryList}
@@ -699,6 +704,7 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
           preferences={diffPreferences}
           preferAbsoluteDates={preferAbsoluteDates}
           showBranchName={showBranchName}
+          showChangedFileCount={showChangedFileCount}
           showConventionalCommitBadges={showConventionalCommitBadges}
           confirmStashActions={confirmStashActions}
           showCommitLengthWarning={showCommitLengthWarning}
@@ -716,6 +722,7 @@ export function WebApp({ store, dispatcher }: WebAppProps) {
             updateShowWorktreesInRepositoryList
           }
           repositoryIndicatorsEnabled={repositoryIndicatorsEnabled}
+          onShowChangedFileCountChanged={updateShowChangedFileCount}
           onRepositoryIndicatorsEnabledChanged={
             updateRepositoryIndicatorsEnabled
           }
