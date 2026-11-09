@@ -18,6 +18,17 @@ assert.equal(
   ],
   path.join(__dirname, 'src/desktop-copilot-app-stub.js')
 )
+assert.equal(
+  webpackConfig.resolve.alias[path.join(root, 'app/src/lib/clone-info.ts')],
+  path.join(__dirname, 'src/desktop-clone-info-stub.js')
+)
+assert.match(
+  fs.readFileSync(
+    path.join(root, 'app/src/patches/web/preferences.tsx'),
+    'utf8'
+  ),
+  /setShowChangedFileCount: props\.onShowChangedFileCountChanged/
+)
 const { rendererSources: sourceFiles } = require('./src/renderer-sources')
 const forbiddenImports =
   /(?:from\s+['"](?:electron|node:|child_process|crypto|fs|http|https|os|path|stream|url)['"]|require\(['"](?:electron|node:|child_process|crypto|fs|http|https|os|path|stream|url)['"]\))/u
