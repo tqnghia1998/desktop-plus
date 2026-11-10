@@ -24,4 +24,26 @@ function isDotComAccount(account) {
   return account.endpoint === 'https://api.github.com'
 }
 
-module.exports = { Account, accountEquals, isDotComAccount }
+const UnknownLogin = { InitialAuthFetch: 0, 0: 'InitialAuthFetch' }
+
+function getAccountKey(account) {
+  return `${account.endpoint}/users/${account.login}`.toLowerCase()
+}
+
+function isSameAccount(x, y) {
+  return y != null && getAccountKey(x) === getAccountKey(y)
+}
+
+function isEnterpriseAccount(account) {
+  return account.apiType === 'enterprise'
+}
+
+module.exports = {
+  Account,
+  UnknownLogin,
+  accountEquals,
+  getAccountKey,
+  isDotComAccount,
+  isEnterpriseAccount,
+  isSameAccount,
+}
