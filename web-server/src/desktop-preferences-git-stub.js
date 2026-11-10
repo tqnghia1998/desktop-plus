@@ -140,8 +140,37 @@ async function getAuthorIdentity() {
   return null
 }
 
+const remotesByPath = new Map()
+
+// Reads a repository's remotes through the read-only `git remote -v` query so
+// shared code (repository-remote-url) can resolve the default remote URL.
+// Results are memoized per path like upstream's memoizeOne helper, but a
+// failed read is never cached.
+function memoizedGetRemotesFromPath(path) {
+  // Upstream resets its memoized cache by calling it with an empty path.
+  if (path === '') {
+    remotesByPath.clear()
+    return Promise.resolve([])
+  }
+  if (remotesByPath.has(path)) return remotesByPath.get(path)
+  const pending = git(['remote', '-v'], path, 'getRemotes').then(
+    ({ stdout }) => {
+      const remotes = new Map()
+      for (const line of String(stdout).split('\n')) {
+        const match = /^(\S+)\s+(\S+)\s+\(fetch\)$/.exec(line.trim())
+        if (match && !remotes.has(match[1])) remotes.set(match[1], match[2])
+      }
+      return [...remotes].map(([name, url]) => ({ name, url }))
+    }
+  )
+  remotesByPath.set(path, pending)
+  pending.catch(() => remotesByPath.delete(path))
+  return pending
+}
+
 module.exports = {
   ...config,
+  memoizedGetRemotesFromPath,
   addSafeDirectory,
   createCommit,
   doMergeCommitsExistAfterCommit,

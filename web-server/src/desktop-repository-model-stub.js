@@ -46,6 +46,46 @@ function hasDefaultRemoteUrl(repository) {
   return Boolean(repository.url)
 }
 
+function assertIsRepositoryWithGitHubRepository(repository) {
+  if (!isRepositoryWithGitHubRepository(repository)) {
+    throw new Error('Repository must be GitHub repository')
+  }
+}
+
+function getRepositoryAccountIdentity(repository) {
+  const { gitHubRepository, login } = repository
+  return gitHubRepository === null ||
+    gitHubRepository === undefined ||
+    login === null ||
+    login === undefined
+    ? null
+    : { endpoint: gitHubRepository.endpoint, login }
+}
+
+function getNonForkGitHubRepository(repository) {
+  return repository.gitHubRepository
+}
+
+function getGitHubHtmlUrl(repository) {
+  if (!isRepositoryWithGitHubRepository(repository)) {
+    return null
+  }
+  return getNonForkGitHubRepository(repository).htmlURL
+}
+
+function getRepositoryStateKey(repository) {
+  return repository.id < 0
+    ? `hash:${repository.hash}`
+    : `${repository.id}:${repository.path}`
+}
+
+function isForkedRepositoryContributingToParent(repository) {
+  return (
+    isRepositoryWithForkedGitHubRepository(repository) &&
+    getForkContributionTarget(repository) === 'parent'
+  )
+}
+
 function nameOf(repository) {
   return repository.gitHubRepository
     ? repository.gitHubRepository.fullName
@@ -57,6 +97,12 @@ module.exports = {
   hasDefaultRemoteUrl,
   isRepositoryWithGitHubRepository,
   isRepositoryWithForkedGitHubRepository,
+  assertIsRepositoryWithGitHubRepository,
+  getRepositoryAccountIdentity,
+  getNonForkGitHubRepository,
+  getGitHubHtmlUrl,
+  getRepositoryStateKey,
+  isForkedRepositoryContributingToParent,
   getForkContributionTarget,
   getUpdateBranchStrategy,
   nameOf,
