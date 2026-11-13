@@ -24,7 +24,8 @@ behavior are preserved by this organization.
 | `app/src/patches/web/contracts.ts`, `client.ts`, `platform.ts`, `store.ts` | Typed companion contract, shared authenticated JSON transport, platform calls, and browser state |
 | `app/src/patches/web/keyboard.ts`, `viewport.ts` | Browser input and viewport policies used by shared controls |
 | `app/src/patches/vibing/embedding.ts` | Trusted parent origin, host refresh, and worktree query hooks |
-| `app/src/patches/vibing/appearance.css` | Space App Vibing colors, typography, compact controls, and narrow toolbar sizing |
+| `app/src/patches/vibing/appearance.css` | Space App Vibing light and dark colors, typography, compact controls, and narrow toolbar sizing |
+| `app/src/patches/vibing/theme-mode.ts` | Host light/dark mode from the `themeMode` query and trusted `space:theme-mode` messages |
 | `web-server/src/patches/vibing/embedding.js` | Opt-in CSP framing allowlist |
 | `web-server/src/patches/web/git-credentials.js` | Configured Git credential helpers and macOS Keychain lookup environment |
 | `web-server/server.js`, `routes/`, `src/desktop-*-stub.js` | Local companion, routes, and browser replacements for native modules |
