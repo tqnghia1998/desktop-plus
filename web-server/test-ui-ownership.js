@@ -132,7 +132,10 @@ button.resize-handle {
 }
 
 /* The trailing Branch action has no adjacent toolbar control to separate. */
-#desktop-app-toolbar > .toolbar-action-menu:last-child > .toolbar-button > button {
+#desktop-app-toolbar
+  > .toolbar-action-menu:last-child
+  > .toolbar-button
+  > button {
   border-right: 0;
 }
 
@@ -175,82 +178,90 @@ dialog {
   --border-radius: 8px;
 }
 
-/* Align the dark theme with the Space App Vibing host application: flat
- * Metro-style neutral surfaces (#1a1a1a family) and its #3a96dd accent.
+/* Align the dark theme with the Space App Vibing host application: its
+ * blue-gray surfaces and blue accent.
  * Loaded after web-desktop.scss, so these override the GitHub dark palette. */
 body.theme-dark {
-  --text-color: #ffffff;
-  --text-secondary-color: #a0a0a0;
-  --background-color: #1a1a1a;
+  --text-color: #abb2bf;
+  --text-secondary-color: #9da5b4;
+  --background-color: #181a1f;
+  --text-secondary-color-muted: #7f848e;
+  --color-new: #98c379;
+  --color-deleted: #e06c75;
+  --color-modified: #e5c07b;
+  --color-renamed: #61afef;
+  --color-conflicted: #d19a66;
 
-  --button-background: #3a96dd;
-  --button-hover-background: #55a8e3;
-  --link-button-color: #3a96dd;
-  --link-button-hover-color: #55a8e3;
-  --secondary-button-background: #252526;
-  --secondary-button-hover-border-color: #3f3f46;
+  --button-text-color: #181a1f;
+  --button-background: #61afef;
+  --button-hover-background: #78baf2;
+  --link-button-color: #61afef;
+  --link-button-hover-color: #78baf2;
+  --secondary-button-background: #181a1f;
+  --secondary-button-hover-border-color: #333741;
 
-  --box-background-color: #1a1a1a;
-  --box-alt-background-color: #1a1a1a;
-  --box-border-color: #222225;
-  --box-border-contrast-color: #2c2c30;
-  --box-border-accent-color: #3a96dd;
-  --box-hover-background-color: #2d2d30;
-  --box-selected-background-color: #2d2d30;
-  --box-selected-active-background-color: #3a96dd;
-  --box-skeleton-background-color: #3f3f46;
+  --box-background-color: #1c2025;
+  --box-alt-background-color: #181a1f;
+  --box-border-color: #21242b;
+  --box-border-contrast-color: #333741;
+  --box-border-accent-color: #61afef;
+  --box-hover-background-color: #21242b;
+  --box-selected-background-color: #21242b;
+  --box-selected-active-background-color: #61afef;
+  --box-selected-active-text-color: #181a1f;
+  --box-skeleton-background-color: #333741;
   --skeleton-background-gradient: -webkit-linear-gradient(
     left,
-    rgba(26, 26, 26, 0) 0%,
-    rgba(26, 26, 26, 0.5) 50%,
-    rgba(26, 26, 26, 0) 100%
+    rgba(24, 26, 31, 0) 0%,
+    rgba(24, 26, 31, 0.5) 50%,
+    rgba(24, 26, 31, 0) 100%
   );
-  --box-placeholder-color: #6e6e6e;
+  --box-placeholder-color: #7f848e;
 
-  --toolbar-background-color: #1a1a1a;
-  --toolbar-button-hover-background-color: #2d2d30;
-  --toolbar-button-focus-background-color: #2d2d30;
-  --toolbar-button-progress-color: #2d2d30;
-  --toolbar-button-focus-progress-color: #3f3f46;
-  --toolbar-button-hover-progress-color: #3f3f46;
-  --toolbar-badge-background-color: #3f3f46;
-  --toolbar-dropdown-open-progress-color: #55a8e3;
+  --toolbar-background-color: #181a1f;
+  --toolbar-button-hover-background-color: #21242b;
+  --toolbar-button-focus-background-color: #21242b;
+  --toolbar-button-progress-color: #21242b;
+  --toolbar-button-focus-progress-color: #333741;
+  --toolbar-button-hover-progress-color: #333741;
+  --toolbar-badge-background-color: #333741;
+  --toolbar-dropdown-open-progress-color: #78baf2;
 
-  --app-menu-pane-background-color: #252526;
-  --app-menu-divider-color: #2c2c30;
-  --app-menu-button-active-background-color: #2d2d30;
+  --app-menu-pane-background-color: #181a1f;
+  --app-menu-divider-color: #333741;
+  --app-menu-button-active-background-color: #21242b;
 
-  --tab-bar-hover-background-color: #2d2d30;
-  --tab-bar-count-background-color: #3f3f46;
-  --list-item-badge-background-color: #3f3f46;
-  --branch-pill-background-color: #2d2d30;
-  --list-item-hover-background-color: #2d2d30;
+  --tab-bar-hover-background-color: #21242b;
+  --tab-bar-count-background-color: #333741;
+  --list-item-badge-background-color: #333741;
+  --branch-pill-background-color: #21242b;
+  --list-item-hover-background-color: #21242b;
 
-  --focus-color: #3a96dd;
-  --accent-color: #55a8e3;
+  --focus-color: #61afef;
+  --accent-color: #78baf2;
   --overlay-background-color: rgba(0, 0, 0, 0.6);
-  --path-segment-background: #2d2d30;
-  --tooltip-background-color: #252526;
-  --commit-warning-badge-background-color: #1a1a1a;
-  --commit-warning-badge-border-color: #3f3f46;
+  --path-segment-background: #21242b;
+  --tooltip-background-color: #181a1f;
+  --commit-warning-badge-background-color: #1c2025;
+  --commit-warning-badge-border-color: #333741;
 
   --box-overflow-shadow-background: linear-gradient(
     180deg,
-    rgba(26, 26, 26, 0) 0%,
-    #1a1a1a 90%,
-    #1a1a1a 100%
+    rgba(24, 26, 31, 0) 0%,
+    #181a1f 90%,
+    #181a1f 100%
   );
-  --no-shadow-top: linear-gradient(#1a1a1a, rgba(255, 255, 255, 0));
-  --no-shadow-bottom: linear-gradient(rgba(255, 255, 255, 0), #1a1a1a);
+  --no-shadow-top: linear-gradient(#181a1f, rgba(255, 255, 255, 0));
+  --no-shadow-bottom: linear-gradient(rgba(255, 255, 255, 0), #181a1f);
   --top-shadow: linear-gradient(
     0deg,
-    rgba(26, 26, 26, 0) 0%,
+    rgba(24, 26, 31, 0) 0%,
     rgba(0, 0, 0, 0.6) 90%,
     rgba(0, 0, 0, 1) 100%
   );
   --bottom-shadow: linear-gradient(
       180deg,
-      rgba(26, 26, 26, 0) 0%,
+      rgba(24, 26, 31, 0) 0%,
       rgba(0, 0, 0, 0.6) 90%,
       rgba(0, 0, 0, 1) 100%
     )
