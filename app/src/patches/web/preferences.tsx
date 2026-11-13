@@ -3,6 +3,7 @@ import { DialogStackContext } from '../../ui/dialog/dialog'
 import { ApplicationTheme } from '../../ui/lib/application-theme'
 import { getFileTreeView, setFileTreeView } from '../../ui/lib/file-tree-folder'
 import { Preferences } from '../../ui/preferences/preferences'
+import { useHostThemeMode } from '../vibing/theme-mode'
 import { ImageDiffType } from '../../models/diff'
 import { BranchSortOrder } from '../../models/branch-sort-order'
 import {
@@ -324,13 +325,24 @@ export function useWebDiffPresentationPreferencesState() {
     React.useState<DiffFontFamily>(
       () => localStorage.getItem('diff-font-family') || defaultDiffFontFamily
     )
-  const [theme, setThemeState] = React.useState<ApplicationTheme>(() => {
+  const [storedTheme, setThemeState] = React.useState<ApplicationTheme>(() => {
     const stored = localStorage.getItem('theme')
     return stored === ApplicationTheme.Light ||
       stored === ApplicationTheme.System
       ? stored
       : ApplicationTheme.Dark
   })
+  // An embedding host owns the mode: it wins over the stored preference and
+  // over system detection, from the very first render (no flash of the other
+  // theme), and the stored preference is neither read nor written meanwhile.
+  const hostThemeMode = useHostThemeMode()
+  const theme =
+    hostThemeMode === null
+      ? storedTheme
+      : hostThemeMode === 'light'
+      ? ApplicationTheme.Light
+      : ApplicationTheme.Dark
+  const hostThemeModeActive = hostThemeMode !== null
   const [showSideBySideDiff, setShowSideBySideDiffState] = React.useState(
     getShowSideBySideDiff
   )
@@ -386,10 +398,14 @@ export function useWebDiffPresentationPreferencesState() {
     localStorage.setItem('diff-font-family', value)
     setDiffFontFamilyState(value)
   }, [])
-  const updateTheme = React.useCallback((value: ApplicationTheme) => {
-    localStorage.setItem('theme', value)
-    setThemeState(value)
-  }, [])
+  const updateTheme = React.useCallback(
+    (value: ApplicationTheme) => {
+      if (hostThemeModeActive) return
+      localStorage.setItem('theme', value)
+      setThemeState(value)
+    },
+    [hostThemeModeActive]
+  )
 
   return {
     theme,
