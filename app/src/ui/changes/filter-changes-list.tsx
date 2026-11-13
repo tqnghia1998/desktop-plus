@@ -280,6 +280,7 @@ interface IFilterChangesListProps {
   readonly showViewModeSwitches: boolean
   /** Optional fixed row height for embedded Changes lists. */
   readonly rowHeight?: number
+  readonly supportsPushAfterCommit?: boolean
 
   /**
    * Whether or not to skip blocking commit hooks when creating commits
@@ -1376,7 +1377,11 @@ export class FilterChangesList extends React.Component<
         onCommitModeChanged={this.onCommitModeChanged}
         pushAfterCommit={this.props.pushAfterCommit}
         canPushAfterCommit={this.props.conflictState === null}
-        onPushAfterCommitChanged={this.onPushAfterCommitChanged}
+        onPushAfterCommitChanged={
+          this.props.supportsPushAfterCommit === false
+            ? undefined
+            : this.onPushAfterCommitChanged
+        }
         focusCommitMessage={this.props.focusCommitMessage}
         autocompletionProviders={this.props.autocompletionProviders}
         isCommitting={isCommitting}

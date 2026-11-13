@@ -3,11 +3,11 @@
 ## Build and verify
 
 ```sh
-yarn build:web
-yarn test:web
+npm run build:web
+npm run test:web
 git diff --exit-code -- web-server/public
-BUILD_SHA="$(git rev-parse HEAD)" RELEASE_CHANNEL=production yarn build:web
-WEB_BROWSER=chrome yarn test:web:release
+BUILD_SHA="$(git rev-parse HEAD)" RELEASE_CHANNEL=production npm run build:web
+WEB_BROWSER=chrome npm run test:web:release
 ```
 
 Confirm that `public/build-manifest.json` reports the expected version,
@@ -55,7 +55,7 @@ validating GitHub Enterprise or self-hosted GitLab.
 
 ## Release-candidate verification
 
-`WEB_BROWSER=chrome yarn test:web:release` automates the in-scope evidence:
+`WEB_BROWSER=chrome npm run test:web:release` automates the in-scope evidence:
 branded Google Chrome on Darwin, an unprivileged companion process bound to
 loopback, a repository with changed files and more than one history page, and
 zero browser console errors or uncaught exceptions. Confirm the visible UI
@@ -72,7 +72,7 @@ in the shared application menu and toolbar menus; the full native application
 menu remains Partial because the macOS menu bar remains outside web-renderer
 ownership.
 
-`yarn test:web` also verifies generic HTTP(S) credential lookup through Git's
+`npm run test:web` also verifies generic HTTP(S) credential lookup through Git's
 configured credential helper. The companion must suppress editor askpass and
 terminal prompts; HTTP(S) lookup failures use the browser-owned one-time
 credential dialog, and SSH prompts use the shared Desktop SSH dialogs while

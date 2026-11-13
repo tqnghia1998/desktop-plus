@@ -230,6 +230,10 @@ export function DesktopCreateRepositoryDialog(props: {
   const desktopDispatcher = React.useMemo(
     () =>
       ({
+        createRepository: (
+          _path: string,
+          create: () => Promise<Repository | undefined>
+        ) => create(),
         addRepositories: async (paths: ReadonlyArray<string>) => {
           const repositories: Repository[] = []
           for (const path of paths) {
