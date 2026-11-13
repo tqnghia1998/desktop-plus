@@ -113,6 +113,8 @@ interface IChangesSidebarProps {
   readonly showViewModeSwitches: boolean
   /** Optional fixed row height for embedded Changes lists. */
   readonly fileListRowHeight?: number
+  /** Hosts without a push-after-commit dispatcher leave this unavailable. */
+  readonly supportsPushAfterCommit?: boolean
 
   /**
    * Whether or not to skip blocking commit hooks when creating commits
@@ -573,6 +575,7 @@ export class ChangesSidebar extends React.Component<IChangesSidebarProps, {}> {
           fileTreeView={this.props.fileTreeView}
           showViewModeSwitches={this.props.showViewModeSwitches}
           rowHeight={this.props.fileListRowHeight}
+          supportsPushAfterCommit={this.props.supportsPushAfterCommit}
           skipCommitHooks={this.props.skipCommitHooks}
           signOffCommits={this.props.signOffCommits}
           allowEmptyCommit={this.props.allowEmptyCommit}
