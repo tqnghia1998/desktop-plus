@@ -58,6 +58,7 @@ on the active Git operation path.
 | Changes/history file lists and stash headers | Optional row-height and compact-header props let the browser select its density while retaining shared rendering |
 | Repository/worktree dropdowns | Optional disabled props keep host-selected navigation locked inside an embed |
 | App chrome, repository layout/tabs, toolbar menus, and other shared controls | Composed views and narrow adapter props let the web port reuse the Desktop visual system |
+| Assisted-commit state and ownership | Browser adapters provide idle manual state; the native Git-operation ownership query is replaced by `web-server/src/desktop-repository-operation-stub.js`, while mutations retain companion guards. `supportsPushAfterCommit` keeps the unsupported preference out of the embedded Changes menu. |
 | Feature flags | Browser-native capability gating |
 
 Paths in this table are relative to `app/src/`. Shared visual components stay
@@ -71,15 +72,15 @@ of shared visual components.
 Run from the fork checkout:
 
 ```sh
-yarn check:web
-yarn test:web:operation-parity
-yarn test:web:payload
-yarn test:web:platform
-yarn test:web:multi-cherry-pick
-yarn test:web:api
+npm run check:web
+npm run test:web:operation-parity
+npm run test:web:payload
+npm run test:web:platform
+npm run test:web:multi-cherry-pick
+npm run test:web:api
 node script/test.mjs app/test/unit/ui/keyboard-test.ts app/test/unit/ui/section-list-scroll-test.tsx
-NODE_ENV=production yarn build:web
-yarn test:web:contract
+NODE_ENV=production npm run build:web
+npm run test:web:contract
 ```
 
 The UI regression command uses the repository runner to load platform globals

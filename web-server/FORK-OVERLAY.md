@@ -30,7 +30,7 @@ new intentional difference added later must be added to this table.
 | Dimmed disabled menu items | `&:disabled` rule in `.toolbar-action-list button` in `app/styles/ui/toolbar/_action-menu.scss` | Toolbar action-menu items render as plain buttons (native menus dim disabled items automatically, this markup does not), so disabled items must keep `opacity: 0.6` — the app's existing disabled convention (`.button` and links in `app/styles/ui/_button.scss`) — to stay visibly distinct from clickable items. Covers the Repository, Branch, and Push/Pull action menus (shared `ToolbarActionMenu`). |
 | Host-triggered state refresh | The `space:desktop-plus-refresh-request` handler in `app/src/patches/vibing/embedding.ts`, guarded by `web-server/test-source-dependencies.js` | A matching trusted parent message refreshes repository data only when Desktop Plus is idle; it never queues a deferred refresh. Queued refreshes run after a user action has opened a modal, replacing its data and dismissing the modal. The Vibing host sends the message after its iframe loads and after a confirmed Git state change—not on a timer. |
 | Restored list scroll clamp | `clampScrollTop` in `app/src/patches/web/viewport.ts`, called by `app/src/ui/lib/list/section-list.tsx`, with regression coverage in `app/test/unit/ui/section-list-scroll-test.tsx` | Controlled section lists clamp a restored scroll offset to their current content height and viewport. When a repository's changed-file list becomes shorter, a stale persisted offset cannot place the remaining rows far below the header; valid offsets still restore normally. |
-| Vibing runtime bundle | `scripts/bundle-desktop-plus-web.mjs` (+ `bundle:vibing` script) | `yarn build:web && yarn bundle:vibing` writes a self-contained runtime into `../space-app-vibing/scripts/desktop-plus-web/` (committed build output there, shipped inside the vibing app). It copies the require closure of `web-server/server.js` (walks relative + bare requires), `web-server/public/`, `ssh-askpass.js` (spawned by path, never required), and a `package.json` pinning `type: "commonjs"` because vibing's root package.json is ESM. Runtime packages (dugite with embedded git, keytar, ignore, semver and transitive deps) are committed as `runtime-node-modules.tgz`, since Vibing ignores `node_modules`; bare server requires must also resolve from the bundle-root `node_modules`. Directory copying preserves relative symlinks in dugite's git-core, so the archive can move between machines. Vibing packaging expands the archive into the staged server bundle. On macOS the bundler prunes dugite's `git/libexec/git-core` of git-lfs and the .NET runtime behind Git Credential Manager (~120MB): credential flows re-point `GIT_EXEC_PATH` at the system Git (only it carries the osxkeychain helper), and Vibing hosts have no git-lfs. Windows keeps GCM and must not be pruned. The archive carries platform-specific binaries, so each release OS must regenerate it from the pinned committed fork revision via Vibing's `scripts/prepare-desktop-plus-runtime.mjs`; CI does not rely on uncommitted fork edits. |
+| Vibing runtime bundle | `scripts/bundle-desktop-plus-web.mjs` (+ `bundle:vibing` script) | `npm run build:web && npm run bundle:vibing` writes a self-contained runtime into `../space-app-vibing/scripts/desktop-plus-web/` (committed build output there, shipped inside the vibing app). It copies the require closure of `web-server/server.js` (walks relative + bare requires), `web-server/public/`, `ssh-askpass.js` (spawned by path, never required), and a `package.json` pinning `type: "commonjs"` because vibing's root package.json is ESM. Runtime packages (dugite with embedded git, keytar, ignore, semver and transitive deps) are committed as `runtime-node-modules.tgz`, since Vibing ignores `node_modules`; bare server requires must also resolve from the bundle-root `node_modules`. Directory copying preserves relative symlinks in dugite's git-core, so the archive can move between machines. Vibing packaging expands the archive into the staged server bundle. On macOS the bundler prunes dugite's `git/libexec/git-core` of git-lfs and the .NET runtime behind Git Credential Manager (~120MB): credential flows re-point `GIT_EXEC_PATH` at the system Git (only it carries the osxkeychain helper), and Vibing hosts have no git-lfs. Windows keeps GCM and must not be pruned. The archive carries platform-specific binaries, so each release OS must regenerate it from the pinned committed fork revision via Vibing's `scripts/prepare-desktop-plus-runtime.mjs`; CI does not rely on uncommitted fork edits. |
 | Browser-only Copilot App dependency | `app/src/patches/web/preferences.tsx`, `app/src/lib/feature-flag.ts`, `web-server/webpack.config.js`, `web-server/src/desktop-copilot-app-stub.js`, `web-server/src/desktop-process-stub.js`, `web-server/test-source-dependencies.js` | Upstream Preferences imports native Copilot App discovery. The web build aliases that module to a browser-safe stub, supplies the new Preferences props, and disables native handoff in the browser process so no unusable setting appears. Desktop discovery remains unchanged. |
 | History query adapter | `app/src/patches/web/history.tsx`, `web-server/test-source-dependencies.js` | Shared History controls require `filteredHistoryCommitSearchQuery` alongside `commitSearchQuery`. The browser History adapter supplies its server-filtered query; the comparison adapter supplies an empty query. Preserve both when upstream changes `ICompareState`. |
 | Worktree deletion dialog adapter | `app/src/patches/web/repository-picker.tsx`, `app/src/patches/web/toolbar.tsx` | Browser deletion dialogs supply the shared `options` object. Force retries extract `options.force === true` before sending the companion's boolean flag; the options object itself must never become an implicit force flag. |
@@ -51,13 +51,13 @@ contracts.
 ## Sync verification
 
 ```sh
-yarn check:web                 # types, format, docs, source-dependencies, ui-ownership
-yarn test:web:contract
-yarn test:web:payload
-yarn test:web:platform
-yarn test:web:multi-cherry-pick
-yarn test:web:security         # see the pre-existing failure note below
-yarn build:web
+npm run check:web                 # types, format, docs, source-dependencies, ui-ownership
+npm run test:web:contract
+npm run test:web:payload
+npm run test:web:platform
+npm run test:web:multi-cherry-pick
+npm run test:web:security         # see the pre-existing failure note below
+npm run build:web
 ```
 
 Then one manual browser pass:
@@ -79,7 +79,7 @@ Then one manual browser pass:
   list silently leaves `frame-ancestors 'none'`.
 - `frame-ancestors 'null'` does not reliably match `file://` hosts in Chrome;
   verify embedding from a real HTTP origin.
-- `web-server/public/` is generated output (`yarn build:web`); never hand-edit
+- `web-server/public/` is generated output (`npm run build:web`); never hand-edit
   it. Space App Vibing serves the built bundle straight from this checkout, so
   rebuild here after any renderer or CSS change.
 - `web-server/test-security.js` may abort at line 135
