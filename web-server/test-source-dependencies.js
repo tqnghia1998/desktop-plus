@@ -4,6 +4,12 @@ const path = require('path')
 
 const root = path.join(__dirname, '..')
 const webpackConfig = require('./webpack.config')
+assert.equal(
+  webpackConfig.resolve.alias[
+    path.join(root, 'app/src/lib/git/repository-operation.ts')
+  ],
+  path.join(__dirname, 'src/desktop-repository-operation-stub.js')
+)
 assert.match(
   fs.readFileSync(path.join(root, 'app/src/lib/feature-flag.ts'), 'utf8'),
   /process\.env\.DESKTOP_PLUS_WEB !== '1'/

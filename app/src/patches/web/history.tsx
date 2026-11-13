@@ -1006,6 +1006,7 @@ export function DesktopCompareView(props: {
           dispatcher={desktopDispatcher}
           emoji={props.state.emoji}
           isCompareView={true}
+          isAssistedCommitRepositoryLocked={false}
           isLocalRepository={(props.state.branches?.remotes?.length || 0) === 0}
           isMultiCommitOperationInProgress={
             props.state.operationTask?.status === 'running'

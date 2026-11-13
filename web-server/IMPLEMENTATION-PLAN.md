@@ -18,8 +18,8 @@ duplicate their totals here.
 
 ## Current architecture
 
-- `yarn build:web` creates content-hashed assets in `web-server/public/`.
-- `yarn start:web` starts the loopback companion.
+- `npm run build:web` creates content-hashed assets in `web-server/public/`.
+- `npm run start:web` starts the loopback companion.
 - The companion owns Git subprocesses, local paths, credential lookup, and
   platform operations.
 - The renderer owns browser UI, persisted non-secret preferences, confirmations,
@@ -49,15 +49,15 @@ scope.
 - Update [CAPABILITIES.md](CAPABILITIES.md),
   [PARITY-GAPS.md](PARITY-GAPS.md), and [README.md](README.md) with any scope
   change.
-- Keep `yarn test:web:docs` green; it validates runtime feature flags, matrix
+- Keep `npm run test:web:docs` green; it validates runtime feature flags, matrix
   statuses, inventory counts, and evidence references.
 
 Run the normal validation set before changing the release claim:
 
 ```sh
-yarn build:web
-yarn test:web
-WEB_BROWSER=chrome yarn test:web:release
+npm run build:web
+npm run test:web
+WEB_BROWSER=chrome npm run test:web:release
 ```
 
 See [RELEASE.md](RELEASE.md) for the production build and release procedure.

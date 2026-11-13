@@ -23,17 +23,17 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
-          cache: yarn
-      - run: yarn --frozen-lockfile
-      - run: yarn build:web
-      - run: yarn check:web
-      - run: yarn test:web:contract
-      - run: yarn test:web:payload
-      - run: yarn test:web:security
-      - run: yarn test:web:hosting-errors
-      - run: yarn test:web:gitlab
-      - run: yarn test:web:updates
-      - run: yarn test:web:copilot-cancellation
+          cache: npm
+      - run: npm ci
+      - run: npm run build:web
+      - run: npm run check:web
+      - run: npm run test:web:contract
+      - run: npm run test:web:payload
+      - run: npm run test:web:security
+      - run: npm run test:web:hosting-errors
+      - run: npm run test:web:gitlab
+      - run: npm run test:web:updates
+      - run: npm run test:web:copilot-cancellation
       - name: Verify generated web payload
         run: git diff --exit-code -- web-server/public
 
@@ -45,10 +45,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
-          cache: yarn
-      - run: yarn --frozen-lockfile
-      - run: yarn build:web
-      - run: yarn test:web:api
+          cache: npm
+      - run: npm ci
+      - run: npm run build:web
+      - run: npm run test:web:api
 
   platform:
     strategy:
@@ -62,9 +62,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
-          cache: yarn
-      - run: yarn --frozen-lockfile
-      - run: yarn test:web:platform
+          cache: npm
+      - run: npm ci
+      - run: npm run test:web:platform
 
   browser-integration:
     runs-on: ubuntu-latest
@@ -74,14 +74,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
-          cache: yarn
-      - run: yarn --frozen-lockfile
-      - run: yarn build:web
+          cache: npm
+      - run: npm ci
+      - run: npm run build:web
       - run: npx playwright install --with-deps chromium
       - name: Run browser integration tests
         run: |
           set -o pipefail
-          yarn test:web:browser-integration 2>&1 | tee web-browser-integration.log
+          npm run test:web:browser-integration 2>&1 | tee web-browser-integration.log
       - name: Upload browser integration log
         if: failure()
         uses: actions/upload-artifact@v4
@@ -97,14 +97,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
-          cache: yarn
-      - run: yarn --frozen-lockfile
-      - run: yarn build:web
+          cache: npm
+      - run: npm ci
+      - run: npm run build:web
       - run: npx playwright install --with-deps chromium
       - name: Run browser UI workflows
         run: |
           set -o pipefail
-          yarn test:web:ui 2>&1 | tee web-browser-ui.log
+          npm run test:web:ui 2>&1 | tee web-browser-ui.log
       - name: Upload browser UI log
         if: failure()
         uses: actions/upload-artifact@v4
@@ -133,9 +133,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
-          cache: yarn
-      - run: yarn --frozen-lockfile
-      - run: yarn build:web
+          cache: npm
+      - run: npm ci
+      - run: npm run build:web
       - name: Install Playwright browser
         run: npx playwright install --with-deps ${{ matrix.playwright }}
       - name: Run source-renderer browser workflows
@@ -143,7 +143,7 @@ jobs:
           WEB_BROWSER: ${{ matrix.browser }}
         run: |
           set -o pipefail
-          yarn test:web:e2e 2>&1 | tee web-browser-${{ matrix.browser }}.log
+          npm run test:web:e2e 2>&1 | tee web-browser-${{ matrix.browser }}.log
       - name: Upload browser log
         if: failure()
         uses: actions/upload-artifact@v4
@@ -164,14 +164,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
-          cache: yarn
-      - run: yarn --frozen-lockfile
-      - run: yarn build:web
+          cache: npm
+      - run: npm ci
+      - run: npm run build:web
       - run: npx playwright install chromium
       - name: Run source-renderer browser workflows
         env:
           WEB_BROWSER: chromium
-        run: yarn test:web:e2e
+        run: npm run test:web:e2e
 
   release-candidate:
     runs-on: macos-latest
@@ -181,13 +181,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
-          cache: yarn
-      - run: yarn --frozen-lockfile
-      - run: yarn build:web
+          cache: npm
+      - run: npm ci
+      - run: npm run build:web
       - name: Run branded Chrome release-candidate evidence
         env:
           WEB_BROWSER: chrome
-        run: yarn test:web:release
+        run: npm run test:web:release
 
   provider-sandbox:
     if:
@@ -212,7 +212,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
-          cache: yarn
-      - run: yarn --frozen-lockfile
-      - run: yarn build:web
-      - run: yarn test:web:provider-sandbox
+          cache: npm
+      - run: npm ci
+      - run: npm run build:web
+      - run: npm run test:web:provider-sandbox

@@ -56,7 +56,7 @@
     "bundle:vibing": "node scripts/bundle-desktop-plus-web.mjs",
     "check:web:types": "tsc -p web-server/tsconfig.json",
     "check:web:format": "prettier --check \"web-server/*.js\" \"web-server/src/**/*.js\" \"app/src/patches/**/*.tsx\" \"app/src/patches/**/*.ts\" \"app/src/ui/app-chrome.tsx\" \"app/src/ui/repository-layout.tsx\" \"app/src/ui/repository-tabs.tsx\" \"app/src/ui/toolbar/*.tsx\" \".github/workflows/web-port.yml\"",
-    "check:web": "yarn check:web:types && yarn check:web:format && yarn test:web:docs && yarn test:web:source-dependencies && yarn test:web:ui-ownership",
+    "check:web": "npm run check:web:types && npm run check:web:format && npm run test:web:docs && npm run test:web:source-dependencies && npm run test:web:ui-ownership",
     "test:web:contract": "node web-server/test-contract.js",
     "test:web:operation-parity": "node web-server/test-operation-parity.js",
     "test:web:docs": "node web-server/test-docs.js",
@@ -79,7 +79,7 @@
     "test:web:browser-integration": "node web-server/run-browser-tests.js integration",
     "test:web:ui": "node web-server/run-browser-tests.js ui",
     "test:web:e2e": "node web-server/run-browser-tests.js all",
-    "test:web": "yarn check:web && yarn test:web:contract && yarn test:web:operation-parity && yarn test:web:payload && yarn test:web:platform && yarn test:web:multi-cherry-pick && yarn test:web:toolbar-actions && yarn test:web:security && yarn test:web:start && yarn test:web:hosting-errors && yarn test:web:gitlab && yarn test:web:updates && yarn test:web:copilot-cancellation && yarn test:web:api && yarn test:web:e2e"
+    "test:web": "npm run check:web && npm run test:web:contract && npm run test:web:operation-parity && npm run test:web:payload && npm run test:web:platform && npm run test:web:multi-cherry-pick && npm run test:web:toolbar-actions && npm run test:web:security && npm run test:web:start && npm run test:web:hosting-errors && npm run test:web:gitlab && npm run test:web:updates && npm run test:web:copilot-cancellation && npm run test:web:api && npm run test:web:e2e"
   },
   "author": {
     "name": "Pol Rivero",

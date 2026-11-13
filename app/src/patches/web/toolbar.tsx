@@ -578,7 +578,10 @@ export function DesktopToolbar(props: {
           tip: desktopTip,
           upstreamDefaultBranch: null,
         },
-        changesState: { conflictState: null },
+        changesState: {
+          conflictState: null,
+          assistedCommit: { kind: 'idle' },
+        },
         checkoutProgress: null,
         worktrees,
       } as unknown as IRepositoryState),

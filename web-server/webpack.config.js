@@ -26,6 +26,8 @@ module.exports = {
   resolve: {
     extensions: ['.ts', '.tsx', '.js'],
     alias: {
+      [path.join(root, 'app', 'src', 'lib', 'git', 'repository-operation.ts')]:
+        path.join(__dirname, 'src', 'desktop-repository-operation-stub.js'),
       [path.join(root, 'app', 'src', 'lib', 'clone-info.ts')]: path.join(
         __dirname,
         'src',

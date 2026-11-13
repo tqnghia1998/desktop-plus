@@ -187,6 +187,10 @@ export function DesktopChangesView(props: {
   const desktopChanges: IChangesState = {
     workingDirectory,
     commitMessage,
+    commitMode: 'manual',
+    pushAfterCommit: false,
+    assistedCommit: { kind: 'idle' },
+    assistedCommitAvailable: false,
     showCoAuthoredBy: false,
     coAuthors: [],
     conflictState: null,
@@ -496,6 +500,7 @@ export function DesktopChangesView(props: {
           shouldShowGenerateCommitMessageCallOut={false}
           showChangesFilter={props.showChangesFilter}
           fileListRowHeight={32}
+          supportsPushAfterCommit={false}
           showCommitAuthorInfo={props.showCommitAuthorInfo}
           showCommitLengthWarning={props.showCommitLengthWarning}
           signOffCommits={props.state.commitOptions.signOff}

@@ -4,7 +4,7 @@
 // ships inside server-bundle/scripts and spawns directly.
 //
 // Usage: node scripts/bundle-desktop-plus-web.mjs [output-dir]
-// Run `yarn build:web` first so web-server/public/ exists.
+// Run `npm run build:web` first so web-server/public/ exists.
 
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
@@ -27,7 +27,7 @@ const serverEntry = path.join(root, 'web-server', 'server.js')
 const builtIndex = path.join(root, 'web-server', 'public', 'index.html')
 if (!fs.existsSync(builtIndex)) {
   console.error(
-    'web-server/public/index.html is missing. Run `yarn build:web` before bundling.'
+    'web-server/public/index.html is missing. Run `npm run build:web` before bundling.'
   )
   process.exit(1)
 }
