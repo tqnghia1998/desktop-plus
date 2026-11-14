@@ -557,6 +557,11 @@ body.theme-light {
 
 body.theme-light {
   --commit-message-action-button-separator-color: var(--box-border-color);
+  /* Declared on :root as var() references, so without these two the light diff gutter resolved
+   * there to upstream's white page colour, and the gutter of an empty row to its own raised tone.
+   * Dark's gutters are the canvas (themes/_dark.scss redeclares them), so light's are too. */
+  --diff-gutter-background-color: var(--background-color);
+  --diff-empty-row-gutter-background-color: var(--diff-gutter-background-color);
   --pr-timeline-line-color: var(--box-border-contrast-color);
 }
 
