@@ -325,20 +325,20 @@ body.theme-dark {
 body.theme-light {
   color-scheme: light;
 
-  --vibing-surface: #e6e7ed;
-  --vibing-raised: #e1e2e8;
-  --vibing-hover: #dcdee3;
-  --vibing-selected: #cdcfd7;
+  --vibing-surface: #d6d8df;
+  --vibing-raised: #e6e7ed;
+  --vibing-hover: #cbd1df;
+  --vibing-selected: #bfc9df;
   /* Hairlines and outlines: the palette's own border value, never the hover tone. */
   --vibing-border: #c1c2c7;
-  --vibing-text-faint: #707280;
-  --vibing-text-subdued: #484c61;
+  --vibing-text-faint: #686a77;
+  --vibing-text-subdued: #4c505e;
   --vibing-text: #343b59;
-  --vibing-blue: #2959aa;
+  --vibing-blue: #395d99;
   --vibing-green: #33635c;
-  --vibing-yellow: #855612;
+  --vibing-yellow: #7e5211;
   --vibing-red: #8c4351;
-  --vibing-purple: #7b43ba;
+  --vibing-purple: #7540b1;
   --vibing-on-accent: #ffffff;
   --vibing-blue-hover: color-mix(in srgb, var(--vibing-blue) 85%, black);
   --vibing-surface-clear: rgb(from var(--vibing-surface) r g b / 0);
@@ -452,6 +452,185 @@ body.theme-light {
       rgba(0, 0, 0, 0.18) 100%
     )
     0 100%;
+
+  /* Tints of the palette hues for status surfaces (diff rows, banners, tags). They
+   * mix toward the raised tone so text and syntax colors keep their contrast. */
+  --vibing-red-wash: color-mix(in srgb, var(--vibing-red) 12%, var(--vibing-raised));
+  --vibing-red-wash-strong: color-mix(in srgb, var(--vibing-red) 24%, var(--vibing-raised));
+  --vibing-red-line: color-mix(in srgb, var(--vibing-red) 45%, var(--vibing-raised));
+  --vibing-red-text: color-mix(in srgb, var(--vibing-red) 55%, var(--vibing-text));
+  --vibing-green-wash: color-mix(in srgb, var(--vibing-green) 12%, var(--vibing-raised));
+  --vibing-green-wash-strong: color-mix(in srgb, var(--vibing-green) 24%, var(--vibing-raised));
+  --vibing-green-line: color-mix(in srgb, var(--vibing-green) 45%, var(--vibing-raised));
+  --vibing-green-text: color-mix(in srgb, var(--vibing-green) 55%, var(--vibing-text));
+  --vibing-blue-wash: color-mix(in srgb, var(--vibing-blue) 12%, var(--vibing-raised));
+  --vibing-blue-wash-strong: color-mix(in srgb, var(--vibing-blue) 24%, var(--vibing-raised));
+  --vibing-blue-line: color-mix(in srgb, var(--vibing-blue) 45%, var(--vibing-raised));
+  --vibing-yellow-wash: color-mix(in srgb, var(--vibing-yellow) 12%, var(--vibing-raised));
+
+  /* Upstream GitHub light values that the light theme used to inherit from :root.
+   * The upstream surface was white, so they matched; each now follows its role on
+   * the ladder (see docs/theme.md in Space App Vibing). */
+  --button-focus-border-color: var(--vibing-blue-line);
+  --link-button-selected-hover-color: var(--vibing-on-accent);
+  --secondary-button-focus-shadow-color: color-mix(
+    in srgb,
+    var(--vibing-selected) 75%,
+    transparent
+  );
+  --secondary-button-focus-border-color: var(--vibing-selected);
+  --button-destructive-background: var(--vibing-red-wash);
+  --button-destructive-border-color: var(--vibing-red-line);
+  --button-destructive-text-color: var(--vibing-red-text);
+  --button-destructive-hover-background: var(--vibing-red-wash-strong);
+  --button-destructive-hover-border-color: var(--vibing-red);
+  --button-destructive-focus-background: var(--vibing-red-wash-strong);
+  --button-destructive-focus-border-color: var(--vibing-red);
+  --badge-icon-color: var(--vibing-on-accent);
+  --warning-badge-icon-color: var(--vibing-yellow);
+  --input-icon-warning-color: var(--vibing-yellow);
+  --input-icon-error-color: var(--vibing-red);
+  --input-icon-hover-background-color: var(--vibing-hover);
+  --copilot-commit-glow-color: color-mix(
+    in srgb,
+    var(--vibing-blue) 14%,
+    transparent
+  );
+  --copilot-commit-accent-color: var(--vibing-blue);
+  --box-hover-text-color: var(--vibing-text);
+  --box-selected-text-color: var(--vibing-text);
+  --box-selected-border-color: var(--vibing-text-faint);
+  --box-selected-active-border-color: var(--vibing-text-faint);
+  --co-author-tag-background-color: var(--vibing-blue-wash);
+  --co-author-tag-border-color: var(--vibing-blue-line);
+  --commit-warning-badge-border: var(--vibing-selected);
+  --list-item-selected-badge-color: var(--vibing-text);
+  --list-item-selected-badge-background-color: var(--vibing-raised);
+  --list-item-selected-active-badge-color: var(--vibing-text);
+  --list-item-selected-active-badge-background-color: var(--vibing-raised);
+  --toast-notification-color: var(--vibing-text);
+  --toast-notification-background-color: color-mix(
+    in srgb,
+    var(--vibing-raised) 92%,
+    transparent
+  );
+  --tip-box-background-color: color-mix(
+    in srgb,
+    var(--vibing-blue) 6%,
+    transparent
+  );
+  --tip-box-border-color: var(--vibing-blue-line);
+  --text-field-focus-shadow-color: color-mix(
+    in srgb,
+    var(--vibing-blue) 25%,
+    transparent
+  );
+  --primary-suggested-action-background: var(--vibing-blue-wash);
+  --primary-suggested-action-border-color: var(--vibing-blue-line);
+  --suggested-action-icon-color: var(--vibing-blue);
+  --path-segment-background-focus: var(--vibing-blue-wash-strong);
+  --title-tool-tip-background-color: var(--vibing-raised);
+
+  --diff-text-color: var(--vibing-text);
+  --diff-alt-text-color: var(--vibing-text-subdued);
+  --diff-border-color: var(--vibing-border);
+  --diff-gutter-color: var(--vibing-border);
+  --diff-line-number-color: var(--vibing-text-subdued);
+  --diff-linenumber-focus-color: var(--vibing-blue);
+  --diff-selected-background-color: var(--vibing-blue-hover);
+  --diff-selected-border-color: var(--vibing-blue-hover);
+  --diff-selected-gutter-color: var(--vibing-blue-hover);
+  --diff-add-background-color: var(--vibing-green-wash);
+  --diff-add-border-color: var(--vibing-green-line);
+  --diff-add-gutter-color: var(--vibing-green-line);
+  --diff-add-gutter-background-color: var(--vibing-green-wash-strong);
+  --diff-add-inner-background-color: var(--vibing-green-wash-strong);
+  --diff-delete-background-color: var(--vibing-red-wash);
+  --diff-delete-border-color: var(--vibing-red-line);
+  --diff-delete-gutter-color: var(--vibing-red-line);
+  --diff-delete-gutter-background-color: var(--vibing-red-wash-strong);
+  --diff-delete-inner-background-color: var(--vibing-red-wash-strong);
+  --diff-hunk-background-color: var(--vibing-blue-wash);
+  --diff-hunk-border-color: var(--vibing-blue-line);
+  --diff-hunk-gutter-color: var(--vibing-blue-line);
+  --diff-hunk-gutter-background-color: var(--vibing-blue-wash-strong);
+  --diff-hunk-text-color: var(--vibing-text-subdued);
+  --diff-hover-background-color: var(--vibing-blue);
+  --diff-hover-border-color: var(--vibing-blue-hover);
+  --diff-hover-gutter-color: var(--vibing-blue-hover);
+  --diff-add-hover-background-color: var(--vibing-green-line);
+  --diff-add-hover-border-color: var(--vibing-green);
+  --diff-add-hover-gutter-color: var(--vibing-green);
+  --diff-delete-hover-background-color: var(--vibing-red-line);
+  --diff-delete-hover-border-color: var(--vibing-red);
+  --diff-delete-hover-gutter-color: var(--vibing-red);
+  --diff-empty-row-background-color: var(--vibing-raised);
+  --diff-empty-hunk-handle: var(--vibing-selected);
+
+  --syntax-variable-color: var(--vibing-purple);
+  --syntax-alt-variable-color: var(--vibing-text);
+  --syntax-keyword-color: var(--vibing-red);
+  --syntax-atom-color: var(--vibing-blue);
+  --syntax-string-color: var(--vibing-yellow);
+  --syntax-qualifier-color: var(--vibing-purple);
+  --syntax-type-color: var(--vibing-red);
+  --syntax-comment-color: var(--vibing-text-faint);
+  --syntax-tag-color: var(--vibing-green);
+  --syntax-attribute-color: var(--vibing-purple);
+  --syntax-link-color: var(--vibing-blue);
+  --syntax-header-color: var(--vibing-blue);
+  --syntax-quote-color: var(--vibing-green);
+
+  --error-color: var(--vibing-red);
+  --form-error-background: var(--vibing-red-wash);
+  --form-error-border-color: var(--vibing-red-line);
+  --form-error-text-color: var(--vibing-red-text);
+  --input-error-text-color: var(--vibing-red);
+  --dialog-banner-success-background: var(--vibing-green-wash);
+  --dialog-banner-success-border-color: var(--vibing-green-line);
+  --dialog-banner-success-text-color: var(--vibing-green-text);
+  --dialog-warning-color: var(--vibing-yellow);
+  --dialog-information-color: var(--vibing-blue);
+  --dialog-error-color: var(--vibing-red);
+  --dialog-progress-background: var(--vibing-green);
+  --banner-warning-background: var(--vibing-yellow-wash);
+  --banner-warning-link-color: var(--vibing-blue);
+  --banner-warning-icon-color: var(--vibing-yellow);
+  --file-warning-background-color: var(--vibing-yellow-wash);
+  --file-warning-color: var(--vibing-yellow);
+  --file-warning-border-color: color-mix(
+    in srgb,
+    var(--vibing-yellow) 40%,
+    transparent
+  );
+  --status-pending-color: var(--vibing-yellow);
+  --status-error-color: var(--vibing-red);
+  --status-success-color: var(--vibing-green);
+  --pr-open-icon-color: var(--vibing-green);
+  --pr-draft-icon-color: var(--vibing-text-faint);
+  --pr-changes-requested-icon-color: var(--vibing-on-accent);
+  --pr-changes-requested-icon-background-color: var(--vibing-red);
+  --pr-approved-icon-color: var(--vibing-on-accent);
+  --pr-approved-icon-background-color: var(--vibing-green);
+  --pr-commented-icon-background-color: var(--vibing-selected);
+  --unpushed-branch-color: var(--vibing-yellow);
+  --call-to-action-bubble-border-color: var(--vibing-green);
+  --call-to-action-bubble-color: var(--vibing-green);
+
+  --md-border-default-color: var(--vibing-border);
+  --md-border-muted-color: var(--vibing-border);
+  --md-canvas-default-color: var(--vibing-surface);
+  --md-canvas-subtle-color: var(--vibing-raised);
+  --md-fg-default-color: var(--vibing-text);
+  --md-fg-muted-color: var(--vibing-text-subdued);
+  --md-danger-fg-color: var(--vibing-red);
+  --md-neutral-muted-color: color-mix(
+    in srgb,
+    var(--vibing-text-faint) 20%,
+    transparent
+  );
+  --md-accent-emphasis-color: var(--vibing-blue);
+  --md-accent-fg-color: var(--vibing-blue);
 }
 
 /* Desktop Plus declares these on :root as var() references, and a custom
