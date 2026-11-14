@@ -191,6 +191,8 @@ body.theme-dark {
   --vibing-raised: #24292e;
   --vibing-hover: #2f363d;
   --vibing-selected: #444d56;
+  /* Hairlines and outlines: the palette's own border value, never the hover tone. */
+  --vibing-border: #2b3137;
   --vibing-text-faint: #959da5;
   --vibing-text-subdued: #d1d5da;
   --vibing-text: #f6f8fa;
@@ -228,7 +230,7 @@ body.theme-dark {
 
   --box-background-color: var(--vibing-raised);
   --box-alt-background-color: var(--vibing-surface);
-  --box-border-color: var(--vibing-hover);
+  --box-border-color: var(--vibing-border);
   --box-border-contrast-color: var(--vibing-selected);
   --box-border-accent-color: var(--vibing-blue);
   --box-hover-background-color: var(--vibing-hover);
@@ -245,10 +247,10 @@ body.theme-dark {
   --box-placeholder-color: var(--vibing-text-faint);
 
   --toolbar-background-color: var(--vibing-surface);
-  --toolbar-border-color: var(--vibing-hover);
+  --toolbar-border-color: var(--vibing-border);
   --toolbar-text-color: var(--vibing-text);
   --toolbar-text-secondary-color: var(--vibing-text-subdued);
-  --toolbar-button-border-color: var(--vibing-hover);
+  --toolbar-button-border-color: var(--vibing-border);
   --toolbar-button-hover-color: var(--vibing-text);
   --toolbar-button-hover-background-color: var(--vibing-hover);
   --toolbar-button-focus-background-color: var(--vibing-hover);
@@ -327,6 +329,8 @@ body.theme-light {
   --vibing-raised: #fafbfc;
   --vibing-hover: #f6f8fa;
   --vibing-selected: #e1e4e8;
+  /* Hairlines and outlines: the palette's own border value, never the hover tone. */
+  --vibing-border: #e1e4e8;
   --vibing-text-faint: #6a737d;
   --vibing-text-subdued: #586069;
   --vibing-text: #24292e;
@@ -364,7 +368,7 @@ body.theme-light {
 
   --box-background-color: var(--vibing-raised);
   --box-alt-background-color: var(--vibing-surface);
-  --box-border-color: var(--vibing-hover);
+  --box-border-color: var(--vibing-border);
   --box-border-contrast-color: var(--vibing-selected);
   --box-border-accent-color: var(--vibing-blue);
   --box-hover-background-color: var(--vibing-hover);
@@ -381,10 +385,10 @@ body.theme-light {
   --box-placeholder-color: var(--vibing-text-faint);
 
   --toolbar-background-color: var(--vibing-surface);
-  --toolbar-border-color: var(--vibing-selected);
+  --toolbar-border-color: var(--vibing-border);
   --toolbar-text-color: var(--vibing-text);
   --toolbar-text-secondary-color: var(--vibing-text-subdued);
-  --toolbar-button-border-color: var(--vibing-selected);
+  --toolbar-button-border-color: var(--vibing-border);
   --toolbar-button-hover-color: var(--vibing-text);
   --toolbar-button-hover-background-color: var(--vibing-hover);
   --toolbar-button-focus-background-color: var(--vibing-hover);
