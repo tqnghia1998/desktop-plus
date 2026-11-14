@@ -210,7 +210,7 @@ body.theme-light {
 
   --vibing-surface: #d6d8df;
   --vibing-raised: #e6e7ed;
-  --vibing-hover: #cbd1df;
+  --vibing-hover: #cbcdd3;
   --vibing-selected: #bfc9df;
   /* Hairlines and outlines: the palette's own border value, never the hover tone. */
   --vibing-border: #c1c2c7;
