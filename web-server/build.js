@@ -59,6 +59,7 @@ function gitSha() {
 }
 
 function writeAsset(prefix, extension, content) {
+  fs.mkdirSync(assetsDir, { recursive: true })
   const fileName = `${prefix}-${hash(content)}.${extension}`
   fs.writeFileSync(path.join(assetsDir, fileName), content)
   return fileName
