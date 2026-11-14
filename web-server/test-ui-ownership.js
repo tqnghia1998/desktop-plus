@@ -455,18 +455,18 @@ body.theme-light {
 
   /* Tints of the palette hues for status surfaces (diff rows, banners, tags). They
    * mix toward the raised tone so text and syntax colors keep their contrast. */
-  --vibing-red-wash: color-mix(in srgb, var(--vibing-red) 12%, var(--vibing-raised));
+  --vibing-red-wash: color-mix(in srgb, var(--vibing-red) 10%, var(--vibing-raised));
   --vibing-red-wash-strong: color-mix(in srgb, var(--vibing-red) 24%, var(--vibing-raised));
   --vibing-red-line: color-mix(in srgb, var(--vibing-red) 45%, var(--vibing-raised));
   --vibing-red-text: color-mix(in srgb, var(--vibing-red) 55%, var(--vibing-text));
-  --vibing-green-wash: color-mix(in srgb, var(--vibing-green) 12%, var(--vibing-raised));
+  --vibing-green-wash: color-mix(in srgb, var(--vibing-green) 10%, var(--vibing-raised));
   --vibing-green-wash-strong: color-mix(in srgb, var(--vibing-green) 24%, var(--vibing-raised));
   --vibing-green-line: color-mix(in srgb, var(--vibing-green) 45%, var(--vibing-raised));
   --vibing-green-text: color-mix(in srgb, var(--vibing-green) 55%, var(--vibing-text));
-  --vibing-blue-wash: color-mix(in srgb, var(--vibing-blue) 12%, var(--vibing-raised));
+  --vibing-blue-wash: color-mix(in srgb, var(--vibing-blue) 10%, var(--vibing-raised));
   --vibing-blue-wash-strong: color-mix(in srgb, var(--vibing-blue) 24%, var(--vibing-raised));
   --vibing-blue-line: color-mix(in srgb, var(--vibing-blue) 45%, var(--vibing-raised));
-  --vibing-yellow-wash: color-mix(in srgb, var(--vibing-yellow) 12%, var(--vibing-raised));
+  --vibing-yellow-wash: color-mix(in srgb, var(--vibing-yellow) 10%, var(--vibing-raised));
 
   /* Upstream GitHub light values that the light theme used to inherit from :root.
    * The upstream surface was white, so they matched; each now follows its role on
