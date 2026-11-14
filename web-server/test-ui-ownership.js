@@ -325,20 +325,20 @@ body.theme-dark {
 body.theme-light {
   color-scheme: light;
 
-  --vibing-surface: #ffffff;
-  --vibing-raised: #fafbfc;
-  --vibing-hover: #f6f8fa;
-  --vibing-selected: #e1e4e8;
+  --vibing-surface: #e6e7ed;
+  --vibing-raised: #e1e2e8;
+  --vibing-hover: #dcdee3;
+  --vibing-selected: #cdcfd7;
   /* Hairlines and outlines: the palette's own border value, never the hover tone. */
-  --vibing-border: #e1e4e8;
-  --vibing-text-faint: #6a737d;
-  --vibing-text-subdued: #586069;
-  --vibing-text: #24292e;
-  --vibing-blue: #0366d6;
-  --vibing-green: #1a7f37;
-  --vibing-yellow: #966600;
-  --vibing-red: #cb2431;
-  --vibing-purple: #6f42c1;
+  --vibing-border: #c1c2c7;
+  --vibing-text-faint: #707280;
+  --vibing-text-subdued: #484c61;
+  --vibing-text: #343b59;
+  --vibing-blue: #2959aa;
+  --vibing-green: #33635c;
+  --vibing-yellow: #855612;
+  --vibing-red: #8c4351;
+  --vibing-purple: #7b43ba;
   --vibing-on-accent: #ffffff;
   --vibing-blue-hover: color-mix(in srgb, var(--vibing-blue) 85%, black);
   --vibing-surface-clear: rgb(from var(--vibing-surface) r g b / 0);
