@@ -676,6 +676,161 @@ body.theme-light {
   --commit-message-action-button-separator-color: var(--box-border-color);
   --pr-timeline-line-color: var(--box-border-contrast-color);
 }
+
+/* Upstream hard-codes the GitHub CI status colours for a white page (pending
+ * #dbab09 is 1.5:1 and success #28a745 2.2:1 on the light canvas). Light uses
+ * the palette hues instead, so status icons keep 3:1 and the check titles 4.5:1;
+ * dark keeps the upstream colours. */
+body.theme-light .ci-status-pending,
+body.theme-light .toolbar-dropdown.open .ci-status-pending,
+body.theme-light .merge-status-component .merge-status-loading,
+body.theme-light
+  .ci-check-list-popover
+  .ci-check-run-list-header
+  .ci-check-run-list-title-container
+  .title
+  .pending {
+  color: var(--vibing-yellow);
+}
+
+body.theme-light .ci-status-timed-out,
+body.theme-light .ci-status-action-required,
+body.theme-light .ci-status-failure,
+body.theme-light .toolbar-dropdown.open .ci-status-failure,
+body.theme-light .merge-status-component .merge-status-invalid,
+body.theme-light
+  .ci-check-list-popover
+  .ci-check-run-list-header
+  .ci-check-run-list-title-container
+  .title
+  .failure,
+body.theme-light
+  .ci-check-list-popover
+  .ci-check-run-list-header
+  .completeness-indicator
+  .completeness-indicator-error {
+  color: var(--vibing-red);
+}
+
+body.theme-light .ci-status-success,
+body.theme-light .toolbar-dropdown.open .ci-status-success,
+body.theme-light .merge-status-component .merge-status-clean,
+body.theme-light
+  .ci-check-list-popover
+  .ci-check-run-list-header
+  .completeness-indicator
+  .completeness-indicator-success {
+  color: var(--vibing-green);
+}
+
+body.theme-light .ci-status-cancelled,
+body.theme-light .ci-status-stale,
+body.theme-light .ci-status-skipped,
+body.theme-light .ci-status-neutral {
+  color: var(--vibing-text-faint);
+}
+
+body.theme-light
+  .ci-check-list-popover
+  .ci-check-run-list-header
+  .completeness-indicator
+  .donut
+  > .error,
+body.theme-light
+  .ci-check-list-popover
+  .ci-check-run-list-header
+  .completeness-indicator
+  .donut
+  > .cancelled,
+body.theme-light
+  .ci-check-list-popover
+  .ci-check-run-list-header
+  .completeness-indicator
+  .donut
+  > .action_required,
+body.theme-light
+  .ci-check-list-popover
+  .ci-check-run-list-header
+  .completeness-indicator
+  .donut
+  > .timed_out,
+body.theme-light
+  .ci-check-list-popover
+  .ci-check-run-list-header
+  .completeness-indicator
+  .donut
+  > .failure {
+  fill: var(--vibing-red);
+}
+
+body.theme-light
+  .ci-check-list-popover
+  .ci-check-run-list-header
+  .completeness-indicator
+  .donut
+  > .expected,
+body.theme-light
+  .ci-check-list-popover
+  .ci-check-run-list-header
+  .completeness-indicator
+  .donut
+  > .queued,
+body.theme-light
+  .ci-check-list-popover
+  .ci-check-run-list-header
+  .completeness-indicator
+  .donut
+  > .in_progress,
+body.theme-light
+  .ci-check-list-popover
+  .ci-check-run-list-header
+  .completeness-indicator
+  .donut
+  > .waiting,
+body.theme-light
+  .ci-check-list-popover
+  .ci-check-run-list-header
+  .completeness-indicator
+  .donut
+  > .requested,
+body.theme-light
+  .ci-check-list-popover
+  .ci-check-run-list-header
+  .completeness-indicator
+  .donut
+  > .pending {
+  fill: var(--vibing-yellow);
+}
+
+body.theme-light
+  .ci-check-list-popover
+  .ci-check-run-list-header
+  .completeness-indicator
+  .donut
+  > .success {
+  fill: var(--vibing-green);
+}
+
+body.theme-light
+  .ci-check-list-popover
+  .ci-check-run-list-header
+  .completeness-indicator
+  .donut
+  > .neutral,
+body.theme-light
+  .ci-check-list-popover
+  .ci-check-run-list-header
+  .completeness-indicator
+  .donut
+  > .stale,
+body.theme-light
+  .ci-check-list-popover
+  .ci-check-run-list-header
+  .completeness-indicator
+  .donut
+  > .skipped {
+  fill: var(--vibing-text-faint);
+}
 `,
   'Browser CSS may only size the renderer root, position shared menus and\n' +
     'dialogs, align the light and dark themes with the Space App Vibing host, and fit\n' +
