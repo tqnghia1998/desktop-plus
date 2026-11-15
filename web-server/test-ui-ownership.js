@@ -420,7 +420,14 @@ body.theme-light {
 
   --focus-color: var(--vibing-blue);
   --accent-color: var(--vibing-blue-hover);
-  --overlay-background-color: rgba(0, 0, 0, 0.6);
+  /* The scrim behind dialogs, foldouts and popovers is black whose strength falls
+   * as the canvas brightens: 0.60 on the dark canvas (g = 33) and 0.35 on the white
+   * one (g = 255), one expression in both modes. A fixed black alpha cannot do this:
+   * it dims white to #666, while any mix of the canvas toward black scales dark and
+   * light by the same factor. */
+  --overlay-background-color: rgb(
+    from var(--vibing-surface) 0 0 0 / calc(0.64 - g / 885)
+  );
   --shadow-color: rgba(0, 0, 0, 0.5);
   --scroll-bar-thumb-background-color: color-mix(
     in srgb,
@@ -946,9 +953,44 @@ body:is(.theme-dark, .theme-light) .dropdown-select-button-options {
     'Only var() roles, black alpha, rgb(from var(...)) and color-mix of var()/transparent are allowed'
   )
 
-  // rgb()/rgba(): channel-relative on a var() role, or black with one of the
-  // exact alphas this stylesheet uses (shadows, overlay and scroll shadows).
+  // rgb()/rgba(): channel-relative on a var() role, black with one of the
+  // exact alphas this stylesheet uses (shadows and scroll shadows), or the one
+  // scrim expression (black whose alpha falls with the canvas green channel).
   const allowedBlackAlpha = new Set(['0.5', '0.6', '1'])
+  const scrimExpression =
+    'rgb(from var(--vibing-surface) 0 0 0 / calc(0.64 - g / 885))'
+  const isAllowedRgbCall = call => {
+    const normalized = call.replace(/\s+/g, ' ').replace(/\( /g, '(')
+    const black = /^rgba\(0, 0, 0, ([0-9.]+)\)$/.exec(normalized)
+    if (black) {
+      return allowedBlackAlpha.has(black[1])
+    }
+    return (
+      normalized.replace(/ \)$/, ')') === scrimExpression ||
+      /^rgb\(from var\(--[a-z-]+\) r g b \/ [0-9.]+\)$/.test(normalized)
+    )
+  }
+  // The gate itself: it accepts the scrim expression exactly and rejects every
+  // near miss (another role, alpha, divisor, channel or a lighter literal).
+  assert.ok(isAllowedRgbCall(scrimExpression))
+  assert.ok(
+    isAllowedRgbCall(`rgb(
+    from var(--vibing-surface) 0 0 0 / calc(0.64 - g / 885)
+  )`)
+  )
+  for (const mutant of [
+    'rgb(from var(--vibing-raised) 0 0 0 / calc(0.64 - g / 885))',
+    'rgb(from var(--vibing-surface) 0 0 0 / calc(0.64 - r / 885))',
+    'rgb(from var(--vibing-surface) 0 0 0 / calc(0.5 - g / 885))',
+    'rgb(from var(--vibing-surface) 0 0 0 / calc(0.64 - g / 500))',
+    'rgb(from var(--vibing-surface) 0 0 0 / 0.35)',
+    'rgb(from var(--vibing-surface) 255 255 255 / calc(0.64 - g / 885))',
+    'rgb(0 0 0 / calc(0.64 - g / 885))',
+    'rgba(0, 0, 0, 0.35)',
+    'rgba(0, 0, 0, 0.3)',
+  ]) {
+    assert.ok(!isAllowedRgbCall(mutant), `The rgb gate must reject: ${mutant}`)
+  }
   const balancedCall = (text, index) => {
     let depth = 0
     for (let i = text.indexOf('(', index); i < text.length; i++) {
@@ -966,15 +1008,18 @@ body:is(.theme-dark, .theme-light) .dropdown-select-button-options {
   )
   assert.ok(rgbCalls.length > 0, 'The stylesheet is expected to use rgb()')
   assert.deepEqual(
-    rgbCalls.filter(call => {
-      const black = /^rgba\(0, 0, 0, ([0-9.]+)\)$/.exec(call)
-      if (black) {
-        return !allowedBlackAlpha.has(black[1])
-      }
-      return !/^rgb\(from var\(--[a-z-]+\) r g b \/ [0-9.]+\)$/.test(call)
-    }),
+    rgbCalls.filter(call => !isAllowedRgbCall(call)),
     [],
-    'rgb() may only be black at the stylesheet alphas (0.5, 0.6, 1) or relative to a var() role'
+    'rgb() may only be black at the stylesheet alphas (0.5, 0.6, 1), the scrim expression or relative to a var() role'
+  )
+  assert.ok(
+    rgbCalls.some(call => isAllowedRgbCall(call) && call.includes(' g / 885')),
+    'The scrim expression is expected in the stylesheet'
+  )
+  assert.match(
+    withoutPrimitives.replace(/\s+/g, ' '),
+    /--overlay-background-color: rgb\( ?from var\(--vibing-surface\) 0 0 0 \/ calc\(0\.64 - g \/ 885\) ?\);/,
+    '--overlay-background-color must be the scrim expression'
   )
 
   // color-mix(): the space is srgb and every operand is var(--...) or
