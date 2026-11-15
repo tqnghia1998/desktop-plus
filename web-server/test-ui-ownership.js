@@ -207,8 +207,8 @@ body.theme-light {
   color-scheme: light;
 
   --vibing-surface: #d6d8df;
-  --vibing-raised: #e6e7ed;
-  --vibing-hover: #cbcdd3;
+  --vibing-raised: #dddfe5;
+  --vibing-hover: #e3e4ea;
   --vibing-selected: #c6c9cf;
   --vibing-border: #c1c2c7;
   --vibing-text-faint: #686a77;
