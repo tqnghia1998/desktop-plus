@@ -427,6 +427,7 @@ function DesktopSelectedCommits(props: {
           _repository: Repository,
           file: CommittedFileChange
         ) => props.dispatcher.selectHistoryFile(file.path),
+        setHistoryFileTreeView: preferences.onHistoryFileTreeViewChanged,
         changeImageDiffType: preferences.onImageDiffTypeChanged,
         copyPathToClipboard: (path: string) => props.dispatcher.copyText(path),
         copyPathsToClipboard: (paths: ReadonlyArray<string>) =>
@@ -462,7 +463,8 @@ function DesktopSelectedCommits(props: {
 
   return (
     <SelectedCommits
-      fileTreeView={preferences.fileTreeView}
+      fileTreeView={preferences.historyFileTreeView}
+      showViewModeSwitches={true}
       accounts={[]}
       changesetData={{
         files,
