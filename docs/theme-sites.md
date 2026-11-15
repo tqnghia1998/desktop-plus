@@ -22,8 +22,8 @@ The primitive blocks are `body.theme-dark` and `body.theme-light`. Each hex appe
 | --- | --- | --- | --- |
 | canvas | `--vibing-surface` | `#1d2125` (line 74) | `#ffffff` (line 92) |
 | raised | `--vibing-raised` | `#24292e` (line 75) | `#f8f8fa` (line 93) |
-| hover | `--vibing-hover` | `#2f363d` (line 76) | `#f0f0f3` (line 94) |
-| selected | `--vibing-selected` | `#444d56` (line 77) | `#dfdfe3` (line 95) |
+| hover | `--vibing-hover` | `#2f363d` (line 76) | `#f4f4f7` (line 94) |
+| selected | `--vibing-selected` | `#444d56` (line 77) | `#ebebef` (line 95) |
 | faint text | `--vibing-text-faint` | `#959da5` (line 79) | `#6d6f71` (line 97) |
 | subdued text | `--vibing-text-subdued` | `#d1d5da` (line 80) | `#5c5e63` (line 98) |
 | default text | `--vibing-text` | `#f6f8fa` (line 81) | `#202325` (line 99) |
@@ -48,8 +48,8 @@ policy gate (see `web-server/FORK-OVERLAY.md`).
 | --- | --- | --- |
 | canvas | `#1d2125` (line 191) | `#ffffff` (line 209) |
 | raised | `#24292e` (line 192) | `#f8f8fa` (line 210) |
-| hover | `#2f363d` (line 193) | `#f0f0f3` (line 211) |
-| selected | `#444d56` (line 194) | `#dfdfe3` (line 212) |
+| hover | `#2f363d` (line 193) | `#f4f4f7` (line 211) |
+| selected | `#444d56` (line 194) | `#ebebef` (line 212) |
 | faint text | `#959da5` (line 196) | `#6d6f71` (line 214) |
 | subdued text | `#d1d5da` (line 197) | `#5c5e63` (line 215) |
 | default text | `#f6f8fa` (line 198) | `#202325` (line 216) |
