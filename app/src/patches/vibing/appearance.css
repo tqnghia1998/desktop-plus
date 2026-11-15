@@ -120,18 +120,66 @@ body.theme-light {
 
   /* Tints of the palette hues for status surfaces (diff rows, banners, tags). They
    * mix toward the raised tone so text and syntax colors keep their contrast. */
-  --vibing-red-wash: color-mix(in srgb, var(--vibing-red) 10%, var(--vibing-raised));
-  --vibing-red-wash-strong: color-mix(in srgb, var(--vibing-red) 24%, var(--vibing-raised));
-  --vibing-red-line: color-mix(in srgb, var(--vibing-red) 45%, var(--vibing-raised));
-  --vibing-red-text: color-mix(in srgb, var(--vibing-red) 55%, var(--vibing-text));
-  --vibing-green-wash: color-mix(in srgb, var(--vibing-green) 10%, var(--vibing-raised));
-  --vibing-green-wash-strong: color-mix(in srgb, var(--vibing-green) 24%, var(--vibing-raised));
-  --vibing-green-line: color-mix(in srgb, var(--vibing-green) 45%, var(--vibing-raised));
-  --vibing-green-text: color-mix(in srgb, var(--vibing-green) 55%, var(--vibing-text));
-  --vibing-blue-wash: color-mix(in srgb, var(--vibing-blue) 10%, var(--vibing-raised));
-  --vibing-blue-wash-strong: color-mix(in srgb, var(--vibing-blue) 24%, var(--vibing-raised));
-  --vibing-blue-line: color-mix(in srgb, var(--vibing-blue) 45%, var(--vibing-raised));
-  --vibing-yellow-wash: color-mix(in srgb, var(--vibing-yellow) 10%, var(--vibing-raised));
+  --vibing-red-wash: color-mix(
+    in srgb,
+    var(--vibing-red) 10%,
+    var(--vibing-raised)
+  );
+  --vibing-red-wash-strong: color-mix(
+    in srgb,
+    var(--vibing-red) 24%,
+    var(--vibing-raised)
+  );
+  --vibing-red-line: color-mix(
+    in srgb,
+    var(--vibing-red) 45%,
+    var(--vibing-raised)
+  );
+  --vibing-red-text: color-mix(
+    in srgb,
+    var(--vibing-red) 55%,
+    var(--vibing-text)
+  );
+  --vibing-green-wash: color-mix(
+    in srgb,
+    var(--vibing-green) 10%,
+    var(--vibing-raised)
+  );
+  --vibing-green-wash-strong: color-mix(
+    in srgb,
+    var(--vibing-green) 24%,
+    var(--vibing-raised)
+  );
+  --vibing-green-line: color-mix(
+    in srgb,
+    var(--vibing-green) 45%,
+    var(--vibing-raised)
+  );
+  --vibing-green-text: color-mix(
+    in srgb,
+    var(--vibing-green) 55%,
+    var(--vibing-text)
+  );
+  --vibing-blue-wash: color-mix(
+    in srgb,
+    var(--vibing-blue) 10%,
+    var(--vibing-raised)
+  );
+  --vibing-blue-wash-strong: color-mix(
+    in srgb,
+    var(--vibing-blue) 24%,
+    var(--vibing-raised)
+  );
+  --vibing-blue-line: color-mix(
+    in srgb,
+    var(--vibing-blue) 45%,
+    var(--vibing-raised)
+  );
+  --vibing-yellow-wash: color-mix(
+    in srgb,
+    var(--vibing-yellow) 10%,
+    var(--vibing-raised)
+  );
 
   --text-color: var(--vibing-text);
   --text-secondary-color: var(--vibing-text-subdued);
@@ -479,7 +527,9 @@ body.theme-light {
  * identically in light and dark. */
 body:is(.theme-dark, .theme-light) .ci-status-pending,
 body:is(.theme-dark, .theme-light) .toolbar-dropdown.open .ci-status-pending,
-body:is(.theme-dark, .theme-light) .merge-status-component .merge-status-loading,
+body:is(.theme-dark, .theme-light)
+  .merge-status-component
+  .merge-status-loading,
 body:is(.theme-dark, .theme-light)
   .ci-check-list-popover
   .ci-check-run-list-header
@@ -493,7 +543,9 @@ body:is(.theme-dark, .theme-light) .ci-status-timed-out,
 body:is(.theme-dark, .theme-light) .ci-status-action-required,
 body:is(.theme-dark, .theme-light) .ci-status-failure,
 body:is(.theme-dark, .theme-light) .toolbar-dropdown.open .ci-status-failure,
-body:is(.theme-dark, .theme-light) .merge-status-component .merge-status-invalid,
+body:is(.theme-dark, .theme-light)
+  .merge-status-component
+  .merge-status-invalid,
 body:is(.theme-dark, .theme-light)
   .ci-check-list-popover
   .ci-check-run-list-header
@@ -626,4 +678,12 @@ body:is(.theme-dark, .theme-light)
   .donut
   > .skipped {
   fill: var(--vibing-text-faint);
+}
+
+/* Upstream gives the split-button options menu its flat, 1px-offset look in
+ * the dark theme only. Both themes use it. */
+body:is(.theme-dark, .theme-light) .dropdown-select-button-options {
+  box-shadow: none;
+  margin-top: 1px;
+  width: 100%;
 }
