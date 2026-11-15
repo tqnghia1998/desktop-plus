@@ -94,8 +94,8 @@ body.theme-dark {
 body.theme-light {
   color-scheme: light;
 
-  --vibing-surface: #f2f2f6;
-  --vibing-raised: #ffffff;
+  --vibing-surface: #ffffff;
+  --vibing-raised: #f2f2f6;
   --vibing-hover: #e8e8eb;
   --vibing-selected: #d9d9dd;
   --vibing-border: #dddde2;
