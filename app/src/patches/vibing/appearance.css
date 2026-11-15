@@ -303,7 +303,14 @@ body.theme-light {
 
   --focus-color: var(--vibing-blue);
   --accent-color: var(--vibing-blue-hover);
-  --overlay-background-color: rgba(0, 0, 0, 0.6);
+  /* The scrim behind dialogs, foldouts and popovers is black whose strength falls
+   * as the canvas brightens: 0.60 on the dark canvas (g = 33) and 0.35 on the white
+   * one (g = 255), one expression in both modes. A fixed black alpha cannot do this:
+   * it dims white to #666, while any mix of the canvas toward black scales dark and
+   * light by the same factor. */
+  --overlay-background-color: rgb(
+    from var(--vibing-surface) 0 0 0 / calc(0.64 - g / 885)
+  );
   --shadow-color: rgba(0, 0, 0, 0.5);
   --scroll-bar-thumb-background-color: color-mix(
     in srgb,
