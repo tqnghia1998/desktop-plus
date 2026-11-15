@@ -68,10 +68,18 @@ The role block binds every Desktop Plus variable identically in light and dark, 
 results differ only because the palettes do. These are known and accepted; do not try to
 fix them with a per-mode override (the ownership guard forbids one).
 
-- **Elevation.** `--shadow-color`, `--tooltip-shadow-color`, `--toolbar-tooltip-shadow-color`,
-  `--overlay-background-color` and the `--top-shadow`/`--bottom-shadow` scroll shadows use the
-  same black alphas (0.5, 0.6, 1) in both modes. In light they are heavier than the old
-  light-only alphas.
+- **Elevation.** `--shadow-color`, `--tooltip-shadow-color`, `--toolbar-tooltip-shadow-color`
+  and the `--top-shadow`/`--bottom-shadow` scroll shadows use the same black alphas (0.5, 0.6,
+  1) in both modes. In light they are heavier than the old light-only alphas.
+- **Scrim.** `--overlay-background-color` (dialog `::backdrop`, foldout, list and drag
+  overlays) is `rgb(from var(--vibing-surface) 0 0 0 / calc(0.64 - g / 885))`, one expression
+  in both modes: black at alpha 0.603 over the dark canvas (`g` = 33) and 0.352 over the white
+  one (`g` = 255). Dark composites within 1/255 of the old black 0.6 over the canvas, raised,
+  hover and selected tones (over the white text 98 vs 98); light composites to #a5a5a5 over
+  white instead of #666666. A fixed black alpha cannot be lighter in light without changing
+  dark, and a mix of the canvas toward black scales both modes by the same factor, so the
+  strength follows the canvas luminance. `web-server/test-ui-ownership.js` allows exactly this
+  expression and rejects near misses.
 - **Hover and selected on raised (light).** Hover on a raised surface is 1.05:1 and selected on
   raised 1.25:1; the blue hover on blue is 1.08:1. These are tone steps, not text contrast.
 - **Diff syntax on word-highlight fills.** Syntax tokens on the 24% word-highlight fills measure
