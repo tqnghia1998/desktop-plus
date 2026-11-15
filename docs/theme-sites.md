@@ -20,19 +20,19 @@ The primitive blocks are `body.theme-dark` and `body.theme-light`. Each hex appe
 
 | Role | Variable | Dark | Light |
 | --- | --- | --- | --- |
-| canvas | `--vibing-surface` | `#1d2125` (line 74) | `#d6d8df` (line 92) |
-| raised | `--vibing-raised` | `#24292e` (line 75) | `#dddfe5` (line 93) |
-| hover | `--vibing-hover` | `#2f363d` (line 76) | `#e3e4ea` (line 94) |
-| selected | `--vibing-selected` | `#444d56` (line 77) | `#c6c9cf` (line 95) |
-| faint text | `--vibing-text-faint` | `#959da5` (line 79) | `#686a77` (line 97) |
-| subdued text | `--vibing-text-subdued` | `#d1d5da` (line 80) | `#4c505e` (line 98) |
-| default text | `--vibing-text` | `#f6f8fa` (line 81) | `#343b59` (line 99) |
-| border | `--vibing-border` | `#2b3137` (line 78) | `#c1c2c7` (line 96) |
-| blue | `--vibing-blue` | `#79b8ff` (line 82) | `#395d99` (line 100) |
-| green | `--vibing-green` | `#28a745` (line 83) | `#33635c` (line 101) |
-| yellow | `--vibing-yellow` | `#f9c513` (line 84) | `#7e5211` (line 102) |
-| red | `--vibing-red` | `#f97583` (line 85) | `#8c4351` (line 103) |
-| purple | `--vibing-purple` | `#b392f0` (line 86) | `#7540b1` (line 104) |
+| canvas | `--vibing-surface` | `#1d2125` (line 74) | `#f2f2f6` (line 92) |
+| raised | `--vibing-raised` | `#24292e` (line 75) | `#ffffff` (line 93) |
+| hover | `--vibing-hover` | `#2f363d` (line 76) | `#e9e9f4` (line 94) |
+| selected | `--vibing-selected` | `#444d56` (line 77) | `#dbdbe4` (line 95) |
+| faint text | `--vibing-text-faint` | `#959da5` (line 79) | `#7b7d7f` (line 97) |
+| subdued text | `--vibing-text-subdued` | `#d1d5da` (line 80) | `#5e5e77` (line 98) |
+| default text | `--vibing-text` | `#f6f8fa` (line 81) | `#202325` (line 99) |
+| border | `--vibing-border` | `#2b3137` (line 78) | `#dddde2` (line 96) |
+| blue | `--vibing-blue` | `#79b8ff` (line 82) | `#1571be` (line 100) |
+| green | `--vibing-green` | `#28a745` (line 83) | `#0f811c` (line 101) |
+| yellow | `--vibing-yellow` | `#f9c513` (line 84) | `#926610` (line 102) |
+| red | `--vibing-red` | `#f97583` (line 85) | `#d91e28` (line 103) |
+| purple | `--vibing-purple` | `#b392f0` (line 86) | `#5c4dff` (line 104) |
 
 ### `web-server/test-ui-ownership.js`: pinned copy of the stylesheet
 
@@ -46,19 +46,19 @@ policy gate (see `web-server/FORK-OVERLAY.md`).
 
 | Role | Dark | Light |
 | --- | --- | --- |
-| canvas | `#1d2125` (line 191) | `#d6d8df` (line 209) |
-| raised | `#24292e` (line 192) | `#dddfe5` (line 210) |
-| hover | `#2f363d` (line 193) | `#e3e4ea` (line 211) |
-| selected | `#444d56` (line 194) | `#c6c9cf` (line 212) |
-| faint text | `#959da5` (line 196) | `#686a77` (line 214) |
-| subdued text | `#d1d5da` (line 197) | `#4c505e` (line 215) |
-| default text | `#f6f8fa` (line 198) | `#343b59` (line 216) |
-| border | `#2b3137` (line 195) | `#c1c2c7` (line 213) |
-| blue | `#79b8ff` (line 199) | `#395d99` (line 217) |
-| green | `#28a745` (line 200) | `#33635c` (line 218) |
-| yellow | `#f9c513` (line 201) | `#7e5211` (line 219) |
-| red | `#f97583` (line 202) | `#8c4351` (line 220) |
-| purple | `#b392f0` (line 203) | `#7540b1` (line 221) |
+| canvas | `#1d2125` (line 191) | `#f2f2f6` (line 209) |
+| raised | `#24292e` (line 192) | `#ffffff` (line 210) |
+| hover | `#2f363d` (line 193) | `#e9e9f4` (line 211) |
+| selected | `#444d56` (line 194) | `#dbdbe4` (line 212) |
+| faint text | `#959da5` (line 196) | `#7b7d7f` (line 214) |
+| subdued text | `#d1d5da` (line 197) | `#5e5e77` (line 215) |
+| default text | `#f6f8fa` (line 198) | `#202325` (line 216) |
+| border | `#2b3137` (line 195) | `#dddde2` (line 213) |
+| blue | `#79b8ff` (line 199) | `#1571be` (line 217) |
+| green | `#28a745` (line 200) | `#0f811c` (line 218) |
+| yellow | `#f9c513` (line 201) | `#926610` (line 219) |
+| red | `#f97583` (line 202) | `#d91e28` (line 220) |
+| purple | `#b392f0` (line 203) | `#5c4dff` (line 221) |
 
 The same file also lists the 13 primitive names (not values) in the alignment guard; it holds no hex.
 
