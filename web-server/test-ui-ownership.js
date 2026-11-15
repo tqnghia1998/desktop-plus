@@ -237,18 +237,66 @@ body.theme-light {
 
   /* Tints of the palette hues for status surfaces (diff rows, banners, tags). They
    * mix toward the raised tone so text and syntax colors keep their contrast. */
-  --vibing-red-wash: color-mix(in srgb, var(--vibing-red) 10%, var(--vibing-raised));
-  --vibing-red-wash-strong: color-mix(in srgb, var(--vibing-red) 24%, var(--vibing-raised));
-  --vibing-red-line: color-mix(in srgb, var(--vibing-red) 45%, var(--vibing-raised));
-  --vibing-red-text: color-mix(in srgb, var(--vibing-red) 55%, var(--vibing-text));
-  --vibing-green-wash: color-mix(in srgb, var(--vibing-green) 10%, var(--vibing-raised));
-  --vibing-green-wash-strong: color-mix(in srgb, var(--vibing-green) 24%, var(--vibing-raised));
-  --vibing-green-line: color-mix(in srgb, var(--vibing-green) 45%, var(--vibing-raised));
-  --vibing-green-text: color-mix(in srgb, var(--vibing-green) 55%, var(--vibing-text));
-  --vibing-blue-wash: color-mix(in srgb, var(--vibing-blue) 10%, var(--vibing-raised));
-  --vibing-blue-wash-strong: color-mix(in srgb, var(--vibing-blue) 24%, var(--vibing-raised));
-  --vibing-blue-line: color-mix(in srgb, var(--vibing-blue) 45%, var(--vibing-raised));
-  --vibing-yellow-wash: color-mix(in srgb, var(--vibing-yellow) 10%, var(--vibing-raised));
+  --vibing-red-wash: color-mix(
+    in srgb,
+    var(--vibing-red) 10%,
+    var(--vibing-raised)
+  );
+  --vibing-red-wash-strong: color-mix(
+    in srgb,
+    var(--vibing-red) 24%,
+    var(--vibing-raised)
+  );
+  --vibing-red-line: color-mix(
+    in srgb,
+    var(--vibing-red) 45%,
+    var(--vibing-raised)
+  );
+  --vibing-red-text: color-mix(
+    in srgb,
+    var(--vibing-red) 55%,
+    var(--vibing-text)
+  );
+  --vibing-green-wash: color-mix(
+    in srgb,
+    var(--vibing-green) 10%,
+    var(--vibing-raised)
+  );
+  --vibing-green-wash-strong: color-mix(
+    in srgb,
+    var(--vibing-green) 24%,
+    var(--vibing-raised)
+  );
+  --vibing-green-line: color-mix(
+    in srgb,
+    var(--vibing-green) 45%,
+    var(--vibing-raised)
+  );
+  --vibing-green-text: color-mix(
+    in srgb,
+    var(--vibing-green) 55%,
+    var(--vibing-text)
+  );
+  --vibing-blue-wash: color-mix(
+    in srgb,
+    var(--vibing-blue) 10%,
+    var(--vibing-raised)
+  );
+  --vibing-blue-wash-strong: color-mix(
+    in srgb,
+    var(--vibing-blue) 24%,
+    var(--vibing-raised)
+  );
+  --vibing-blue-line: color-mix(
+    in srgb,
+    var(--vibing-blue) 45%,
+    var(--vibing-raised)
+  );
+  --vibing-yellow-wash: color-mix(
+    in srgb,
+    var(--vibing-yellow) 10%,
+    var(--vibing-raised)
+  );
 
   --text-color: var(--vibing-text);
   --text-secondary-color: var(--vibing-text-subdued);
@@ -596,7 +644,9 @@ body.theme-light {
  * identically in light and dark. */
 body:is(.theme-dark, .theme-light) .ci-status-pending,
 body:is(.theme-dark, .theme-light) .toolbar-dropdown.open .ci-status-pending,
-body:is(.theme-dark, .theme-light) .merge-status-component .merge-status-loading,
+body:is(.theme-dark, .theme-light)
+  .merge-status-component
+  .merge-status-loading,
 body:is(.theme-dark, .theme-light)
   .ci-check-list-popover
   .ci-check-run-list-header
@@ -610,7 +660,9 @@ body:is(.theme-dark, .theme-light) .ci-status-timed-out,
 body:is(.theme-dark, .theme-light) .ci-status-action-required,
 body:is(.theme-dark, .theme-light) .ci-status-failure,
 body:is(.theme-dark, .theme-light) .toolbar-dropdown.open .ci-status-failure,
-body:is(.theme-dark, .theme-light) .merge-status-component .merge-status-invalid,
+body:is(.theme-dark, .theme-light)
+  .merge-status-component
+  .merge-status-invalid,
 body:is(.theme-dark, .theme-light)
   .ci-check-list-popover
   .ci-check-run-list-header
@@ -744,6 +796,14 @@ body:is(.theme-dark, .theme-light)
   > .skipped {
   fill: var(--vibing-text-faint);
 }
+
+/* Upstream gives the split-button options menu its flat, 1px-offset look in
+ * the dark theme only. Both themes use it. */
+body:is(.theme-dark, .theme-light) .dropdown-select-button-options {
+  box-shadow: none;
+  margin-top: 1px;
+  width: 100%;
+}
 `,
   'Browser CSS may only size the renderer root, position shared menus and\n' +
     'dialogs, align the light and dark themes with the Space App Vibing host, and fit\n' +
@@ -790,32 +850,173 @@ body:is(.theme-dark, .theme-light)
       primitives,
       `The ${mode} theme must declare exactly the 13 primitives, in order`
     )
-    assert.equal(
-      appearance.split(`body.theme-${mode}`).length - 1,
-      2,
-      `Only the ${mode} primitive block and the shared role block may use body.theme-${mode}`
-    )
   }
   const withoutPrimitives = appearance
     .replace(primitiveBlocks.dark, '')
     .replace(primitiveBlocks.light, '')
+
+  // Mode selectors: outside the two primitive blocks, the only way to mention a
+  // theme class is the shared role block selector (once) or the symmetric
+  // body:is(.theme-dark, .theme-light) form. Anything else (.theme-light .x,
+  // body:not(.theme-dark), :is(.theme-light) ...) is a per-mode override.
+  const roleBlockSelector = 'body.theme-dark,\nbody.theme-light {'
+  assert.equal(
+    withoutPrimitives.split(roleBlockSelector).length - 1,
+    1,
+    'Exactly one shared body.theme-dark, body.theme-light role block is allowed'
+  )
+  assert.deepEqual(
+    withoutPrimitives
+      .replace(roleBlockSelector, '')
+      .replace(/body:is\(\s*\.theme-dark,\s*\.theme-light\s*\)/g, '')
+      .match(/[^\s,{}]*theme-(?:light|dark)[^\s,{}]*/g) || [],
+    [],
+    'No theme-light or theme-dark selector may appear outside the two primitive blocks, the shared role block and body:is(.theme-dark, .theme-light)'
+  )
+
   assert.deepEqual(
     withoutPrimitives.match(/#[0-9a-fA-F]{3,8}\b/g) || [],
     [],
     'Palette hex values may only appear in the two primitive blocks'
   )
-  const colorFunctions = [
-    ...withoutPrimitives.matchAll(/\b(rgba?)\(([^)]*)\)/g),
-  ]
-    .map(m => m[0])
-    .filter(
-      call =>
-        !/^rgba\(0, 0, 0, [0-9.]+\)$/.test(call) && !/^rgb\(from /.test(call)
-    )
+
+  // Declarations only: strip strings and url() so they cannot hide or fake a
+  // colour.
+  const declarations = [
+    ...withoutPrimitives
+      .replace(/'[^']*'|"[^"]*"/g, "''")
+      .replace(/url\([^)]*\)/g, 'url()')
+      .matchAll(/(^|[;{}\s])(-{0,2}[a-z][a-z0-9-]*)\s*:\s*([^;{}]+)(?=[;}])/gi),
+  ].map(m => m[3].trim())
+
+  const namedColors = new Set(
+    (
+      'aliceblue antiquewhite aqua aquamarine azure beige bisque black ' +
+      'blanchedalmond blue blueviolet brown burlywood cadetblue chartreuse ' +
+      'chocolate coral cornflowerblue cornsilk crimson cyan darkblue darkcyan ' +
+      'darkgoldenrod darkgray darkgreen darkgrey darkkhaki darkmagenta ' +
+      'darkolivegreen darkorange darkorchid darkred darksalmon darkseagreen ' +
+      'darkslateblue darkslategray darkslategrey darkturquoise darkviolet ' +
+      'deeppink deepskyblue dimgray dimgrey dodgerblue firebrick floralwhite ' +
+      'forestgreen fuchsia gainsboro ghostwhite gold goldenrod gray green ' +
+      'greenyellow grey honeydew hotpink indianred indigo ivory khaki lavender ' +
+      'lavenderblush lawngreen lemonchiffon lightblue lightcoral lightcyan ' +
+      'lightgoldenrodyellow lightgray lightgreen lightgrey lightpink ' +
+      'lightsalmon lightseagreen lightskyblue lightslategray lightslategrey ' +
+      'lightsteelblue lightyellow lime limegreen linen magenta maroon ' +
+      'mediumaquamarine mediumblue mediumorchid mediumpurple mediumseagreen ' +
+      'mediumslateblue mediumspringgreen mediumturquoise mediumvioletred ' +
+      'midnightblue mintcream mistyrose moccasin navajowhite navy oldlace ' +
+      'olive olivedrab orange orangered orchid palegoldenrod palegreen ' +
+      'paleturquoise palevioletred papayawhip peachpuff peru pink plum ' +
+      'powderblue purple rebeccapurple red rosybrown royalblue saddlebrown ' +
+      'salmon sandybrown seagreen seashell sienna silver skyblue slateblue ' +
+      'slategray slategrey snow springgreen steelblue tan teal thistle tomato ' +
+      'turquoise violet wheat white whitesmoke yellow yellowgreen ' +
+      // System colours resolve to the user agent palette, not the host's.
+      'canvas canvastext linktext visitedtext activetext buttonface ' +
+      'buttontext buttonborder field fieldtext highlight highlighttext ' +
+      'selecteditem selecteditemtext mark marktext graytext accentcolor ' +
+      'accentcolortext'
+    ).split(' ')
+  )
+  const namedColorUses = declarations.flatMap(
+    value =>
+      value
+        .match(/(?<![\w-])[a-z]+(?![\w(-])/gi)
+        ?.filter(word => namedColors.has(word.toLowerCase())) ?? []
+  )
   assert.deepEqual(
-    colorFunctions,
+    namedColorUses,
     [],
-    'Only black alpha and channel-relative rgb() are allowed outside the primitives'
+    'Named and system colours are not allowed; only var(--...) roles and transparent'
+  )
+
+  // Colour functions that bypass the primitives.
+  assert.deepEqual(
+    withoutPrimitives.match(
+      /(?<![\w-])(?:hsla?|hwb|lab|lch|oklab|oklch|color|color-contrast|light-dark|device-cmyk)\(/gi
+    ) || [],
+    [],
+    'Only var() roles, black alpha, rgb(from var(...)) and color-mix of var()/transparent are allowed'
+  )
+
+  // rgb()/rgba(): channel-relative on a var() role, or black with one of the
+  // exact alphas this stylesheet uses (shadows, overlay and scroll shadows).
+  const allowedBlackAlpha = new Set(['0.5', '0.6', '1'])
+  const balancedCall = (text, index) => {
+    let depth = 0
+    for (let i = text.indexOf('(', index); i < text.length; i++) {
+      if (text[i] === '(') {
+        depth++
+      }
+      if (text[i] === ')' && --depth === 0) {
+        return text.slice(index, i + 1)
+      }
+    }
+    return text.slice(index)
+  }
+  const rgbCalls = [...withoutPrimitives.matchAll(/(?<![\w-])rgba?\(/gi)].map(
+    m => balancedCall(withoutPrimitives, m.index)
+  )
+  assert.ok(rgbCalls.length > 0, 'The stylesheet is expected to use rgb()')
+  assert.deepEqual(
+    rgbCalls.filter(call => {
+      const black = /^rgba\(0, 0, 0, ([0-9.]+)\)$/.exec(call)
+      if (black) {
+        return !allowedBlackAlpha.has(black[1])
+      }
+      return !/^rgb\(from var\(--[a-z-]+\) r g b \/ [0-9.]+\)$/.test(call)
+    }),
+    [],
+    'rgb() may only be black at the stylesheet alphas (0.5, 0.6, 1) or relative to a var() role'
+  )
+
+  // color-mix(): the space is srgb and every operand is var(--...) or
+  // transparent, optionally followed by a percentage.
+  const colorMixes = [
+    ...withoutPrimitives.matchAll(/(?<![\w-])color-mix\(/gi),
+  ].map(m =>
+    balancedCall(withoutPrimitives, m.index).slice('color-mix('.length, -1)
+  )
+  assert.ok(
+    colorMixes.length > 0,
+    'The stylesheet is expected to use color-mix()'
+  )
+  const badMixes = colorMixes.filter(body => {
+    const parts = []
+    let depth = 0
+    let current = ''
+    for (const char of body) {
+      if (char === '(') {
+        depth++
+      }
+      if (char === ')') {
+        depth--
+      }
+      if (char === ',' && depth === 0) {
+        parts.push(current.trim())
+        current = ''
+      } else {
+        current += char
+      }
+    }
+    parts.push(current.trim())
+    const [space, ...operands] = parts
+    return (
+      space !== 'in srgb' ||
+      operands.length !== 2 ||
+      !operands.every(operand =>
+        /^(?:var\(--[a-z-]+\)|transparent)(?: [0-9.]+%)?$/.test(
+          operand.replace(/\s+/g, ' ')
+        )
+      )
+    )
+  })
+  assert.deepEqual(
+    badMixes,
+    [],
+    'color-mix() operands must be var(--...) roles or transparent'
   )
 }
 

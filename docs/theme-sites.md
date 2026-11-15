@@ -41,6 +41,9 @@ literal, so it repeats the same 26 declarations. After rewriting `appearance.css
 the same hex there (or regenerate the literal: it is `browser-renderer.css`, a blank line,
 then `appearance.css`, verbatim).
 
+The pin is only a drift detector; the palette-alignment block of the same guard is the
+policy gate (see `web-server/FORK-OVERLAY.md`).
+
 | Role | Dark | Light |
 | --- | --- | --- |
 | canvas | `#1d2125` (line 191) | `#d6d8df` (line 209) |
@@ -58,6 +61,30 @@ then `appearance.css`, verbatim).
 | purple | `#b392f0` (line 203) | `#7540b1` (line 221) |
 
 The same file also lists the 13 primitive names (not values) in the alignment guard; it holds no hex.
+
+## Role parity: residues and accepted exceptions
+
+The role block binds every Desktop Plus variable identically in light and dark, so a few
+results differ only because the palettes do. These are known and accepted; do not try to
+fix them with a per-mode override (the ownership guard forbids one).
+
+- **Elevation.** `--shadow-color`, `--tooltip-shadow-color`, `--toolbar-tooltip-shadow-color`,
+  `--overlay-background-color` and the `--top-shadow`/`--bottom-shadow` scroll shadows use the
+  same black alphas (0.5, 0.6, 1) in both modes. In light they are heavier than the old
+  light-only alphas.
+- **Hover and selected on raised (light).** Hover on a raised surface is 1.05:1 and selected on
+  raised 1.25:1; the blue hover on blue is 1.08:1. These are tone steps, not text contrast.
+- **Diff syntax on word-highlight fills.** Syntax tokens on the 24% word-highlight fills measure
+  3.29 to 3.73 (dark) and about 3.6 to 3.7 (light); light hover text on diff rows is 4.24 to
+  4.33. All are below 4.5:1.
+- **Button text on blue (light).** `--vibing-on-accent` is the canvas tone on the blue fill, 4.61:1
+  in light. There is little margin: any darkening of the blue or green, or lightening of the
+  canvas, fails 4.5:1.
+- **Upstream dark-only rules.** The `.blankslate-image` filter in `app/styles/themes/_dark.scss`
+  is not neutralised (the same expression would break the light page), and the dark-only
+  `color-scheme` on `#snooze-repository input` is already equivalent through the `body`
+  `color-scheme` in each primitive block. The split-button options menu
+  (`.dropdown-select-button-options`) is neutralised at the end of `appearance.css`.
 
 ## Documentation
 
