@@ -21,8 +21,8 @@ The primitive blocks are `body.theme-dark` and `body.theme-light`. Each hex appe
 | Role | Variable | Dark | Light |
 | --- | --- | --- | --- |
 | canvas | `--vibing-surface` | `#1d2125` (line 74) | `#d6d8df` (line 92) |
-| raised | `--vibing-raised` | `#24292e` (line 75) | `#e6e7ed` (line 93) |
-| hover | `--vibing-hover` | `#2f363d` (line 76) | `#cbcdd3` (line 94) |
+| raised | `--vibing-raised` | `#24292e` (line 75) | `#dddfe5` (line 93) |
+| hover | `--vibing-hover` | `#2f363d` (line 76) | `#e3e4ea` (line 94) |
 | selected | `--vibing-selected` | `#444d56` (line 77) | `#c6c9cf` (line 95) |
 | faint text | `--vibing-text-faint` | `#959da5` (line 79) | `#686a77` (line 97) |
 | subdued text | `--vibing-text-subdued` | `#d1d5da` (line 80) | `#4c505e` (line 98) |
@@ -44,8 +44,8 @@ then `appearance.css`, verbatim).
 | Role | Dark | Light |
 | --- | --- | --- |
 | canvas | `#1d2125` (line 191) | `#d6d8df` (line 209) |
-| raised | `#24292e` (line 192) | `#e6e7ed` (line 210) |
-| hover | `#2f363d` (line 193) | `#cbcdd3` (line 211) |
+| raised | `#24292e` (line 192) | `#dddfe5` (line 210) |
+| hover | `#2f363d` (line 193) | `#e3e4ea` (line 211) |
 | selected | `#444d56` (line 194) | `#c6c9cf` (line 212) |
 | faint text | `#959da5` (line 196) | `#686a77` (line 214) |
 | subdued text | `#d1d5da` (line 197) | `#4c505e` (line 215) |
