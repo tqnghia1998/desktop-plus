@@ -1,7 +1,12 @@
 import * as React from 'react'
 import { DialogStackContext } from '../../ui/dialog/dialog'
 import { ApplicationTheme } from '../../ui/lib/application-theme'
-import { getFileTreeView, setFileTreeView } from '../../ui/lib/file-tree-folder'
+import {
+  getFileTreeView,
+  getHistoryFileTreeView,
+  setFileTreeView,
+  setHistoryFileTreeView,
+} from '../../ui/lib/file-tree-folder'
 import { Preferences } from '../../ui/preferences/preferences'
 import { useHostThemeMode } from '../vibing/theme-mode'
 import { ImageDiffType } from '../../models/diff'
@@ -276,6 +281,8 @@ export function setStoredHistorySelection(
 
 export interface WebDiffPresentationPreferences {
   readonly fileTreeView: boolean
+  readonly historyFileTreeView: boolean
+  readonly onHistoryFileTreeViewChanged: (value: boolean) => void
   readonly onFileTreeViewChanged: (value: boolean) => void
   readonly theme: ApplicationTheme
   readonly onThemeChanged: (value: ApplicationTheme) => void
@@ -309,6 +316,13 @@ export function useWebDiffPresentationPreferencesState() {
   const updateFileTreeView = React.useCallback((value: boolean) => {
     setFileTreeView(value)
     setFileTreeViewState(value)
+  }, [])
+  const [historyFileTreeView, setHistoryFileTreeViewState] = React.useState(
+    getHistoryFileTreeView
+  )
+  const updateHistoryFileTreeView = React.useCallback((value: boolean) => {
+    setHistoryFileTreeView(value)
+    setHistoryFileTreeViewState(value)
   }, [])
   const [imageDiffType, setImageDiffTypeState] =
     React.useState(getImageDiffType)
@@ -410,6 +424,8 @@ export function useWebDiffPresentationPreferencesState() {
   return {
     theme,
     fileTreeView,
+    historyFileTreeView,
+    onHistoryFileTreeViewChanged: updateHistoryFileTreeView,
     onFileTreeViewChanged: updateFileTreeView,
     onThemeChanged: updateTheme,
     imageDiffType,

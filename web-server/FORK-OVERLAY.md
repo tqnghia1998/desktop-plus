@@ -99,3 +99,9 @@ Clone URL discovery preserves the entered URL through a browser replacement;
 the companion still owns cloning and configured Git authentication. The new
 changed-file-count preference persists in browser storage and reaches both
 the shared Preferences dialog and repository picker.
+
+## Upstream refresh 2026-11-16
+
+Rebased onto Desktop Plus `6fdd9b416a` (v3.6.12.0). The browser History adapter
+uses upstream's separate persisted History file-list mode and wires its new
+view-mode switch to the native preference helpers. Changes keeps its own mode.
