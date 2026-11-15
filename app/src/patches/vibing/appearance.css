@@ -94,19 +94,19 @@ body.theme-dark {
 body.theme-light {
   color-scheme: light;
 
-  --vibing-surface: #d6d8df;
-  --vibing-raised: #dddfe5;
-  --vibing-hover: #e3e4ea;
-  --vibing-selected: #c6c9cf;
-  --vibing-border: #c1c2c7;
-  --vibing-text-faint: #686a77;
-  --vibing-text-subdued: #4c505e;
-  --vibing-text: #343b59;
-  --vibing-blue: #395d99;
-  --vibing-green: #33635c;
-  --vibing-yellow: #7e5211;
-  --vibing-red: #8c4351;
-  --vibing-purple: #7540b1;
+  --vibing-surface: #f2f2f6;
+  --vibing-raised: #ffffff;
+  --vibing-hover: #e9e9f4;
+  --vibing-selected: #dbdbe4;
+  --vibing-border: #dddde2;
+  --vibing-text-faint: #7b7d7f;
+  --vibing-text-subdued: #5e5e77;
+  --vibing-text: #202325;
+  --vibing-blue: #1571be;
+  --vibing-green: #0f811c;
+  --vibing-yellow: #926610;
+  --vibing-red: #d91e28;
+  --vibing-purple: #5c4dff;
 }
 
 /* Role bindings, shared by both themes: each Desktop Plus variable below refers
