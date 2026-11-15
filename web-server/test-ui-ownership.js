@@ -213,8 +213,8 @@ body.theme-light {
 
   --vibing-surface: #ffffff;
   --vibing-raised: #f8f8fa;
-  --vibing-hover: #f0f0f3;
-  --vibing-selected: #dfdfe3;
+  --vibing-hover: #f4f4f7;
+  --vibing-selected: #ebebef;
   --vibing-border: #dddde2;
   --vibing-text-faint: #6d6f71;
   --vibing-text-subdued: #5c5e63;
