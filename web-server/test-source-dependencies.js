@@ -11,8 +11,11 @@ assert.equal(
   path.join(__dirname, 'src/desktop-repository-operation-stub.js')
 )
 assert.match(
-  fs.readFileSync(path.join(root, 'app/src/lib/feature-flag.ts'), 'utf8'),
-  /process\.env\.DESKTOP_PLUS_WEB !== '1'/
+  fs.readFileSync(
+    path.join(root, 'app/src/ui/preferences/integrations.tsx'),
+    'utf8'
+  ),
+  /private renderCopilotApp\(\)\s*\{\s*if \(__LINUX__ \|\| process\.env\.DESKTOP_PLUS_WEB === '1'\)/
 )
 assert.match(
   fs.readFileSync(path.join(__dirname, 'src/desktop-process-stub.js'), 'utf8'),
