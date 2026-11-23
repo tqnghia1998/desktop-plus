@@ -71,6 +71,7 @@ import classNames from 'classnames'
 const BlankSlateImage = encodePathAsUrl(__dirname, 'static/empty-no-repo.svg')
 
 interface IRepositoriesListProps {
+  readonly enableRepositorySnoozing?: boolean
   readonly selectedRepository: Repositoryish | null
   readonly repositories: ReadonlyArray<Repositoryish>
   readonly recentRepositories: ReadonlyArray<number>
@@ -148,6 +149,9 @@ interface IRepositoriesListProps {
 
   /** Whether or not linked worktrees should be shown in the repository list */
   readonly showWorktreesInRepoList: boolean
+
+  /** Optional fixed row height for embedded repository dropdowns. */
+  readonly rowHeight?: number
 }
 
 interface IRepositoriesListState {
@@ -1257,7 +1261,10 @@ export class RepositoriesList extends React.Component<
     const items = generateRepositoryListContextMenu({
       worktreePath: item.worktree?.path,
       onRemoveRepository: this.props.onRemoveRepository,
-      onSnoozeRepository: this.onSnoozeRepository,
+      onSnoozeRepository:
+        this.props.enableRepositorySnoozing === false
+          ? undefined
+          : this.onSnoozeRepository,
       onShowRepository: this.props.onShowRepository,
       onOpenInNewWindow: this.props.onOpenInNewWindow,
       onOpenInShell: this.props.onOpenInShell,
@@ -1355,7 +1362,7 @@ export class RepositoriesList extends React.Component<
     return (
       <div className="repository-list">
         <SectionFilterList<IRepositoryListItem, RepositoryListGroup>
-          rowHeight={RowHeight}
+          rowHeight={this.props.rowHeight ?? RowHeight}
           selectedItem={selectedItem}
           filterText={this.props.filterText}
           onFilterTextChanged={this.props.onFilterTextChanged}

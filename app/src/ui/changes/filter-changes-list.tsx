@@ -282,6 +282,9 @@ interface IFilterChangesListProps {
 
   /** Whether the list/tree view mode switch is shown */
   readonly showViewModeSwitches: boolean
+  /** Optional fixed row height for embedded Changes lists. */
+  readonly rowHeight?: number
+  readonly supportsPushAfterCommit?: boolean
 
   /**
    * Whether or not to skip blocking commit hooks when creating commits
@@ -1388,7 +1391,11 @@ export class FilterChangesList extends React.Component<
         onCommitModeDropdownOpened={this.onCommitModeDropdownOpened}
         pushAfterCommit={this.props.pushAfterCommit}
         canPushAfterCommit={this.props.conflictState === null}
-        onPushAfterCommitChanged={this.onPushAfterCommitChanged}
+        onPushAfterCommitChanged={
+          this.props.supportsPushAfterCommit === false
+            ? undefined
+            : this.onPushAfterCommitChanged
+        }
         focusCommitMessage={this.props.focusCommitMessage}
         autocompletionProviders={this.props.autocompletionProviders}
         isCommitting={isCommitting}
@@ -1953,7 +1960,7 @@ export class FilterChangesList extends React.Component<
           <AugmentedSectionFilterList<IChangesListItem>
             ref={this.filterListRef}
             id="changes-list"
-            rowHeight={RowHeight}
+            rowHeight={this.props.rowHeight ?? RowHeight}
             filterText={
               this.props.showChangesFilter
                 ? this.props.fileListFilter.filterText

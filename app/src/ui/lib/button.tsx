@@ -146,6 +146,8 @@ export interface IButtonProps {
    * */
   readonly ariaPressed?: boolean
 
+  readonly ariaSelected?: boolean
+
   /**
    * Identifies the element (or elements) whose contents or presence are
    * controlledby this button.
@@ -253,6 +255,7 @@ export class Button extends React.Component<IButtonProps, {}> {
         aria-describedby={this.props.ariaDescribedBy}
         aria-haspopup={this.props.ariaHaspopup}
         aria-pressed={this.props.ariaPressed}
+        aria-selected={this.props.ariaSelected}
         aria-hidden={this.props.ariaHidden}
         aria-controls={this.props.ariaControls}
         autoFocus={this.props.autoFocus}

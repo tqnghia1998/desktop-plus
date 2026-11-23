@@ -1,6 +1,14 @@
 @import '../../mixins';
 
-#compare-view {
+.web-history-graph-view {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+#compare-view,
+.web-history-graph-view {
   container: commit-graph / inline-size;
 
   .commitGraph-view-toolbar {
@@ -180,11 +188,14 @@
   .commitGraph-list {
     display: flex;
     flex: 1;
+    min-height: 0;
     min-width: 0;
   }
 }
 
 #commit-list.commitGraph-commit-list {
+  flex: 1;
+  min-height: 0;
   min-width: 0;
   container: commit-graph / inline-size;
 

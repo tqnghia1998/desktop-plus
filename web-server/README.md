@@ -1,0 +1,233 @@
+# Desktop Plus web port
+
+Desktop Plus runs in a normal browser while a local Node companion performs
+Git and local filesystem operations. The renderer is built from
+`app/src/patches/web/index.tsx` and the source-owned modules beneath
+`app/src/patches/web/`; it does not import the desktop renderer bundle.
+
+See the [patch map](../docs/web-patches.md) for browser module ownership,
+Vibing-specific policies, and the small hooks retained in shared Desktop code.
+
+## Run
+
+```sh
+npm run build:web
+npm run start:web
+npm run start:web -- --port 4000
+```
+
+Open `http://127.0.0.1:3000`. Use `--port` or set `PORT` to use another port.
+
+The current source renderer supports opening local repositories, cloning or
+initializing repositories, inspecting the current branch and ahead/behind
+state, viewing working-directory, committed, and stashed file diffs, committing
+selected files or text-diff lines, persisting per-repository commit drafts and
+options, validating manual co-author trailers, controlling commit spellcheck,
+displaying a summary-length warning, displaying and configuring the effective
+Git commit identity, ignoring selected files or file patterns,
+copying selected and included paths, discarding selected changes with
+confirmation, resolving merge/rebase/cherry-pick/stash-pop conflicts,
+paginating history, copying
+selected history commit SHA/tag values, using a searchable, grouped
+local/remote branch picker, local branch, guarded
+reset-and-pull, sync, stash, remote, tag,
+submodule, and worktree controls. Text diffs use the existing CodeMirror
+highlighter worker for the supplied file contents. The repository picker
+supports persisted pinning and a pinned group, and Changes exposes inline stash inspection and
+lifecycle actions. The renderer also performs guarded history rewrites with
+an exact reorder position, editable squash message, and exact-tip undo.
+Selected history commits can also create a branch or annotated tag, or be
+checked out after a detached-HEAD confirmation. A selected commit in a Behind
+comparison can be cherry-picked onto the current branch after confirmation. See
+[CAPABILITIES.md](CAPABILITIES.md) for the precise support matrix and
+[IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md) for the remaining roadmap.
+
+Adding a repository probes the typed local path before opening it. The source
+renderer reports bare, missing, non-Git, and unsafe repositories, supports
+`~`-prefixed paths, offers initialization for an existing non-Git directory,
+and provides a guarded Trust repository action for Git's unsafe-directory
+result. Persisted paths are rechecked on startup and expose Check again and
+Remove recovery actions.
+
+Hosted provider workflows, Pull Requests or merge requests, hosted
+notifications, native notifications, Copilot, repository rules, push
+protection, and automated Git installation are not exposed by the current source
+renderer and remain deferred. Preferences expose browser notification
+permission guidance, folder pickers, and editor and shell selection. Toolbar
+actions launch the configured editor or shell. The companion retains its signed
+update and Git LFS APIs without loading unused frontend clients, state, or
+pollers into the renderer; those management screens are not exposed.
+
+The current release gate covers branded Google Chrome with the local companion
+on macOS. The current renderer covers persisted view state, folder-picker entry points,
+editor/shell launch, browser notification permission guidance, and filesystem
+actions. Companion tests cover the retained update and Git LFS APIs.
+Firefox, Edge, Safari, Windows, and Linux are not completion blockers for this
+narrowed local-only release promise.
+
+This is not a claim of full feature-for-feature desktop parity. The complete
+implementation-gap inventory, including partial local workflows and deferred
+provider/platform behavior, is in
+[PARITY-GAPS.md](PARITY-GAPS.md).
+[CAPABILITIES.md](CAPABILITIES.md) is the single source of truth for the
+current status totals.
+
+The browser renderer reuses the shared application menu component for File,
+View, Repository, and Branch actions, in addition to the toolbar menus, and
+keeps the Preferences keyboard shortcut. The full Electron application menu
+and native macOS menu-bar lifecycle remain outside web-renderer ownership.
+
+Editor and shell launch and filesystem actions remain Partial pending broader
+native execution evidence. Updates and Git LFS remain companion-only APIs.
+Removing dormant renderer adapters does not remove or change those endpoints.
+
+## Build ownership
+
+- `app/src/patches/web/index.tsx`, `app/src/patches/web/application.tsx`, and
+  `app/src/patches/web/` are the source-level React renderer and platform contract.
+- `app/src/patches/vibing/` owns host integration and appearance.
+- `web-server/src/` contains companion-facing browser configuration, base CSS,
+  native-module adapters, and the `patches/web/` and `patches/vibing/` policies.
+- `web-server/public/` is generated by `npm run build:web`.
+
+The build uses a browser-targeted webpack configuration, emits content-hashed
+JavaScript and CSS, and rejects Electron and Node-only imports from the source
+renderer. It has no renderer snapshot or snapshot provenance dependency.
+
+## Security model
+
+The companion binds only to `127.0.0.1`. Every browser API request requires a
+per-process session token and must originate from the companion’s loopback
+origin. Responses set CSP, frame, MIME-sniffing, referrer, opener, resource,
+and permissions hardening headers. The production CSP permits scripts and
+stylesheet elements only from the companion and does not allow `unsafe-eval`.
+It explicitly scopes the source renderer's calculated layout values to
+`style-src-attr`; inline script and inline stylesheet elements remain blocked.
+
+Do not reverse-proxy the companion, expose it to a network, or load untrusted
+assets from it. The loaded browser UI has broad local Git/filesystem authority
+through the companion.
+
+## Credentials and platform limits
+
+Hosted account sign-in and provider tokens are not part of the current
+source-renderer release. For an HTTP(S) Git remote, the companion first looks
+up credentials through the configured Git credential helper (for example,
+macOS Keychain or Git Credential Manager) without allowing an editor askpass
+prompt. If no valid credential is available, the browser shows its own
+username/password dialog and retries the operation once. Those credentials are
+kept only in memory for that retry and are never written to browser storage or
+approved into a credential helper.
+
+Interactive SSH host trust, SSH key passphrases, and SSH username/password
+prompts are routed through the shared Desktop dialogs while the operation is
+paused; optionally remembered SSH passwords and key passphrases use the
+companion's operating-system credential store. On Linux, the folder picker
+additionally requires
+`zenity`; reveal, trash, and default-open require `xdg-open` and `gio`. The
+companion reports missing Linux dependencies with installation guidance.
+
+The companion's GitLab endpoint normalization remains covered by API tests, but
+the source renderer does not currently expose GitLab sign-in or merge-request
+controls.
+
+## Tests
+
+```sh
+npm run check:web
+npm run test:web:contract
+npm run test:web:payload
+npm run test:web:platform
+npm run test:web:security
+npm run test:web:hosting-errors
+npm run test:web:gitlab
+npm run test:web:updates
+npm run test:web:copilot-cancellation
+npm run test:web:provider-sandbox
+npm run test:web:api
+npm run test:web:release
+npm run test:web:e2e
+```
+
+Browser workflows select the engine with `WEB_BROWSER=chromium|chrome|edge|firefox|webkit`;
+the default is `chromium`. The release workflow runs the additional Chrome, Edge,
+Firefox, and WebKit jobs alongside the Chromium integration and UI gates. WebKit
+is engine coverage for Safari-like behavior and does not claim execution in the
+Safari application.
+
+The source-renderer browser workflows create disposable repositories and verify
+repository opening, selected text-diff patch commit, discard/reset/revert confirmations,
+merge abort and merge/rebase/cherry-pick/stash-pop conflict recovery, rebase
+skip, branch/stash inspection and lifecycle, publishing an untracked branch,
+remote-only branch checkout as a local tracking branch, branch-specific
+fast-forward, clean and conflicted squash merge, remote/tag/submodule/worktree
+create/open/move/remove lifecycle, recursive submodule inspection and
+failed-update recovery, confirmed deletion of merged local branches
+that are not checked out in a worktree, force-push and remote-branch deletion,
+configured guarded history rewrites with undo, diff refresh, local push
+rejection recovery, pull, dirty-change stashing before reset-and-pull, and committed-file
+inspection with read-only historical diffs, selected-history branch/tag/detached
+checkout actions, selected comparison-commit cherry-pick confirmation, plus
+Ahead/Behind branch comparison. The state-persistence fixture additionally
+verifies Changes filters and stash visibility, Changes/history/Compare scroll
+positions, and sidebar-width restoration across reload. The platform fixture
+verifies the visible application menu, browser shortcuts, macOS folder-picker
+entry points, editor/shell launch, filesystem actions, signed update states,
+browser notification permission guidance, and Git LFS controls. The former
+`test-browser-api-workflows.js` harness exercised the retired snapshot
+dispatcher and is not release evidence. The API, payload, platform, and
+security suites cover the companion independently.
+
+These browser workflows prove the supported local subset. They do not close
+the desktop parity gaps listed in [PARITY-GAPS.md](PARITY-GAPS.md); companion
+endpoints without visible source-renderer controls are not web implementation
+evidence.
+
+The release-candidate check requires `WEB_BROWSER=chrome` on macOS and verifies
+an unprivileged loopback companion, changed files, paginated history, and
+browser console/page-error health.
+
+## Deferred provider work
+
+`npm run test:web:provider-sandbox` remains an opt-in companion/API harness for
+future hosted UI work. It is not release evidence for the current source
+renderer because no hosted controls are exposed.
+
+When enabled, it performs real, temporary GitHub and GitLab publish, push, and
+pull/merge-request workflows before deleting the created repository or
+project. It runs only when `DESKTOP_PLUS_RUN_PROVIDER_SANDBOX=1` and at least
+one provider token is set.
+
+- `DESKTOP_PLUS_GITHUB_SANDBOX_TOKEN`: GitHub token with private repository,
+  contents, and pull-request permissions. The API endpoint defaults to
+  `https://api.github.com` and can be overridden with
+  `DESKTOP_PLUS_GITHUB_SANDBOX_ENDPOINT`.
+- `DESKTOP_PLUS_GITLAB_SANDBOX_TOKEN`: GitLab token with `api` permission. The
+  API endpoint defaults to `https://gitlab.com/api/v4` and can be overridden
+  with `DESKTOP_PLUS_GITLAB_SANDBOX_ENDPOINT`.
+
+The `Web port` workflow schedules this test every Tuesday and supports manual
+dispatch when the corresponding repository secrets are configured.
+
+## Configured updates
+
+Automatic update discovery is exposed in Repository Tools. The companion
+implementation remains optional and is disabled unless both
+environment variables are configured:
+
+- `DESKTOP_PLUS_UPDATE_MANIFEST_URL`: HTTPS URL for the signed update manifest.
+- `DESKTOP_PLUS_UPDATE_PUBLIC_KEY`: Ed25519 public key in PEM form. Use `\n`
+  escapes when configuring it as a single-line environment value.
+
+The manifest contains a `signed` JSON string and a base64 `signature`. The
+signed JSON includes `version`, `channel`, `url`, `sha256`, `size`, and optional
+`releaseNotes`. The companion verifies the metadata signature and artifact
+checksum before presenting an explicit installer-open confirmation. Without
+this configuration, the source-renderer update panel reports that updates must
+be installed manually.
+
+Verified artifacts must use a supported format for the current host:
+`.dmg` or `.pkg` on macOS, `.exe` or `.msi` on Windows, and `.AppImage`,
+`.deb`, `.rpm`, or `.tar.gz` on Linux. The companion opens the verified
+artifact for the operating system installer; it does not perform unattended
+installation or restart itself.

@@ -1,0 +1,116 @@
+# Theme sites
+
+Every place where one of the 26 palette primitives (13 per mode) appears as a literal
+hex value in this fork, and the role it plays. Space App Vibing's palette script rewrites
+old to new hex literals at exactly these sites; nothing else in the fork restates a
+palette colour, and `web-server/test-ui-ownership.js` fails if a hex appears outside the
+two primitive blocks of `app/src/patches/vibing/appearance.css`.
+
+Each mode declares the same 13 roles, bound once as `--vibing-*` variables:
+canvas (`--vibing-surface`), raised, hover, selected, border, faint/subdued/default text
+(`--vibing-text-faint`, `--vibing-text-subdued`, `--vibing-text`), blue, green, yellow,
+red and purple. The shared role block binds every Desktop Plus variable to them, with the
+same mapping in both modes (see `web-server/FORK-OVERLAY.md`).
+
+## Owned sites (rewrite these)
+
+### `app/src/patches/vibing/appearance.css`: the only place a primitive is declared
+
+The primitive blocks are `body.theme-dark` and `body.theme-light`. Each hex appears once.
+
+| Role | Variable | Dark | Light |
+| --- | --- | --- | --- |
+| canvas | `--vibing-surface` | `#1d2125` (line 79) | `#ffffff` (line 97) |
+| raised | `--vibing-raised` | `#24292e` (line 80) | `#f8f8fa` (line 98) |
+| hover | `--vibing-hover` | `#2f363d` (line 81) | `#f4f4f7` (line 99) |
+| selected | `--vibing-selected` | `#444d56` (line 82) | `#ebebef` (line 100) |
+| faint text | `--vibing-text-faint` | `#959da5` (line 84) | `#6d6f71` (line 102) |
+| subdued text | `--vibing-text-subdued` | `#d1d5da` (line 85) | `#5c5e63` (line 103) |
+| default text | `--vibing-text` | `#f6f8fa` (line 86) | `#202325` (line 104) |
+| border | `--vibing-border` | `#2b3137` (line 83) | `#dddde2` (line 101) |
+| blue | `--vibing-blue` | `#79b8ff` (line 87) | `#1571be` (line 105) |
+| green | `--vibing-green` | `#28a745` (line 88) | `#0f811c` (line 106) |
+| yellow | `--vibing-yellow` | `#f9c513` (line 89) | `#926610` (line 107) |
+| red | `--vibing-red` | `#f97583` (line 90) | `#d91e28` (line 108) |
+| purple | `--vibing-purple` | `#b392f0` (line 91) | `#5c4dff` (line 109) |
+
+### `web-server/test-ui-ownership.js`: pinned copy of the stylesheet
+
+The ownership guard pins the exact browser base plus `appearance.css` text in one template
+literal, so it repeats the same 26 declarations. After rewriting `appearance.css`, update
+the same hex there (or regenerate the literal: it is `browser-renderer.css`, a blank line,
+then `appearance.css`, verbatim).
+
+The pin is only a drift detector; the palette-alignment block of the same guard is the
+policy gate (see `web-server/FORK-OVERLAY.md`).
+
+| Role | Dark | Light |
+| --- | --- | --- |
+| canvas | `#1d2125` (line 196) | `#ffffff` (line 214) |
+| raised | `#24292e` (line 197) | `#f8f8fa` (line 215) |
+| hover | `#2f363d` (line 198) | `#f4f4f7` (line 216) |
+| selected | `#444d56` (line 199) | `#ebebef` (line 217) |
+| faint text | `#959da5` (line 201) | `#6d6f71` (line 219) |
+| subdued text | `#d1d5da` (line 202) | `#5c5e63` (line 220) |
+| default text | `#f6f8fa` (line 203) | `#202325` (line 221) |
+| border | `#2b3137` (line 200) | `#dddde2` (line 218) |
+| blue | `#79b8ff` (line 204) | `#1571be` (line 222) |
+| green | `#28a745` (line 205) | `#0f811c` (line 223) |
+| yellow | `#f9c513` (line 206) | `#926610` (line 224) |
+| red | `#f97583` (line 207) | `#d91e28` (line 225) |
+| purple | `#b392f0` (line 208) | `#5c4dff` (line 226) |
+
+The same file also lists the 13 primitive names (not values) in the alignment guard; it holds no hex.
+
+## Role parity: residues and accepted exceptions
+
+The role block binds every Desktop Plus variable identically in light and dark, so a few
+results differ only because the palettes do. These are known and accepted; do not try to
+fix them with a per-mode override (the ownership guard forbids one).
+
+- **Elevation.** `--shadow-color`, `--tooltip-shadow-color`, `--toolbar-tooltip-shadow-color`
+  and the `--top-shadow`/`--bottom-shadow` scroll shadows use the same black alphas (0.5, 0.6,
+  1) in both modes. In light they are heavier than the old light-only alphas.
+- **Scrim.** `--overlay-background-color` (dialog `::backdrop`, foldout, list and drag
+  overlays) is `rgb(from var(--vibing-surface) 0 0 0 / calc(0.64 - g / 885))`, one expression
+  in both modes: black at alpha 0.603 over the dark canvas (`g` = 33) and 0.352 over the white
+  one (`g` = 255). Dark composites within 1/255 of the old black 0.6 over the canvas, raised,
+  hover and selected tones (over the white text 98 vs 98); light composites to #a5a5a5 over
+  white instead of #666666. A fixed black alpha cannot be lighter in light without changing
+  dark, and a mix of the canvas toward black scales both modes by the same factor, so the
+  strength follows the canvas luminance. `web-server/test-ui-ownership.js` allows exactly this
+  expression and rejects near misses.
+- **Hover and selected on raised (light).** Hover on a raised surface is 1.05:1 and selected on
+  raised 1.25:1; the blue hover on blue is 1.08:1. These are tone steps, not text contrast.
+- **Diff syntax on word-highlight fills.** Syntax tokens on the 24% word-highlight fills measure
+  3.29 to 3.73 (dark) and about 3.6 to 3.7 (light); light hover text on diff rows is 4.24 to
+  4.33. All are below 4.5:1.
+- **Button text on blue (light).** `--vibing-on-accent` is the canvas tone on the blue fill, 4.61:1
+  in light. There is little margin: any darkening of the blue or green, or lightening of the
+  canvas, fails 4.5:1.
+- **Upstream dark-only rules.** The `.blankslate-image` filter in `app/styles/themes/_dark.scss`
+  is not neutralised (the same expression would break the light page), and the dark-only
+  `color-scheme` on `#snooze-repository input` is already equivalent through the `body`
+  `color-scheme` in each primitive block. The split-button options menu
+  (`.dropdown-select-button-options`) is neutralised at the end of `appearance.css`.
+
+## Documentation
+
+`web-server/FORK-OVERLAY.md` refers to `appearance.css` and Space App Vibing's `docs/theme.md`
+instead of restating values. This file's own tables repeat the values and are the only prose
+that does; update them (hex and line numbers) when the palette changes.
+
+## Coincidental matches (do not rewrite)
+
+Upstream Desktop Plus code that happens to use the same hex as a primitive. These are not
+palette sites: they belong to upstream's own GitHub palette or to non-themed assets.
+
+| File | Line | Value | Why it is not a palette site |
+| --- | --- | --- | --- |
+| `app/src/main-process/app-window.ts` | 97 | `#24292e` | Electron desktop window background (desktop app only, not the web port) |
+| `app/src/ui/diff/diff-minimap.tsx` | 1611 | `#f6f8fa` | JS fallback when `--box-alt-background-color` is unset; the variable is always set |
+| `app/styles/_variables.scss` | 465 | `#24292e` | upstream light `:root` `--syntax-alt-variable-color`, overridden by the role block |
+| `app/styles/_variables.scss` | 567 | `#f6f8fa` | upstream light `:root` `--md-canvas-subtle-color`, overridden by the role block |
+| `app/styles/ui/history/_commit-graph.scss` | 275 | `#24292e` | upstream commit graph label colour |
+| `app/styles/ui/history/_expandable-commit-summary.scss` | 259 | `#959da5` | upstream summary tint (`rgba(#959da5, 0.1)`) |
+| `app/static/common/*.svg` | n/a | assorted | Illustration artwork, not themed |

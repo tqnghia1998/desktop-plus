@@ -27,6 +27,7 @@ import { Button } from '../lib/button'
 import { Loading } from '../lib/loading'
 import { AuthorInput } from '../lib/author-input/author-input'
 import { FocusContainer } from '../lib/focus-container'
+import { isPrimaryModifier } from '../../patches/web/keyboard'
 import { Octicon, OcticonSymbolVariant } from '../octicons'
 import * as octicons from '../octicons/octicons.generated'
 import { Author, UnknownAuthor, isKnownAuthor } from '../../models/author'
@@ -1148,7 +1149,7 @@ export class CommitMessage extends React.Component<
       return
     }
 
-    const isShortcutKey = __DARWIN__ ? event.metaKey : event.ctrlKey
+    const isShortcutKey = isPrimaryModifier(event)
     if (
       !isShortcutKey ||
       event.key !== 'Enter' ||

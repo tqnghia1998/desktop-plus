@@ -403,7 +403,7 @@ export class Integrations extends React.Component<
   }
 
   private renderCopilotApp() {
-    if (__LINUX__) {
+    if (__LINUX__ || process.env.DESKTOP_PLUS_WEB === '1') {
       return null
     }
 

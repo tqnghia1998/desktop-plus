@@ -72,11 +72,14 @@ export class ManageRemotesDialog extends React.Component<
     }
   }
 
-  private onNewRemote = () => {
+  private onNewRemote = () => this.showRemoteDialog()
+
+  private showRemoteDialog = (remote?: IRemote) => {
     this.props.dispatcher.showPopup({
       type: PopupType.AddRemote,
       repository: this.props.repository,
       existingRemoteNames: this.state.remotes.map(r => r.name),
+      remote,
     })
   }
 
@@ -111,6 +114,7 @@ export class ManageRemotesDialog extends React.Component<
       <RemoteListItem
         key={remote.name}
         remote={remote}
+        onEditRemote={this.showRemoteDialog}
         onRemoveRemote={this.onRemoveRemote}
       />
     )

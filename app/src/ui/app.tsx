@@ -38,10 +38,6 @@ import {
 } from '../models/repository'
 import { getNonGitHubUrl } from '../lib/repository-remote-url'
 import { Branch } from '../models/branch'
-import {
-  getDiffFontFamilyCssValue,
-  getDiffLineHeight,
-} from '../models/diff-font'
 import { PreferencesTab } from '../models/preferences'
 import { findItemByAccessKey, itemIsSelectable } from '../models/app-menu'
 import { Account, isDotComAccount } from '../models/account'
@@ -51,27 +47,27 @@ import { CloningRepository } from '../models/cloning-repository'
 
 import { TitleBar, ZoomInfo, FullScreenInfo } from './window'
 
-import { RepositoriesList } from './repositories-list'
-import { getKnownGroupNames } from './repositories-list'
-import { Resizable } from './resizable'
+import { RepositoriesList, getKnownGroupNames } from './repositories-list'
 import { RepositoryView } from './repository'
+import { Resizable } from './resizable'
 import { RenameBranch } from './rename-branch'
-import { DeleteBranch, DeleteRemoteBranch } from './delete-branch'
 import {
   CantDeleteCurrentBranch,
   CantDeleteCurrentBranchUncommittedChanges,
+  DeleteBranch,
   DeleteUnusedLocalBranches,
+  DeleteRemoteBranch,
 } from './delete-branch'
 import { CantDeleteMainBranch } from './delete-branch/cant-delete-main-branch'
 import { CloningRepositoryView } from './cloning-repository'
 import {
-  Toolbar,
-  ToolbarDropdown,
+  ApplicationToolbar,
   DropdownState,
   PushPullButton,
   BranchDropdown,
   WorktreeDropdown,
   RevertProgress,
+  RepositoryToolbarDropdown,
 } from './toolbar'
 import { iconForRepository, OcticonSymbol } from './octicons'
 import * as octicons from './octicons/octicons.generated'
@@ -128,7 +124,7 @@ import { UpstreamAlreadyExists } from './upstream-already-exists'
 import { ReleaseNotes } from './release-notes'
 import { DeletePullRequest } from './delete-branch/delete-pull-request-dialog'
 import { CommitConflictsWarning } from './merge-conflicts'
-import { AppTheme } from './app-theme'
+import { AppChrome, AppContents } from './app-chrome'
 import { ApplicationTheme } from './lib/application-theme'
 import { RepositoryStateCache } from '../lib/stores/repository-state-cache'
 import { PopupType, Popup } from '../models/popup'
@@ -203,8 +199,7 @@ import { generateRepositoryListContextMenu } from './repositories-list/repositor
 import * as ipcRenderer from '../lib/ipc-renderer'
 import { DiscardChangesRetryDialog } from './discard-changes/discard-changes-retry-dialog'
 import { PullRequestReview } from './notifications/pull-request-review'
-import { getRepositoryType } from '../lib/git'
-import { getCommitsBetweenCommits } from '../lib/git'
+import { getCommitsBetweenCommits, getRepositoryType } from '../lib/git'
 import { SSHUserPassword } from './ssh/ssh-user-password'
 import { showContextualMenu } from '../lib/menu-item'
 import { UnreachableCommitsDialog } from './history/unreachable-commits-dialog'
@@ -3461,6 +3456,7 @@ export class App extends React.Component<IAppProps, IAppState> {
             key="add-remote"
             repository={popup.repository}
             existingRemoteNames={popup.existingRemoteNames}
+            remote={popup.remote}
             dispatcher={this.props.dispatcher}
             onDismissed={onPopupDismissedFn}
           />
@@ -3813,16 +3809,13 @@ export class App extends React.Component<IAppProps, IAppState> {
 
   private renderApp() {
     return (
-      <div
-        id="desktop-app-contents"
-        className={this.getDesktopAppContentsClassNames()}
-      >
+      <AppContents className={this.getDesktopAppContentsClassNames()}>
         {this.renderToolbar()}
         {this.renderBanner()}
         {this.renderRepository()}
         {this.renderPopups()}
         {this.renderDragElement()}
-      </div>
+      </AppContents>
     )
   }
 
@@ -4101,29 +4094,18 @@ export class App extends React.Component<IAppProps, IAppState> {
 
     const tooltip = repository && !isOpen ? repository.path : undefined
 
-    const foldoutWidth = clamp(this.state.sidebarWidth)
-
-    const foldoutStyle: React.CSSProperties = {
-      position: 'absolute',
-      marginLeft: 0,
-      width: foldoutWidth,
-      minWidth: foldoutWidth,
-      height: '100%',
-      top: 0,
-    }
-
     /** The dropdown focus trap will stop focus event propagation we made need
      * in some of our dialogs (noticed with Lists). Disabled this when dialogs
      * are open */
     const enableFocusTrap = this.state.currentPopup === null
 
     return (
-      <ToolbarDropdown
+      <RepositoryToolbarDropdown
         icon={icon}
         title={title}
         description={__DARWIN__ ? 'Current Repository' : 'Current repository'}
         tooltip={tooltip}
-        foldoutStyle={foldoutStyle}
+        width={clamp(this.state.sidebarWidth)}
         onContextMenu={this.onRepositoryToolbarButtonContextMenu}
         onDropdownStateChanged={this.onRepositoryDropdownStateChanged}
         dropdownContentRenderer={this.renderResizableRepositoryList}
@@ -4572,14 +4554,13 @@ export class App extends React.Component<IAppProps, IAppState> {
     const width = clamp(this.state.sidebarWidth)
 
     return (
-      <Toolbar id="desktop-app-toolbar">
-        <div className="sidebar-section" style={{ width }}>
-          {this.renderRepositoryToolbarButton()}
-        </div>
-        {this.renderWorktreeToolbarButton()}
-        {this.renderBranchToolbarButton()}
-        {this.renderPushPullToolbarButton()}
-      </Toolbar>
+      <ApplicationToolbar
+        branch={this.renderBranchToolbarButton()}
+        pushPull={this.renderPushPullToolbarButton()}
+        repository={this.renderRepositoryToolbarButton()}
+        sidebarWidth={width}
+        worktree={this.renderWorktreeToolbarButton()}
+      />
     )
   }
 
@@ -4747,28 +4728,21 @@ export class App extends React.Component<IAppProps, IAppState> {
       ? ApplicationTheme.Light
       : this.state.currentTheme
 
-    const currentTabSize = this.state.selectedTabSize
-    const appStyle = {
-      tabSize: currentTabSize,
-      '--diff-font-size': `${this.state.selectedDiffFontSize}px`,
-      '--diff-font-family': getDiffFontFamilyCssValue(
-        this.state.selectedDiffFontFamily
-      ),
-      '--diff-line-height': `${getDiffLineHeight(
-        this.state.selectedDiffFontSize
-      )}px`,
-    } as React.CSSProperties
-
     return (
-      <div id="desktop-app-chrome" className={className} style={appStyle}>
-        <AppTheme theme={currentTheme} />
+      <AppChrome
+        className={className}
+        diffFontFamily={this.state.selectedDiffFontFamily}
+        diffFontSize={this.state.selectedDiffFontSize}
+        tabSize={this.state.selectedTabSize}
+        theme={currentTheme}
+      >
         {this.renderTitlebar()}
         {this.state.showWelcomeFlow
           ? this.renderWelcomeFlow()
           : this.renderApp()}
         {this.renderZoomInfo()}
         {this.renderFullScreenInfo()}
-      </div>
+      </AppChrome>
     )
   }
 
