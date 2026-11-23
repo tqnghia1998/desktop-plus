@@ -59,7 +59,7 @@ on the active Git operation path.
 | Changes/history file lists and stash headers | Optional row-height and compact-header props let the browser select its density while retaining shared rendering |
 | Repository/worktree dropdowns | Optional disabled props keep host-selected navigation locked inside an embed |
 | App chrome, repository layout/tabs, toolbar menus, and other shared controls | Composed views and narrow adapter props let the web port reuse the Desktop visual system |
-| Assisted-commit state and ownership | Browser adapters provide idle manual state; the native Git-operation ownership query is replaced by `web-server/src/desktop-repository-operation-stub.js`, while mutations retain companion guards. `supportsPushAfterCommit` keeps the unsupported preference out of the embedded Changes menu. |
+| Assisted-commit state and ownership | Browser adapters provide idle manual state; the native Git-operation ownership query is replaced by `web-server/src/desktop-repository-operation-stub.js`, while mutations retain companion guards. The shared Changes list imports the dependency-free `record-metric.ts` helper, not the native run diagnostics. `supportsPushAfterCommit` keeps the unsupported preference out of the embedded Changes menu. |
 | Feature flags | Browser-native capability gating |
 
 Paths in this table are relative to `app/src/`. Shared visual components stay

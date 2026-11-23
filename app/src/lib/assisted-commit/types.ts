@@ -10,7 +10,8 @@ import { ICopilotAssistedCommitRequest } from '../../models/copilot-assisted-com
 import { Repository } from '../../models/repository'
 import { WorkingDirectoryFileChange } from '../../models/status'
 import { IRepositoryState } from '../app-state'
-import { AssistedCommitMetricRecorder, AssistedCommitMetrics } from './metrics'
+import type { AssistedCommitMetrics } from './metrics'
+import type { AssistedCommitMetricRecorder } from './record-metric'
 import { IBYOKProvider } from '../copilot/byok'
 import {
   IAssistedCommitCleanupToken,

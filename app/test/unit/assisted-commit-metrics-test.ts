@@ -1,9 +1,7 @@
 import assert from 'node:assert'
 import { describe, it } from 'node:test'
-import {
-  AssistedCommitMeasure,
-  createAssistedCommitMetrics,
-} from '../../src/lib/assisted-commit/metrics'
+import { createAssistedCommitMetrics } from '../../src/lib/assisted-commit/metrics'
+import type { AssistedCommitMeasure } from '../../src/lib/assisted-commit/record-metric'
 import { assistedCommitErrorCauses } from '../../src/lib/assisted-commit-run'
 import { ErrorWithMetadata } from '../../src/lib/error-with-metadata'
 import {

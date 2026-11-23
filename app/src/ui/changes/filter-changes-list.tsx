@@ -2,7 +2,7 @@ import * as React from 'react'
 import * as Path from 'path'
 
 import { Dispatcher } from '../dispatcher'
-import { recordAssistedCommitMetric } from '../../lib/assisted-commit/metrics'
+import { recordAssistedCommitMetric } from '../../lib/assisted-commit/record-metric'
 import { IMenuItem } from '../../lib/menu-item'
 import { revealInFileManager } from '../../lib/app-shell'
 import { encodePathAsUrl } from '../../lib/path'

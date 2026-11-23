@@ -1,35 +1,12 @@
 import { assistedCommitErrorCauses } from '../assisted-commit-run'
 import { CopilotAssistedCommitError } from '../copilot-assisted-commit'
 import { AssistedCommitError } from '../git/assisted-commit/error'
-import { AssistedCommitRecoveryEvent } from '../git/assisted-commit/progress'
-import { IDailyMeasures } from '../stats/stats-database'
-
-/** Bounded daily counts, without repository, model or error metadata. */
-export type AssistedCommitMeasure = Extract<
-  keyof IDailyMeasures,
-  | `copilotAssistedCommit${string}`
-  | `commitMode${string}`
-  | 'manualCommitWorkflowCount'
->
-
-/** The existing daily stats owner supplies persistence. */
-export type AssistedCommitMetricRecorder = (
-  measure: AssistedCommitMeasure,
-  count?: number
-) => Promise<void>
-
-/** Usage failures must never change commit, cancellation or recovery behavior. */
-export async function recordAssistedCommitMetric(
-  record: AssistedCommitMetricRecorder | undefined,
-  measure: AssistedCommitMeasure,
-  count = 1
-): Promise<void> {
-  try {
-    await record?.(measure, count)
-  } catch (error) {
-    log.error('Could not record assisted commit usage statistics', error)
-  }
-}
+import type { AssistedCommitRecoveryEvent } from '../git/assisted-commit/progress'
+import { recordAssistedCommitMetric } from './record-metric'
+import type {
+  AssistedCommitMeasure,
+  AssistedCommitMetricRecorder,
+} from './record-metric'
 
 /** One run's count guards and monotonic processing clock survive recovery retries. */
 export function createAssistedCommitMetrics(

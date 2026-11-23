@@ -1,6 +1,7 @@
 const assert = require('assert/strict')
 const fs = require('fs')
 const path = require('path')
+const ts = require('typescript')
 
 const root = path.join(__dirname, '..')
 const webpackConfig = require('./webpack.config')
@@ -104,6 +105,49 @@ assert.match(changesFileList, /readonly rowHeight\?: number/)
 assert.match(
   changesFileList,
   /rowHeight=\{this\.props\.rowHeight \?\? RowHeight\}/
+)
+
+// Follow the recorder import used by the shared Changes list. Type-only
+// imports are fine; a runtime dependency here pulls it into the web renderer.
+const changesFileListPath = path.join(
+  root,
+  'app/src/ui/changes/filter-changes-list.tsx'
+)
+const recorderImport = ts
+  .createSourceFile(
+    changesFileListPath,
+    changesFileList,
+    ts.ScriptTarget.Latest
+  )
+  .statements.filter(ts.isImportDeclaration)
+  .find(statement => {
+    const bindings = statement.importClause?.namedBindings
+    return (
+      bindings &&
+      ts.isNamedImports(bindings) &&
+      bindings.elements.some(
+        binding =>
+          (binding.propertyName ?? binding.name).text ===
+          'recordAssistedCommitMetric'
+      )
+    )
+  })
+assert.ok(
+  recorderImport,
+  'The shared Changes list must use the metric recorder'
+)
+const recorderPath = path.resolve(
+  path.dirname(changesFileListPath),
+  `${recorderImport.moduleSpecifier.text}.ts`
+)
+const { outputText: recorderJS } = ts.transpileModule(
+  fs.readFileSync(recorderPath, 'utf8'),
+  { compilerOptions: { module: ts.ModuleKind.ESNext }, fileName: recorderPath }
+)
+assert.deepEqual(
+  ts.preProcessFile(recorderJS, true, true).importedFiles.map(x => x.fileName),
+  [],
+  'The shared assisted-commit metric recorder must have no runtime imports'
 )
 
 const committedFileList = fs.readFileSync(

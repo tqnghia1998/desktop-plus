@@ -1,7 +1,7 @@
 import { storePushAfterCommit } from './helpers/commit-push-storage'
 import { verifyRepositoryGitSpawnFence } from '../git/repository-operation'
 import { AssistedCommitCoordinator } from '../assisted-commit/coordinator'
-import { recordAssistedCommitMetric } from '../assisted-commit/metrics'
+import { recordAssistedCommitMetric } from '../assisted-commit/record-metric'
 import { getStatus } from '../git/status'
 import * as Path from 'path'
 import { writeFile } from 'fs/promises'
