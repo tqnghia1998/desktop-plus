@@ -112,3 +112,9 @@ Rebased the net fork changes onto Desktop Plus `46f7c9cc37` (v3.7.0).
 The browser worktree dropdown uses the browser clipboard for upstream's
 Copy Worktree Path action and retains the companion's prune action. The
 commit graph keeps the fork's flex sizing and upstream's container queries.
+
+## Upstream refresh 2026-11-26
+
+Rebased onto Desktop Plus `4a0f521e09` (v3.7.1-beta1). Retained the
+foldout viewport clamp in `ToolbarDropdown` and the toolbar dropdown arrow
+width after upstream removed the `enableResizingToolbarButtons` feature flag.
